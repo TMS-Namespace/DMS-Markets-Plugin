@@ -38,6 +38,9 @@ PluginComponent {
     // lastFetchTimes[symbolId + "_price"|"_graph"] = epoch ms
     property var lastFetchTimes: ({})
 
+    // Loading state: number of active fetches per symbol
+    property var _pendingFetches: ({})
+
     // ── Computed bar display ─────────────────────────────────────────────────
     property var pinnedSymbols: {
         var result = []
@@ -98,10 +101,11 @@ PluginComponent {
         for (var i = 0; i < symbols.length; i++) {
             var sym = symbols[i]
 
-            // Price
+            // Price — refresh based on price interval
             var pk  = sym.id + "_price"
             var lp  = newTimes[pk] || 0
-            if (now - lp >= intervalToMs(sym.priceInterval)) {
+            var priceRefresh = intervalToMs(sym.priceInterval)
+            if (now - lp >= priceRefresh) {
                 doFetch(sym, "price")
                 newTimes[pk] = now
             }
@@ -145,6 +149,7 @@ PluginComponent {
                     root.onFetchComplete(symbolId, providerName, fetchType, chartRange, _buffer)
                 else if (exitCode !== 0)
                     console.warn("[Markets]", symbolId, fetchType, "exited with code", exitCode)
+                root._decrementPending(symbolId)
                 destroy()
             }
         }
@@ -152,12 +157,16 @@ PluginComponent {
 
     function doFetch(sym, fetchType) {
         var url
+        var tailLines = 0
         if (fetchType === "price") {
-            url = Providers.buildPriceUrl(sym.id, sym.provider, sym.priceInterval)
+            // Map price range to the best candle interval for /q/l/
+            var priceInterval = Providers.getPriceInterval(sym.priceInterval)
+            url = Providers.buildPriceUrl(sym.id, sym.provider, priceInterval)
         } else {
             // Use chart range config to pick the right candle interval
             var histConfig = Providers.getHistoryConfig(sym.graphInterval)
             url = Providers.buildHistoryUrl(sym.id, sym.provider, histConfig.interval)
+            tailLines = histConfig.maxPoints + 2   // +2 for header + safety
         }
 
         if (!url) return
@@ -165,6 +174,8 @@ PluginComponent {
         var curlCmd = "curl -fsSL --connect-timeout 10 --max-time 20"
                     + " -H 'User-Agent: Mozilla/5.0 (X11; Linux x86_64)'"
                     + " '" + url + "'"
+        if (tailLines > 0)
+            curlCmd += " | tail -n " + tailLines
 
         var proc = fetchComponent.createObject(root, {
             symbolId:     sym.id,
@@ -174,6 +185,12 @@ PluginComponent {
         })
         proc.command = ["sh", "-c", curlCmd]
         proc.running = true
+
+        // Track loading state
+        var pf = {}
+        for (var key in _pendingFetches) pf[key] = _pendingFetches[key]
+        pf[sym.id] = (pf[sym.id] || 0) + 1
+        _pendingFetches = pf
     }
 
     function onFetchComplete(symbolId, providerName, fetchType, chartRange, csvText) {
@@ -199,6 +216,8 @@ PluginComponent {
             }
         } else {
             var history = Providers.parseHistoryResponse(providerName, csvText)
+            if (history.length === 0)
+                console.warn("[Markets]", symbolId, "history returned no data — chart unavailable")
             if (history.length > 0) {
                 var newGraph = {}
                 for (var gk in graphData) newGraph[gk] = graphData[gk]
@@ -211,6 +230,14 @@ PluginComponent {
     }
 
     // ── Symbol management ────────────────────────────────────────────────────
+    function _decrementPending(symId) {
+        var pf = {}
+        for (var key in _pendingFetches) pf[key] = _pendingFetches[key]
+        pf[symId] = Math.max(0, (pf[symId] || 0) - 1)
+        if (pf[symId] === 0) delete pf[symId]
+        _pendingFetches = pf
+    }
+
     function togglePin(symbolId) {
         var newSymbols = JSON.parse(JSON.stringify(symbols))
         for (var i = 0; i < newSymbols.length; i++) {
@@ -358,6 +385,7 @@ PluginComponent {
                         symbolData: modelData
                         priceInfo:  root.priceData[modelData.id] || ({})
                         chartData:  root.graphData[modelData.id] || []
+                        isLoading:  (root._pendingFetches[modelData.id] || 0) > 0
 
                         onTogglePin:    root.togglePin(modelData.id)
                         onRemoveSymbol: root.removeSymbol(modelData.id)

@@ -92,12 +92,23 @@ function getIntervalLabel(interval) {
 // data points to display, and a refresh interval in milliseconds.
 
 var _chartRanges = {
-    "1W":  { interval: "1h", maxPoints: 120, refreshMs: 3600000   },
-    "1M":  { interval: "1d", maxPoints: 30,  refreshMs: 14400000  },
-    "3M":  { interval: "1d", maxPoints: 90,  refreshMs: 86400000  },
-    "6M":  { interval: "1d", maxPoints: 130, refreshMs: 86400000  },
-    "1Y":  { interval: "1w", maxPoints: 52,  refreshMs: 604800000 }
+    "1W":  { interval: "1d", maxPoints: 7,    refreshMs: 3600000   },
+    "1M":  { interval: "1d", maxPoints: 30,   refreshMs: 14400000  },
+    "3M":  { interval: "1d", maxPoints: 65,   refreshMs: 86400000  },
+    "6M":  { interval: "1d", maxPoints: 130,  refreshMs: 86400000  },
+    "1Y":  { interval: "1d", maxPoints: 260,  refreshMs: 86400000  },
+    "2Y":  { interval: "1w", maxPoints: 104,  refreshMs: 604800000 },
+    "5Y":  { interval: "1w", maxPoints: 260,  refreshMs: 604800000 },
+    "10Y": { interval: "1M", maxPoints: 120,  refreshMs: 604800000 }
 };
+
+// Maps a time range to the best Stooq /q/l/ candle interval for price display
+// Price range uses the interval directly — no mapping needed since /q/l/
+// accepts all intervals: 1, 5, 15, h, d, w, m
+
+function getPriceInterval(range) {
+    return range || "1d";
+}
 
 // Legacy graphInterval values mapped to chart ranges
 var _legacyRangeMap = {
@@ -123,7 +134,10 @@ function getChartRangeLabel(range) {
         "1M": "1 Month",
         "3M": "3 Months",
         "6M": "6 Months",
-        "1Y": "1 Year"
+        "1Y": "1 Year",
+        "2Y": "2 Years",
+        "5Y": "5 Years",
+        "10Y": "10 Years"
     };
     return labels[normalizeChartRange(range)] || range;
 }

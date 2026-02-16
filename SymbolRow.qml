@@ -17,6 +17,7 @@ Item {
     property var  symbolData: ({})       // { id, name, provider, priceInterval, graphInterval, pinned }
     property var  priceInfo:  ({})       // { open, high, low, close, change, changePercent, date, time }
     property var  chartData:  []         // DataPoint[] for sparkline
+    property bool isLoading:  false      // True while fetching data
 
     signal togglePin()
     signal removeSymbol()
@@ -58,7 +59,7 @@ Item {
         }
 
         StyledText {
-            text: (symbolData.id || "") + " • " + (symbolData.priceInterval || "1h") + " • " + (symbolData.graphInterval || "1M")
+            text: (symbolData.id || "") + " • " + (symbolData.priceInterval || "1d") + " • " + (symbolData.graphInterval || "1M")
             font.pixelSize: Theme.fontSizeSmall
             color: Theme.surfaceVariantText
             elide: Text.ElideRight
@@ -76,7 +77,7 @@ Item {
         spacing: 2
 
         StyledText {
-            text: hasData ? price.toFixed(2) : "—"
+            text: hasData ? price.toFixed(2) : (isLoading ? "Loading…" : "—")
             font.pixelSize: Theme.fontSizeMedium
             font.weight: Font.Medium
             color: Theme.surfaceText
@@ -146,5 +147,6 @@ Item {
         anchors.bottom: parent.bottom
         anchors.bottomMargin: Theme.spacingS
         dataPoints: symbolRow.chartData
+        isLoading: symbolRow.isLoading
     }
 }

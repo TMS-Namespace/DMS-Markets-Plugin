@@ -90,4 +90,30 @@ Canvas {
         ctx.lineJoin    = "round"
         ctx.stroke()
     }
+
+    // ── Status text when chart cannot draw ─────────────────────────────
+    property bool isLoading: false
+
+    Text {
+        visible: (!chart.dataPoints || chart.dataPoints.length < 2) && chart.isLoading
+        anchors.centerIn: parent
+        text: "Loading…"
+        font.pixelSize: 10
+        color: "#888888"
+
+        SequentialAnimation on opacity {
+            running: true
+            loops: Animation.Infinite
+            NumberAnimation { to: 0.3; duration: 600 }
+            NumberAnimation { to: 1.0; duration: 600 }
+        }
+    }
+
+    Text {
+        visible: (!chart.dataPoints || chart.dataPoints.length < 2) && !chart.isLoading
+        anchors.centerIn: parent
+        text: "No chart data"
+        font.pixelSize: 10
+        color: "#888888"
+    }
 }
