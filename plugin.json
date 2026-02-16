@@ -1,0 +1,13 @@
+{
+    "id": "marketsPlugin",
+    "name": "Markets",
+    "description": "Live market prices for currencies, stocks, and commodities with interactive charts",
+    "version": "1.0.0",
+    "author": "nd",
+    "icon": "show_chart",
+    "type": "widget",
+    "component": "./MarketsWidget.qml",
+    "settings": "./MarketsSettings.qml",
+    "permissions": ["settings_read", "settings_write", "process", "network"],
+    "requires_dms": ">=1.2.0"
+}
