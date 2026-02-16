@@ -58,7 +58,7 @@ Item {
         }
 
         StyledText {
-            text: (symbolData.id || "") + " • " + (symbolData.priceInterval || "")
+            text: (symbolData.id || "") + " • " + (symbolData.priceInterval || "1h") + " • " + (symbolData.graphInterval || "1M")
             font.pixelSize: Theme.fontSizeSmall
             color: Theme.surfaceVariantText
             elide: Text.ElideRight

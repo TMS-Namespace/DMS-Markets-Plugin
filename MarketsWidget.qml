@@ -106,10 +106,11 @@ PluginComponent {
                 newTimes[pk] = now
             }
 
-            // Graph
+            // Graph — use chart range config for refresh timing
             var gk = sym.id + "_graph"
             var lg = newTimes[gk] || 0
-            if (now - lg >= intervalToMs(sym.graphInterval)) {
+            var histConfig = Providers.getHistoryConfig(sym.graphInterval)
+            if (now - lg >= histConfig.refreshMs) {
                 doFetch(sym, "graph")
                 newTimes[gk] = now
             }
@@ -122,10 +123,11 @@ PluginComponent {
         id: fetchComponent
 
         Process {
-            property string symbolId:     ""
-            property string providerName: ""
-            property string fetchType:    "price"
-            property string _buffer:      ""
+            property string symbolId:       ""
+            property string providerName:   ""
+            property string fetchType:      "price"
+            property string chartRange:     "1M"
+            property string _buffer:        ""
 
             stdout: SplitParser {
                 onRead: line => _buffer += line + "\n"
@@ -140,7 +142,9 @@ PluginComponent {
 
             onExited: exitCode => {
                 if (exitCode === 0 && _buffer.trim())
-                    root.onFetchComplete(symbolId, providerName, fetchType, _buffer)
+                    root.onFetchComplete(symbolId, providerName, fetchType, chartRange, _buffer)
+                else if (exitCode !== 0)
+                    console.warn("[Markets]", symbolId, fetchType, "exited with code", exitCode)
                 destroy()
             }
         }
@@ -148,26 +152,31 @@ PluginComponent {
 
     function doFetch(sym, fetchType) {
         var url
-        if (fetchType === "price")
+        if (fetchType === "price") {
             url = Providers.buildPriceUrl(sym.id, sym.provider, sym.priceInterval)
-        else
-            url = Providers.buildHistoryUrl(sym.id, sym.provider, sym.graphInterval)
+        } else {
+            // Use chart range config to pick the right candle interval
+            var histConfig = Providers.getHistoryConfig(sym.graphInterval)
+            url = Providers.buildHistoryUrl(sym.id, sym.provider, histConfig.interval)
+        }
 
         if (!url) return
 
-        var curlCmd = "curl -fsSL --connect-timeout 10 --max-time 20 --proto '=https' --tlsv1.2"
-                    + " -A '' -b '' '" + url + "'"
+        var curlCmd = "curl -fsSL --connect-timeout 10 --max-time 20"
+                    + " -H 'User-Agent: Mozilla/5.0 (X11; Linux x86_64)'"
+                    + " '" + url + "'"
 
         var proc = fetchComponent.createObject(root, {
             symbolId:     sym.id,
             providerName: sym.provider,
-            fetchType:    fetchType
+            fetchType:    fetchType,
+            chartRange:   sym.graphInterval || "1M"
         })
         proc.command = ["sh", "-c", curlCmd]
         proc.running = true
     }
 
-    function onFetchComplete(symbolId, providerName, fetchType, csvText) {
+    function onFetchComplete(symbolId, providerName, fetchType, chartRange, csvText) {
         if (fetchType === "price") {
             var parsed = Providers.parsePriceResponse(providerName, csvText)
             if (parsed.length > 0) {
@@ -193,8 +202,9 @@ PluginComponent {
             if (history.length > 0) {
                 var newGraph = {}
                 for (var gk in graphData) newGraph[gk] = graphData[gk]
-                // Keep only the last 50 data points for the sparkline
-                newGraph[symbolId] = history.slice(-50)
+                // Slice to the appropriate number of data points for the chart range
+                var histConfig = Providers.getHistoryConfig(chartRange)
+                newGraph[symbolId] = history.slice(-histConfig.maxPoints)
                 graphData = newGraph
             }
         }

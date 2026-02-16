@@ -10,9 +10,28 @@ PluginSettings {
 
     property var symbolsList: []
 
+    // ── Explicit save/load via pluginService (matches DankNotepadModule pattern) ─
+    function saveValue(key, value) {
+        if (pluginService)
+            pluginService.savePluginData(root.pluginId, key, value)
+    }
+
+    function loadValue(key, defaultValue) {
+        if (pluginService)
+            return pluginService.loadPluginData(root.pluginId, key, defaultValue)
+        return defaultValue
+    }
+
     function refreshSymbolsList() {
-        try { symbolsList = JSON.parse(pluginData.symbols || "[]") }
+        var raw = loadValue("symbols", "[]")
+        try { symbolsList = JSON.parse(raw) }
         catch (e) { symbolsList = [] }
+    }
+
+    // pluginService may not be ready at Component.onCompleted
+    onPluginServiceChanged: {
+        if (pluginService)
+            refreshSymbolsList()
     }
 
     Component.onCompleted: refreshSymbolsList()
@@ -88,15 +107,16 @@ PluginSettings {
     SelectionSetting {
         id: graphIntervalSelect
         settingKey: "_addGraphInterval"
-        label: "Chart Interval"
-        description: "Candle period and update frequency for the popup sparkline"
+        label: "Chart Range"
+        description: "How much historical data to show in the popup sparkline"
         options: [
-            { label: "15 minutes", value: "15m" },
-            { label: "1 hour",     value: "1h"  },
-            { label: "1 day",      value: "1d"  },
-            { label: "1 week",     value: "1w"  }
+            { label: "1 Week",    value: "1W"  },
+            { label: "1 Month",   value: "1M"  },
+            { label: "3 Months",  value: "3M"  },
+            { label: "6 Months",  value: "6M"  },
+            { label: "1 Year",    value: "1Y"  }
         ]
-        defaultValue: "1d"
+        defaultValue: "1M"
     }
 
     Item {
@@ -182,7 +202,7 @@ PluginSettings {
                         }
 
                         StyledText {
-                            text: (modelData.id || "") + "  |  " + (modelData.provider || "stooq") + "  |  price " + (modelData.priceInterval || "1h") + "  |  chart " + (modelData.graphInterval || "1d")
+                            text: (modelData.id || "") + "  |  " + (modelData.provider || "stooq") + "  |  price " + (modelData.priceInterval || "1h") + "  |  chart " + (modelData.graphInterval || "1M")
                             font.pixelSize: Theme.fontSizeSmall
                             color: Theme.surfaceVariantText
                             elide: Text.ElideRight
@@ -215,7 +235,7 @@ PluginSettings {
         var name = (nameInput.value || "").trim()
         var provider = providerSelect.value || "stooq"
         var pInt = priceIntervalSelect.value || "1h"
-        var gInt = graphIntervalSelect.value || "1d"
+        var gInt = graphIntervalSelect.value || "1M"
 
         if (!ticker) {
             ToastService.showError("Markets", "Symbol ticker is required")

@@ -86,6 +86,48 @@ function getIntervalLabel(interval) {
     return labels[interval] || interval;
 }
 
+// ─── Chart Range Helpers ─────────────────────────────────────────────────────
+// Chart range controls how much historical data the sparkline shows.
+// Each range maps to an appropriate Stooq candle interval, a max number of
+// data points to display, and a refresh interval in milliseconds.
+
+var _chartRanges = {
+    "1W":  { interval: "1h", maxPoints: 120, refreshMs: 3600000   },
+    "1M":  { interval: "1d", maxPoints: 30,  refreshMs: 14400000  },
+    "3M":  { interval: "1d", maxPoints: 90,  refreshMs: 86400000  },
+    "6M":  { interval: "1d", maxPoints: 130, refreshMs: 86400000  },
+    "1Y":  { interval: "1w", maxPoints: 52,  refreshMs: 604800000 }
+};
+
+// Legacy graphInterval values mapped to chart ranges
+var _legacyRangeMap = {
+    "15m": "1W",
+    "1h":  "1W",
+    "1d":  "1M",
+    "1w":  "3M"
+};
+
+function normalizeChartRange(value) {
+    if (_chartRanges[value]) return value;
+    return _legacyRangeMap[value] || "1M";
+}
+
+function getHistoryConfig(chartRange) {
+    var range = normalizeChartRange(chartRange);
+    return _chartRanges[range];
+}
+
+function getChartRangeLabel(range) {
+    var labels = {
+        "1W": "1 Week",
+        "1M": "1 Month",
+        "3M": "3 Months",
+        "6M": "6 Months",
+        "1Y": "1 Year"
+    };
+    return labels[normalizeChartRange(range)] || range;
+}
+
 function _safeFloat(s) {
     if (!s || s === "N/D" || s === "null" || s === "NaN") return NaN;
     var v = parseFloat(s);
