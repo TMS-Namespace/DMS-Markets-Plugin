@@ -13,6 +13,9 @@ Canvas {
     // Array of objects with at least a `close` numeric field.
     property var  dataPoints: []
 
+    // Chart range label displayed in the top-left corner
+    property string graphInterval: ""
+
     // Override automatic direction detection
     property bool isPositive: {
         if (!dataPoints || dataPoints.length < 2) return true
@@ -89,6 +92,19 @@ Canvas {
         ctx.lineWidth   = 1.5
         ctx.lineJoin    = "round"
         ctx.stroke()
+    }
+
+    // ── Chart range label (top-left corner) ──────────────────────────────
+    Text {
+        visible: chart.graphInterval !== "" && chart.dataPoints && chart.dataPoints.length >= 2
+        anchors.left: parent.left
+        anchors.top: parent.top
+        anchors.leftMargin: 4
+        anchors.topMargin: 2
+        text: chart.graphInterval
+        font.pixelSize: 9
+        color: "#888888"
+        opacity: 0.8
     }
 
     // ── Status text when chart cannot draw ─────────────────────────────

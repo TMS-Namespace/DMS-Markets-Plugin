@@ -57,9 +57,13 @@ PluginComponent {
             var sym = pinnedSymbols[i]
             var d   = priceData[sym.id]
             if (d && d.close !== undefined && !isNaN(d.close)) {
-                var ch   = d.change || 0
-                var sign = ch >= 0 ? "+" : ""
-                parts.push(sym.name + " " + d.close.toFixed(2) + " " + sign + ch.toFixed(2))
+                var label = sym.name + " " + d.close.toFixed(2)
+                if (sym.showChangeWhenPinned) {
+                    var ch   = d.change || 0
+                    var sign = ch >= 0 ? "+" : ""
+                    label += " " + sign + ch.toFixed(2)
+                }
+                parts.push(label)
             } else {
                 parts.push(sym.name + " …")
             }

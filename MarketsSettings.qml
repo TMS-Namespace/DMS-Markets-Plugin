@@ -127,6 +127,14 @@ PluginSettings {
         defaultValue: "1M"
     }
 
+    ToggleSetting {
+        id: showChangeToggle
+        settingKey: "_addShowChange"
+        label: "Show Change When Pinned"
+        description: "Display price change in the bar when this symbol is pinned"
+        defaultValue: false
+    }
+
     Item {
         width: parent.width
         height: 44
@@ -256,7 +264,7 @@ PluginSettings {
 
                     Column {
                         anchors.verticalCenter: parent.verticalCenter
-                        width: parent.width - 18 - 28 - Theme.spacingS * 3
+                        width: parent.width - 18 - 80 - Theme.spacingS * 3
 
                         StyledText {
                             text: modelData.name || modelData.id || ""
@@ -268,7 +276,7 @@ PluginSettings {
                         }
 
                         StyledText {
-                            text: (modelData.id || "") + "  |  " + (modelData.provider || "stooq") + "  |  price " + (modelData.priceInterval || "1M") + "  |  chart " + (modelData.graphInterval || "1M")
+                            text: (modelData.id || "") + "  |  " + (modelData.provider || "stooq") + "  |  price " + (modelData.priceInterval || "1M") + "  |  chart " + (modelData.graphInterval || "1M") + (modelData.showChangeWhenPinned ? "  |  Δ on bar" : "")
                             font.pixelSize: Theme.fontSizeSmall
                             color: Theme.surfaceVariantText
                             elide: Text.ElideRight
@@ -276,19 +284,62 @@ PluginSettings {
                         }
                     }
 
-                    MouseArea {
-                        width: 28
-                        height: 28
+                    Row {
                         anchors.verticalCenter: parent.verticalCenter
-                        cursorShape: Qt.PointingHandCursor
-                        hoverEnabled: true
-                        onClicked: root.removeSymbolAt(index)
+                        spacing: 2
 
-                        DankIcon {
-                            anchors.centerIn: parent
-                            name: "delete"
-                            size: 20
-                            color: parent.containsMouse ? Theme.error : Theme.surfaceVariantText
+                        // Move up button
+                        MouseArea {
+                            width: 24
+                            height: 24
+                            cursorShape: index > 0 ? Qt.PointingHandCursor : Qt.ArrowCursor
+                            hoverEnabled: true
+                            enabled: index > 0
+                            onClicked: root.moveSymbol(index, -1)
+
+                            DankIcon {
+                                anchors.centerIn: parent
+                                name: "arrow_upward"
+                                size: 16
+                                color: index > 0
+                                    ? (parent.containsMouse ? Theme.primary : Theme.surfaceVariantText)
+                                    : Theme.surfaceContainerHighest
+                            }
+                        }
+
+                        // Move down button
+                        MouseArea {
+                            width: 24
+                            height: 24
+                            cursorShape: index < root.symbolsList.length - 1 ? Qt.PointingHandCursor : Qt.ArrowCursor
+                            hoverEnabled: true
+                            enabled: index < root.symbolsList.length - 1
+                            onClicked: root.moveSymbol(index, 1)
+
+                            DankIcon {
+                                anchors.centerIn: parent
+                                name: "arrow_downward"
+                                size: 16
+                                color: index < root.symbolsList.length - 1
+                                    ? (parent.containsMouse ? Theme.primary : Theme.surfaceVariantText)
+                                    : Theme.surfaceContainerHighest
+                            }
+                        }
+
+                        // Delete button
+                        MouseArea {
+                            width: 24
+                            height: 24
+                            cursorShape: Qt.PointingHandCursor
+                            hoverEnabled: true
+                            onClicked: root.removeSymbolAt(index)
+
+                            DankIcon {
+                                anchors.centerIn: parent
+                                name: "delete"
+                                size: 18
+                                color: parent.containsMouse ? Theme.error : Theme.surfaceVariantText
+                            }
                         }
                     }
                 }
@@ -345,6 +396,7 @@ PluginSettings {
         var provider   = providerSelect.value || "stooq"
         var priceRange = priceRangeSelect.value || "1h"
         var chartRange = chartRangeSelect.value || "1M"
+        var showChange = showChangeToggle.value || false
 
         var syms = JSON.parse(JSON.stringify(symbolsList))
         var entry = {
@@ -353,6 +405,7 @@ PluginSettings {
             provider: provider,
             priceInterval: priceRange,
             graphInterval: chartRange,
+            showChangeWhenPinned: showChange,
             pinned: false
         }
 
@@ -372,6 +425,8 @@ PluginSettings {
 
     function editSymbol(idx) {
         if (idx < 0 || idx >= symbolsList.length) return
+        // Toggle: clicking the already-selected symbol deselects it
+        if (editIndex === idx) { cancelEdit(); return }
         var sym = symbolsList[idx]
         editIndex = idx
         root.saveValue("_addTicker", sym.id || "")
@@ -379,7 +434,9 @@ PluginSettings {
         root.saveValue("_addProvider", sym.provider || "stooq")
         root.saveValue("_addPriceRange", sym.priceInterval || "1h")
         root.saveValue("_addChartRange", sym.graphInterval || "1M")
-        refreshSymbolsList()
+        root.saveValue("_addShowChange", sym.showChangeWhenPinned ? true : false)
+        // Force SelectionSettings to re-read from pluginData after save
+        Qt.callLater(function() { refreshSymbolsList() })
     }
 
     function cancelEdit() {
@@ -392,6 +449,7 @@ PluginSettings {
         root.saveValue("_addName", "")
         root.saveValue("_addPriceRange", "1h")
         root.saveValue("_addChartRange", "1M")
+        root.saveValue("_addShowChange", false)
         refreshSymbolsList()
     }
 
@@ -402,6 +460,22 @@ PluginSettings {
         syms.splice(idx, 1)
         root.saveValue("symbols", JSON.stringify(syms))
         symbolsList = syms
+        if (editIndex === idx) clearForm()
+        else if (editIndex > idx) editIndex--
         ToastService.showInfo("Markets", "Removed " + (removed.name || removed.id))
+    }
+
+    function moveSymbol(idx, direction) {
+        var newIdx = idx + direction
+        var syms = JSON.parse(JSON.stringify(symbolsList))
+        if (newIdx < 0 || newIdx >= syms.length) return
+        var tmp = syms[idx]
+        syms[idx] = syms[newIdx]
+        syms[newIdx] = tmp
+        root.saveValue("symbols", JSON.stringify(syms))
+        symbolsList = syms
+        // Update editIndex if the edited item moved
+        if (editIndex === idx) editIndex = newIdx
+        else if (editIndex === newIdx) editIndex = idx
     }
 }

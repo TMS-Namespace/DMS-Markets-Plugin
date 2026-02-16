@@ -59,7 +59,7 @@ Item {
         }
 
         StyledText {
-            text: (symbolData.id || "") + " • " + (symbolData.priceInterval || "1d") + " • " + (symbolData.graphInterval || "1M")
+            text: (symbolData.id || "") + " • " + (symbolData.priceInterval || "1d")
             font.pixelSize: Theme.fontSizeSmall
             color: Theme.surfaceVariantText
             elide: Text.ElideRight
@@ -74,7 +74,7 @@ Item {
         anchors.left: nameCol.right
         anchors.leftMargin: Theme.spacingS
         anchors.verticalCenter: parent.verticalCenter
-        spacing: 2
+        spacing: 1
 
         StyledText {
             text: hasData ? price.toFixed(2) : (isLoading ? "Loading…" : "—")
@@ -86,8 +86,14 @@ Item {
         StyledText {
             visible: hasData
             text: (isPositive ? "+" : "") + change.toFixed(2)
-                  + " (" + (isPositive ? "+" : "") + changePct.toFixed(2) + "%)"
-            font.pixelSize: Theme.fontSizeSmall
+            font.pixelSize: 10
+            color: changeColor
+        }
+
+        StyledText {
+            visible: hasData
+            text: "(" + (isPositive ? "+" : "") + changePct.toFixed(2) + "%)"
+            font.pixelSize: 10
             color: changeColor
         }
     }
@@ -136,8 +142,8 @@ Item {
     }
 
     // ── Mini chart (fills remaining space) ───────────────────────────────────
-    PriceChart {
-        id: miniChart
+    Item {
+        id: chartArea
         anchors.left: priceCol.right
         anchors.leftMargin: Theme.spacingS
         anchors.right: actionsCol.left
@@ -146,7 +152,19 @@ Item {
         anchors.topMargin: Theme.spacingS
         anchors.bottom: parent.bottom
         anchors.bottomMargin: Theme.spacingS
-        dataPoints: symbolRow.chartData
-        isLoading: symbolRow.isLoading
+
+        PriceChart {
+            id: miniChart
+            anchors.fill: parent
+            dataPoints: symbolRow.chartData
+            isLoading: symbolRow.isLoading
+            graphInterval: symbolData.graphInterval || "1M"
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            cursorShape: Qt.PointingHandCursor
+            onClicked: Qt.openUrlExternally("https://stooq.com/q/?s=" + encodeURIComponent(symbolData.id || ""))
+        }
     }
 }
