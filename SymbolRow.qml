@@ -29,7 +29,11 @@ Item {
     property real  changePct:   (priceInfo.changePercent !== undefined && !isNaN(priceInfo.changePercent)) ? priceInfo.changePercent : 0
     property bool  isPositive:  change >= 0
     property bool  hasData:     price > 0
-    property color changeColor: isPositive ? "#4CAF50" : "#F44336"
+
+    // Configurable up/down colors (passed from widget)
+    property color upColor:   "#4CAF50"
+    property color downColor: "#F44336"
+    property color changeColor: isPositive ? upColor : downColor
 
     height: 76
 
@@ -159,6 +163,8 @@ Item {
             dataPoints: symbolRow.chartData
             isLoading: symbolRow.isLoading
             graphInterval: symbolData.graphInterval || "1M"
+            positiveColor: symbolRow.upColor
+            negativeColor: symbolRow.downColor
         }
 
         MouseArea {

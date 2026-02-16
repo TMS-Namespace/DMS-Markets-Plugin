@@ -20,6 +20,16 @@ PluginComponent {
 
     layerNamespacePlugin: "markets"
 
+    // ── Global colors ─────────────────────────────────────────────────────────
+    property color upColor: {
+        var c = (pluginData.upColor || "").trim()
+        return c !== "" ? c : "#4CAF50"
+    }
+    property color downColor: {
+        var c = (pluginData.downColor || "").trim()
+        return c !== "" ? c : "#F44336"
+    }
+
     // ── Persisted symbols list ───────────────────────────────────────────────
     // Stored as JSON string in pluginData.symbols
     // Each entry: { id, name, provider, priceInterval, graphInterval, pinned }
@@ -390,6 +400,8 @@ PluginComponent {
                         priceInfo:  root.priceData[modelData.id] || ({})
                         chartData:  root.graphData[modelData.id] || []
                         isLoading:  (root._pendingFetches[modelData.id] || 0) > 0
+                        upColor:    root.upColor
+                        downColor:  root.downColor
 
                         onTogglePin:    root.togglePin(modelData.id)
                         onRemoveSymbol: root.removeSymbol(modelData.id)

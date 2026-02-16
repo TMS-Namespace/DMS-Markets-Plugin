@@ -28,8 +28,8 @@ Canvas {
     property color positiveColor:     "#4CAF50"
     property color negativeColor:     "#F44336"
     property color lineColor:         isPositive ? positiveColor : negativeColor
-    property color fillColorPositive: Qt.rgba(0.298, 0.686, 0.314, 0.25)
-    property color fillColorNegative: Qt.rgba(0.957, 0.263, 0.212, 0.25)
+    property color fillColorPositive: Qt.rgba(positiveColor.r, positiveColor.g, positiveColor.b, 0.25)
+    property color fillColorNegative: Qt.rgba(negativeColor.r, negativeColor.g, negativeColor.b, 0.25)
     property color fillColor:         isPositive ? fillColorPositive : fillColorNegative
 
     // ── Rendering ────────────────────────────────────────────────────────────

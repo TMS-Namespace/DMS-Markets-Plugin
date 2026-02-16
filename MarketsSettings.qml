@@ -12,6 +12,10 @@ PluginSettings {
     property bool isValidating: false
     property int editIndex: -1    // -1 = adding new, >= 0 = editing existing
 
+    // Symbol search
+    property var searchResults: []
+    property bool isSearching: false
+
     // ── Explicit save/load via pluginService (matches DankNotepadModule pattern) ─
     function saveValue(key, value) {
         if (pluginService)
@@ -48,10 +52,80 @@ PluginSettings {
 
     StyledText {
         width: parent.width
-        text: "Track live prices for currencies, stocks, commodities, and crypto.\nCommon Stooq tickers: eurusd, gbpusd, xauusd (Gold), btcusd, ^spx (S&P 500), ^dji (Dow)\nNote: futures (.f) symbols show prices but charts may be unavailable."
+        text: "Track live prices for currencies, stocks, commodities, and crypto.\nNote: futures (.f) symbols show prices but charts may be unavailable."
         font.pixelSize: Theme.fontSizeSmall
         color: Theme.surfaceVariantText
         wrapMode: Text.WordWrap
+    }
+
+    // ── Global color settings ────────────────────────────────────────────────
+    StyledText {
+        width: parent.width
+        text: "Chart Colors"
+        font.pixelSize: Theme.fontSizeMedium
+        font.weight: Font.DemiBold
+        color: Theme.surfaceText
+        topPadding: Theme.spacingM
+    }
+
+    StringSetting {
+        id: upColorInput
+        settingKey: "upColor"
+        label: "Up / Positive Color"
+        description: "Hex color for positive changes (e.g., #4CAF50)"
+        placeholder: "#4CAF50"
+        defaultValue: "#4CAF50"
+    }
+
+    StringSetting {
+        id: downColorInput
+        settingKey: "downColor"
+        label: "Down / Negative Color"
+        description: "Hex color for negative changes (e.g., #F44336)"
+        placeholder: "#F44336"
+        defaultValue: "#F44336"
+    }
+
+    // Color preview
+    Row {
+        width: parent.width
+        spacing: Theme.spacingM
+
+        Row {
+            spacing: Theme.spacingS
+            Rectangle {
+                width: 16; height: 16; radius: 3
+                color: (upColorInput.value || "").trim() !== "" ? upColorInput.value.trim() : "#4CAF50"
+                border.color: Theme.outlineVariant; border.width: 1
+            }
+            StyledText {
+                text: "Up"
+                font.pixelSize: Theme.fontSizeSmall
+                color: Theme.surfaceVariantText
+                anchors.verticalCenter: parent.verticalCenter
+            }
+        }
+
+        Row {
+            spacing: Theme.spacingS
+            Rectangle {
+                width: 16; height: 16; radius: 3
+                color: (downColorInput.value || "").trim() !== "" ? downColorInput.value.trim() : "#F44336"
+                border.color: Theme.outlineVariant; border.width: 1
+            }
+            StyledText {
+                text: "Down"
+                font.pixelSize: Theme.fontSizeSmall
+                color: Theme.surfaceVariantText
+                anchors.verticalCenter: parent.verticalCenter
+            }
+        }
+    }
+
+    Rectangle {
+        width: parent.width
+        height: 1
+        color: Theme.outlineVariant
     }
 
     StyledText {
@@ -63,11 +137,135 @@ PluginSettings {
         topPadding: Theme.spacingM
     }
 
+    // ── Symbol Search ─────────────────────────────────────────────────────
+    StringSetting {
+        id: searchInput
+        settingKey: "_searchQuery"
+        label: "Search Stooq Symbols"
+        description: "Type to search for symbols (e.g., eur, gold, btc, apple)"
+        placeholder: "Search…"
+        defaultValue: ""
+    }
+
+    Item {
+        width: parent.width
+        height: searchBtn.height
+
+        Rectangle {
+            id: searchBtn
+            width: 120
+            height: 36
+            radius: Theme.cornerRadius
+
+            property bool canSearch: (searchInput.value || "").trim().length >= 2 && !root.isSearching
+
+            color: canSearch
+                ? (searchBtnMouse.containsMouse ? Theme.primary : Theme.surfaceContainerHighest)
+                : Theme.surfaceContainerHigh
+            border.color: canSearch ? Theme.primary : Theme.outlineVariant
+            border.width: 1
+            opacity: canSearch ? 1.0 : 0.5
+
+            StyledText {
+                anchors.centerIn: parent
+                text: root.isSearching ? "Searching…" : "Search"
+                font.pixelSize: Theme.fontSizeSmall
+                font.weight: Font.Medium
+                color: searchBtn.canSearch
+                    ? (searchBtnMouse.containsMouse ? Theme.surfaceContainer : Theme.primary)
+                    : Theme.surfaceVariantText
+            }
+
+            MouseArea {
+                id: searchBtnMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: searchBtn.canSearch ? Qt.PointingHandCursor : Qt.ArrowCursor
+                enabled: searchBtn.canSearch
+                onClicked: root.doSearch()
+            }
+        }
+    }
+
+    // Search results
+    Repeater {
+        model: root.searchResults
+
+        delegate: Item {
+            width: root.width
+            height: 44
+
+            Rectangle {
+                anchors.fill: parent
+                radius: Theme.cornerRadius
+                color: srMouse.containsMouse ? Theme.primaryContainer : Theme.surfaceContainerHigh
+
+                MouseArea {
+                    id: srMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        root.saveValue("_addTicker", modelData.id)
+                        root.saveValue("_addName", modelData.name)
+                        root.searchResults = []
+                        Qt.callLater(function() { root.refreshSymbolsList() })
+                    }
+                }
+
+                Row {
+                    anchors.fill: parent
+                    anchors.margins: Theme.spacingS
+                    spacing: Theme.spacingS
+
+                    Column {
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: parent.width - 90 - Theme.spacingS
+
+                        StyledText {
+                            text: modelData.id || ""
+                            font.pixelSize: Theme.fontSizeMedium
+                            font.weight: Font.Medium
+                            color: Theme.surfaceText
+                            elide: Text.ElideRight
+                            width: parent.width
+                        }
+
+                        StyledText {
+                            text: (modelData.name || "") + "  ·  " + (modelData.market || "")
+                            font.pixelSize: Theme.fontSizeSmall
+                            color: Theme.surfaceVariantText
+                            elide: Text.ElideRight
+                            width: parent.width
+                        }
+                    }
+
+                    StyledText {
+                        width: 90
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: (modelData.price || "") + "  " + (modelData.changeStr || "")
+                        font.pixelSize: Theme.fontSizeSmall
+                        color: Theme.surfaceVariantText
+                        horizontalAlignment: Text.AlignRight
+                        elide: Text.ElideRight
+                    }
+                }
+            }
+        }
+    }
+
+    Rectangle {
+        visible: root.searchResults.length > 0
+        width: parent.width
+        height: 1
+        color: Theme.outlineVariant
+    }
+
     StringSetting {
         id: tickerInput
         settingKey: "_addTicker"
         label: "Symbol Ticker"
-        description: "Provider-specific symbol (e.g., eurusd, xauusd, btcusd, ^spx)"
+        description: "Provider-specific symbol — fill manually or pick from search above"
         placeholder: "eurusd"
         defaultValue: ""
     }
@@ -451,6 +649,53 @@ PluginSettings {
         root.saveValue("_addChartRange", "1M")
         root.saveValue("_addShowChange", false)
         refreshSymbolsList()
+    }
+
+    function doSearch() {
+        var query = (searchInput.value || "").trim()
+        if (query.length < 2) return
+        isSearching = true
+        searchResults = []
+
+        var url = "https://stooq.com/cmp/?q=" + encodeURIComponent(query)
+        var xhr = new XMLHttpRequest()
+        xhr.onreadystatechange = function() {
+            if (xhr.readyState === XMLHttpRequest.DONE) {
+                isSearching = false
+                if (xhr.status === 200 && xhr.responseText) {
+                    var text = xhr.responseText
+                    // Extract content from window.cmp_r('...')
+                    var start = text.indexOf("'")
+                    var end   = text.lastIndexOf("'")
+                    if (start >= 0 && end > start) {
+                        var inner = text.substring(start + 1, end)
+                        // Remove HTML bold tags
+                        inner = inner.replace(/<b>/g, "").replace(/<\/b>/g, "")
+                        var entries = inner.split("|")
+                        var results = []
+                        for (var i = 0; i < entries.length; i++) {
+                            var parts = entries[i].split("~")
+                            if (parts.length >= 5) {
+                                results.push({
+                                    id:        parts[0].toLowerCase(),
+                                    name:      parts[1],
+                                    market:    parts[2],
+                                    price:     parts[3],
+                                    changeStr: parts[4]
+                                })
+                            }
+                        }
+                        searchResults = results
+                        if (results.length === 0)
+                            ToastService.showInfo("Markets", "No results for '" + query + "'")
+                    }
+                } else {
+                    ToastService.showError("Markets", "Search failed — check connection")
+                }
+            }
+        }
+        xhr.open("GET", url)
+        xhr.send()
     }
 
     function removeSymbolAt(idx) {
