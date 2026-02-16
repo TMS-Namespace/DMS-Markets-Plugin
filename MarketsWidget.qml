@@ -51,6 +51,15 @@ PluginComponent {
     // Loading state: number of active fetches per symbol
     property var _pendingFetches: ({})
 
+    // ── Number formatting with thousands separator ───────────────────────────
+    function formatNumber(num, decimals) {
+        if (isNaN(num)) return "—"
+        var fixed = num.toFixed(decimals !== undefined ? decimals : 2)
+        var parts = fixed.split(".")
+        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+        return parts.join(".")
+    }
+
     // ── Computed bar display ─────────────────────────────────────────────────
     property var pinnedSymbols: {
         var result = []
@@ -67,11 +76,11 @@ PluginComponent {
             var sym = pinnedSymbols[i]
             var d   = priceData[sym.id]
             if (d && d.close !== undefined && !isNaN(d.close)) {
-                var label = sym.name + " " + d.close.toFixed(2)
+                var label = sym.name + " " + formatNumber(d.close)
                 if (sym.showChangeWhenPinned) {
                     var ch   = d.change || 0
                     var sign = ch >= 0 ? "+" : ""
-                    label += " " + sign + ch.toFixed(2)
+                    label += " " + sign + formatNumber(ch)
                 }
                 parts.push(label)
             } else {
@@ -318,6 +327,12 @@ PluginComponent {
             checkAndFetch()
     }
 
+    // ── Configurable popout rows ─────────────────────────────────────────────
+    property int popoutRows: {
+        var v = parseInt(pluginData.popoutRows || "5")
+        return (isNaN(v) || v < 1) ? 5 : v
+    }
+
     // ═══════════════════════════════════════════════════════════════════════
     //  BAR PILLS
     // ═══════════════════════════════════════════════════════════════════════
@@ -389,10 +404,14 @@ PluginComponent {
                 // ── Symbol list ──────────────────────────────────────────
                 ListView {
                     id: symbolList
-                    anchors.fill: parent
+                    anchors.left: parent.left
+                    anchors.right: scrollIndicator.visible ? scrollIndicator.left : parent.right
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
                     spacing: Theme.spacingS
                     clip: true
                     model: root.symbols
+                    boundsBehavior: Flickable.StopAtBounds
 
                     delegate: SymbolRow {
                         width: symbolList.width
@@ -405,6 +424,32 @@ PluginComponent {
 
                         onTogglePin:    root.togglePin(modelData.id)
                         onRemoveSymbol: root.removeSymbol(modelData.id)
+                    }
+                }
+
+                // ── Custom scroll indicator ──────────────────────────────
+                Rectangle {
+                    id: scrollIndicator
+                    visible: root.symbols.length > root.popoutRows
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    width: 4
+                    color: "transparent"
+
+                    Rectangle {
+                        width: parent.width
+                        radius: 2
+                        color: Theme.outlineVariant
+                        opacity: symbolList.moving ? 0.8 : 0.4
+
+                        property real ratio: symbolList.height / symbolList.contentHeight
+                        height: Math.max(20, parent.height * ratio)
+                        y: symbolList.contentHeight > symbolList.height
+                           ? (symbolList.contentY / (symbolList.contentHeight - symbolList.height)) * (parent.height - height)
+                           : 0
+
+                        Behavior on opacity { NumberAnimation { duration: 200 } }
                     }
                 }
 
@@ -440,5 +485,9 @@ PluginComponent {
     }
 
     popoutWidth:  440
-    popoutHeight: 500
+    popoutHeight: {
+        // 76 per row + spacingS between + header/details/padding
+        var rowH = 76 + Theme.spacingS
+        return Math.max(200, popoutRows * rowH + 80)
+    }
 }

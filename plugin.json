@@ -1,9 +1,9 @@
 {
-    "id": "marketsPlugin",
+    "id": "markets",
     "name": "Markets",
-    "description": "Live market prices for currencies, stocks, and commodities with interactive charts",
+    "description": "Live market prices for currencies, stocks, and commodities with charts",
     "version": "1.0.0",
-    "author": "nd",
+    "author": "TMS-Namespace",
     "icon": "show_chart",
     "type": "widget",
     "component": "./MarketsWidget.qml",

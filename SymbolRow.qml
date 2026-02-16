@@ -35,6 +35,15 @@ Item {
     property color downColor: "#F44336"
     property color changeColor: isPositive ? upColor : downColor
 
+    // ── Number formatting with thousands separator ───────────────────────────
+    function formatNumber(num, decimals) {
+        if (isNaN(num)) return "—"
+        var fixed = num.toFixed(decimals !== undefined ? decimals : 2)
+        var parts = fixed.split(".")
+        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+        return parts.join(".")
+    }
+
     height: 76
 
     // ── Background card ──────────────────────────────────────────────────────
@@ -81,7 +90,7 @@ Item {
         spacing: 1
 
         StyledText {
-            text: hasData ? price.toFixed(2) : (isLoading ? "Loading…" : "—")
+            text: hasData ? formatNumber(price) : (isLoading ? "Loading…" : "—")
             font.pixelSize: Theme.fontSizeMedium
             font.weight: Font.Medium
             color: Theme.surfaceText
@@ -89,7 +98,7 @@ Item {
 
         StyledText {
             visible: hasData
-            text: (isPositive ? "+" : "") + change.toFixed(2)
+            text: (isPositive ? "+" : "") + formatNumber(change)
             font.pixelSize: 10
             color: changeColor
         }
@@ -102,55 +111,12 @@ Item {
         }
     }
 
-    // ── Actions (right-anchored) ─────────────────────────────────────────────
-    Column {
-        id: actionsCol
-        width: 28
-        anchors.right: parent.right
-        anchors.rightMargin: Theme.spacingS
-        anchors.verticalCenter: parent.verticalCenter
-        spacing: Theme.spacingS
-
-        // Pin button
-        MouseArea {
-            width: 24
-            height: 24
-            cursorShape: Qt.PointingHandCursor
-            hoverEnabled: true
-            onClicked: symbolRow.togglePin()
-
-            DankIcon {
-                anchors.centerIn: parent
-                name: "push_pin"
-                size: 18
-                color: isPinned ? Theme.primary : Theme.surfaceVariantText
-                rotation: isPinned ? 0 : 45
-            }
-        }
-
-        // Remove button
-        MouseArea {
-            width: 24
-            height: 24
-            cursorShape: Qt.PointingHandCursor
-            hoverEnabled: true
-            onClicked: symbolRow.removeSymbol()
-
-            DankIcon {
-                anchors.centerIn: parent
-                name: "close"
-                size: 16
-                color: parent.containsMouse ? Theme.error : Theme.surfaceVariantText
-            }
-        }
-    }
-
     // ── Mini chart (fills remaining space) ───────────────────────────────────
     Item {
         id: chartArea
         anchors.left: priceCol.right
         anchors.leftMargin: Theme.spacingS
-        anchors.right: actionsCol.left
+        anchors.right: parent.right
         anchors.rightMargin: Theme.spacingS
         anchors.top: parent.top
         anchors.topMargin: Theme.spacingS
@@ -168,9 +134,61 @@ Item {
         }
 
         MouseArea {
+            id: chartMouseArea
             anchors.fill: parent
+            hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
             onClicked: Qt.openUrlExternally("https://stooq.com/q/?s=" + encodeURIComponent(symbolData.id || ""))
+        }
+
+        // ── Hover action buttons (overlay) ───────────────────────────────
+        Row {
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.rightMargin: 2
+            anchors.topMargin: 2
+            spacing: 4
+            visible: chartMouseArea.containsMouse
+            z: 10
+
+            Rectangle {
+                width: 22; height: 22; radius: 11
+                color: Qt.rgba(Theme.surfaceContainer.r, Theme.surfaceContainer.g, Theme.surfaceContainer.b, 0.85)
+
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: symbolRow.togglePin()
+                }
+
+                DankIcon {
+                    anchors.centerIn: parent
+                    name: "push_pin"
+                    size: 14
+                    color: isPinned ? Theme.primary : Theme.surfaceVariantText
+                    rotation: isPinned ? 0 : 45
+                }
+            }
+
+            Rectangle {
+                width: 22; height: 22; radius: 11
+                color: Qt.rgba(Theme.surfaceContainer.r, Theme.surfaceContainer.g, Theme.surfaceContainer.b, 0.85)
+
+                MouseArea {
+                    id: removeBtnMouse
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    hoverEnabled: true
+                    onClicked: symbolRow.removeSymbol()
+                }
+
+                DankIcon {
+                    anchors.centerIn: parent
+                    name: "close"
+                    size: 12
+                    color: removeBtnMouse.containsMouse ? Theme.error : Theme.surfaceVariantText
+                }
+            }
         }
     }
 }

@@ -122,6 +122,114 @@ PluginSettings {
         }
     }
 
+    // ── Popup layout ─────────────────────────────────────────────────────────
+    StyledText {
+        width: parent.width
+        text: "Popup Layout"
+        font.pixelSize: Theme.fontSizeMedium
+        font.weight: Font.DemiBold
+        color: Theme.surfaceText
+        topPadding: Theme.spacingM
+    }
+
+    StringSetting {
+        id: popoutRowsInput
+        settingKey: "popoutRows"
+        label: "Visible Symbol Rows"
+        description: ""
+        placeholder: "5"
+        defaultValue: "5"
+        visible: false
+    }
+
+    Item {
+        width: parent.width
+        height: 48
+
+        Column {
+            anchors.fill: parent
+            spacing: 4
+
+            Row {
+                width: parent.width
+                StyledText {
+                    text: "Visible Symbol Rows"
+                    font.pixelSize: Theme.fontSizeMedium
+                    color: Theme.surfaceText
+                }
+                Item { width: Theme.spacingS; height: 1 }
+                StyledText {
+                    text: popoutSlider.value.toFixed(0)
+                    font.pixelSize: Theme.fontSizeMedium
+                    font.weight: Font.Bold
+                    color: Theme.primary
+                }
+            }
+
+            Item {
+                width: parent.width
+                height: 24
+
+                Rectangle {
+                    id: sliderTrack
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    height: 4
+                    radius: 2
+                    color: Theme.surfaceContainerHighest
+
+                    Rectangle {
+                        width: (popoutSlider.value - 1) / 49 * parent.width
+                        height: parent.height
+                        radius: 2
+                        color: Theme.primary
+                    }
+                }
+
+                Rectangle {
+                    id: sliderHandle
+                    width: 18; height: 18; radius: 9
+                    color: sliderMouse.pressed ? Theme.primary : Theme.surfaceContainerHighest
+                    border.color: Theme.primary; border.width: 2
+                    x: (popoutSlider.value - 1) / 49 * (parent.width - width)
+                    anchors.verticalCenter: parent.verticalCenter
+
+                    property real value: {
+                        var v = parseInt(popoutRowsInput.value || "5")
+                        return (isNaN(v) || v < 1) ? 5 : Math.min(v, 50)
+                    }
+                }
+
+                QtObject {
+                    id: popoutSlider
+                    property real value: sliderHandle.value
+                }
+
+                MouseArea {
+                    id: sliderMouse
+                    anchors.fill: parent
+                    anchors.topMargin: -8
+                    anchors.bottomMargin: -8
+                    cursorShape: Qt.PointingHandCursor
+
+                    function updateValue(mouseX) {
+                        var ratio = Math.max(0, Math.min(1, mouseX / width))
+                        var val = Math.round(1 + ratio * 49)
+                        popoutSlider.value = val
+                    }
+
+                    onPressed: function(mouse) { updateValue(mouse.x) }
+                    onPositionChanged: function(mouse) { if (pressed) updateValue(mouse.x) }
+                    onReleased: {
+                        root.saveValue("popoutRows", popoutSlider.value.toFixed(0))
+                        Qt.callLater(function() { root.refreshSymbolsList() })
+                    }
+                }
+            }
+        }
+    }
+
     Rectangle {
         width: parent.width
         height: 1
