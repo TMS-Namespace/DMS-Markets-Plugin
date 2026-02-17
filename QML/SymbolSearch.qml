@@ -221,6 +221,7 @@ Item {
             }
         }
         httpRequest.open("GET", url)
+        httpRequest.setRequestHeader("Cookie", "")
         httpRequest.send()
     }
 }
