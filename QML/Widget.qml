@@ -652,8 +652,10 @@ PluginComponent {
 
     popoutWidth:  440
     popoutHeight: {
-        // 76 per row + spacingS between + header/details/padding
-        var rowHeight = 76 + Theme.spacingS
-        return Math.max(200, popoutRows * rowHeight + 80)
+        // 77 per row (76 + 1 subpixel compensation) + spacingS gaps + header/details/padding
+        var rowHeight = 78
+        var visibleCount = Math.min(popoutRows, symbols.length)
+        var totalRows = visibleCount > 0 ? visibleCount : popoutRows
+        return Math.max(200, totalRows * rowHeight + (totalRows - 1) * Theme.spacingS + 80)
     }
 }

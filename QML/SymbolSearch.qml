@@ -148,14 +148,39 @@ Item {
                             }
                         }
 
-                        StyledText {
+                        Column {
                             width: 90
                             anchors.verticalCenter: parent.verticalCenter
-                            text: (modelData.price || "") + "  " + (modelData.changeStr || "")
-                            font.pixelSize: Theme.fontSizeSmall
-                            color: Theme.surfaceVariantText
-                            horizontalAlignment: Text.AlignRight
-                            elide: Text.ElideRight
+
+                            StyledText {
+                                width: parent.width
+                                text: {
+                                    var raw = modelData.price || ""
+                                    var num = parseFloat(raw)
+                                    return isNaN(num) ? raw : num.toFixed(2)
+                                }
+                                font.pixelSize: Theme.fontSizeSmall
+                                color: Theme.surfaceVariantText
+                                horizontalAlignment: Text.AlignRight
+                                elide: Text.ElideRight
+                            }
+
+                            StyledText {
+                                width: parent.width
+                                text: {
+                                    var raw = modelData.changeStr || ""
+                                    var num = parseFloat(raw)
+                                    return isNaN(num) ? raw : num.toFixed(2) + "%"
+                                }
+                                font.pixelSize: Theme.fontSizeSmall
+                                color: {
+                                    var num = parseFloat(modelData.changeStr || "0")
+                                    return num > 0 ? "#4CAF50" : num < 0 ? "#F44336" : Theme.surfaceVariantText
+                                }
+                                horizontalAlignment: Text.AlignRight
+                                elide: Text.ElideRight
+                                visible: (modelData.changeStr || "").length > 0
+                            }
                         }
                     }
                 }

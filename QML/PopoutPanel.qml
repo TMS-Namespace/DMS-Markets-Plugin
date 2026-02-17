@@ -64,7 +64,7 @@ Item {
         id: headerButtons
         anchors.right: parent.right
         anchors.rightMargin: Theme.spacingS
-        y: -panel.headerOffset + Math.round((panel.headerOffset - 28) / 2)
+        y: -panel.headerOffset + Theme.spacingS
         spacing: 6
         visible: headerHoverArea.containsMouse
                  || refreshAllArea.containsMouse
