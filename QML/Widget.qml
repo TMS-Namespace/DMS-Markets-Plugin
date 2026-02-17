@@ -30,8 +30,23 @@ PluginComponent {
         var c = (pluginData.downColor || "").trim()
         return c !== "" ? c : "#F44336"
     }
-    property bool showPopoutCloseButton: pluginData.showCloseButton === true
-                                         || pluginData.showCloseButton === "true"
+    // ── Global popout display toggles (all default to true) ──────────────
+    property bool showTicker: {
+        var v = pluginData.showTicker
+        return v === undefined || v === "" || v === true || v === "true"
+    }
+    property bool showPriceRange: {
+        var v = pluginData.showPriceRange
+        return v === undefined || v === "" || v === true || v === "true"
+    }
+    property bool showChartRange: {
+        var v = pluginData.showChartRange
+        return v === undefined || v === "" || v === true || v === "true"
+    }
+    property bool showRefreshedSince: {
+        var v = pluginData.showRefreshedSince
+        return v === undefined || v === "" || v === true || v === "true"
+    }
 
     // ── Persisted symbols list ───────────────────────────────────────────────
     // Stored as JSON string in pluginData.symbols
@@ -50,6 +65,10 @@ PluginComponent {
 
     // lastFetchTimes[symbolId + "_price"|"_graph"] = epoch ms
     property var lastFetchTimes: ({})
+
+    // Tracks when each symbol last did a FULL history download (epoch ms).
+    // Between full downloads, graph data is updated incrementally from price data.
+    property var _lastFullGraphFetch: ({})
 
     // Loading state: number of active fetches per symbol
     property var _pendingFetches: ({})
@@ -137,16 +156,61 @@ PluginComponent {
                 newTimes[pk] = now
             }
 
-            // Graph — use chart range config for refresh timing
+            // Graph — full re-download only once per day (86400000 ms) or
+            // on first load; otherwise merge latest price into existing graph.
             var gk = sym.id + "_graph"
             var lg = newTimes[gk] || 0
             var histConfig = Providers.getHistoryConfig(sym.graphInterval)
             if (now - lg >= histConfig.refreshMs) {
-                doFetch(sym, "graph")
+                var lastFull = _lastFullGraphFetch[sym.id] || 0
+                var existing = graphData[sym.id]
+
+                if (!existing || existing.length === 0 || now - lastFull >= 86400000) {
+                    // No data yet or stale — do a full history download
+                    doFetch(sym, "graph")
+                } else {
+                    // Incremental — merge last price candle into existing graph
+                    _mergeLatestIntoGraph(sym)
+                }
                 newTimes[gk] = now
             }
         }
         lastFetchTimes = newTimes
+    }
+
+    // ── Retry queue ──────────────────────────────────────────────────────────
+    // Failed fetches are retried up to _maxRetries times with increasing delay.
+    property int _maxRetries: 3
+    property var _retryQueue: []      // [ { sym, fetchType, attempt } ]
+
+    Timer {
+        id: retryTimer
+        interval: 3000
+        repeat: false
+        onTriggered: root._processRetryQueue()
+    }
+
+    function _scheduleRetry(sym, fetchType, attempt) {
+        var q = _retryQueue.slice()
+        q.push({ sym: sym, fetchType: fetchType, attempt: attempt })
+        _retryQueue = q
+        // Stagger retries: 3 s × attempt number
+        retryTimer.interval = 3000 * attempt
+        retryTimer.restart()
+    }
+
+    function _processRetryQueue() {
+        if (_retryQueue.length === 0) return
+        var q = _retryQueue.slice()
+        var item = q.shift()
+        _retryQueue = q
+        console.log("[Markets] Retry", item.sym.id, item.fetchType, "(attempt", item.attempt + "/" + _maxRetries + ")")
+        doFetch(item.sym, item.fetchType, item.attempt)
+        // If more items remain, schedule next
+        if (_retryQueue.length > 0) {
+            retryTimer.interval = 2000
+            retryTimer.restart()
+        }
     }
 
     // ── Process-based fetch ──────────────────────────────────────────────────
@@ -158,6 +222,7 @@ PluginComponent {
             property string providerName:   ""
             property string fetchType:      "price"
             property string chartRange:     "1M"
+            property int    _attempt:       0
             property string _buffer:        ""
 
             stdout: SplitParser {
@@ -172,17 +237,34 @@ PluginComponent {
             }
 
             onExited: exitCode => {
-                if (exitCode === 0 && _buffer.trim())
+                if (exitCode === 0 && _buffer.trim()) {
                     root.onFetchComplete(symbolId, providerName, fetchType, chartRange, _buffer)
-                else if (exitCode !== 0)
+                } else if (exitCode !== 0) {
+                    // Genuine fetch failure (connection reset, timeout, etc.)
                     console.warn("[Markets]", symbolId, fetchType, "exited with code", exitCode)
+                    if (_attempt < root._maxRetries) {
+                        var sym = root._findSymbol(symbolId)
+                        if (sym)
+                            root._scheduleRetry(sym, fetchType, _attempt + 1)
+                    }
+                } else if (!_buffer.trim()) {
+                    // curl succeeded but response was empty (e.g. futures with no history)
+                    console.warn("[Markets]", symbolId, fetchType, "returned empty response — no retry")
+                }
                 root._decrementPending(symbolId)
                 destroy()
             }
         }
     }
 
-    function doFetch(sym, fetchType) {
+    function _findSymbol(symbolId) {
+        for (var i = 0; i < symbols.length; i++)
+            if (symbols[i].id === symbolId) return symbols[i]
+        return null
+    }
+
+    function doFetch(sym, fetchType, attempt) {
+        var retryNum = attempt || 0
         var url
         var tailLines = 0
         if (fetchType === "price") {
@@ -204,13 +286,18 @@ PluginComponent {
         if (tailLines > 0)
             curlCmd += " | tail -n " + tailLines
 
+        // Use bash with pipefail so curl errors propagate through pipes
+        var shell = tailLines > 0 ? ["bash", "-o", "pipefail", "-c", curlCmd]
+                                  : ["sh", "-c", curlCmd]
+
         var proc = fetchComponent.createObject(root, {
             symbolId:     sym.id,
             providerName: sym.provider,
             fetchType:    fetchType,
-            chartRange:   sym.graphInterval || "1M"
+            chartRange:   sym.graphInterval || "1M",
+            _attempt:     retryNum
         })
-        proc.command = ["sh", "-c", curlCmd]
+        proc.command = shell
         proc.running = true
 
         // Track loading state
@@ -230,6 +317,49 @@ PluginComponent {
     function _inv(v) {
         if (v === 0 || isNaN(v)) return 0
         return Math.round(100 / v) / 100   // 1/v rounded to 2 decimals
+    }
+
+    // ── Incremental graph merge ──────────────────────────────────────────
+    // Instead of re-downloading all history, update the graph in memory
+    // using the already-fetched price data for the symbol.
+    function _mergeLatestIntoGraph(sym) {
+        var pd = priceData[sym.id]
+        if (!pd || pd.close === undefined || isNaN(pd.close)) return
+
+        var existing = graphData[sym.id]
+        if (!existing || existing.length === 0) return
+
+        var latestDate = pd.date || ""
+        var lastPoint  = existing[existing.length - 1]
+
+        // Build a new data point from the current price
+        var newPt = {
+            date:   latestDate,
+            time:   pd.time || "",
+            open:   pd.open,
+            high:   pd.high,
+            low:    pd.low,
+            close:  pd.close,
+            volume: 0
+        }
+
+        var updated = existing.slice()  // shallow copy
+
+        if (lastPoint.date === latestDate) {
+            // Same date — update the last candle in place
+            updated[updated.length - 1] = newPt
+        } else {
+            // New date — append and trim oldest if over max
+            var histConfig = Providers.getHistoryConfig(sym.graphInterval)
+            updated.push(newPt)
+            if (updated.length > histConfig.maxPoints)
+                updated = updated.slice(-histConfig.maxPoints)
+        }
+
+        var newGraph = {}
+        for (var gk in graphData) newGraph[gk] = graphData[gk]
+        newGraph[sym.id] = updated
+        graphData = newGraph
     }
 
     function onFetchComplete(symbolId, providerName, fetchType, chartRange, csvText) {
@@ -262,6 +392,12 @@ PluginComponent {
                                    : 0
                 }
                 priceData = newData
+
+                // Update last-fetched timestamp so SymbolRow "ago" reflects actual completion
+                var pt2 = {}
+                for (var tk in lastFetchTimes) pt2[tk] = lastFetchTimes[tk]
+                pt2[symbolId + "_price"] = Date.now()
+                lastFetchTimes = pt2
             }
         } else {
             var history = Providers.parseHistoryResponse(providerName, csvText)
@@ -284,6 +420,12 @@ PluginComponent {
                 var histConfig = Providers.getHistoryConfig(chartRange)
                 newGraph[symbolId] = history.slice(-histConfig.maxPoints)
                 graphData = newGraph
+
+                // Record that a full history download was completed
+                var fg = {}
+                for (var fk in _lastFullGraphFetch) fg[fk] = _lastFullGraphFetch[fk]
+                fg[symbolId] = Date.now()
+                _lastFullGraphFetch = fg
             }
         }
     }
@@ -319,6 +461,35 @@ PluginComponent {
             pluginService.savePluginData(pluginId, "symbols", JSON.stringify(newSymbols))
     }
 
+    function forceRefreshSymbol(symbolId) {
+        for (var i = 0; i < symbols.length; i++) {
+            if (symbols[i].id === symbolId) {
+                var sym = symbols[i]
+                // Reset full graph fetch tracker so doFetch triggers a full download
+                var fg = {}
+                for (var fk in _lastFullGraphFetch) fg[fk] = _lastFullGraphFetch[fk]
+                fg[symbolId] = 0
+                _lastFullGraphFetch = fg
+                // Start both fetches — timestamps updated in onFetchComplete
+                doFetch(sym, "price")
+                doFetch(sym, "graph")
+                break
+            }
+        }
+    }
+
+    function forceRefreshAll() {
+        for (var i = 0; i < symbols.length; i++) {
+            var sym = symbols[i]
+            var fg = {}
+            for (var fk in _lastFullGraphFetch) fg[fk] = _lastFullGraphFetch[fk]
+            fg[sym.id] = 0
+            _lastFullGraphFetch = fg
+            doFetch(sym, "price")
+            doFetch(sym, "graph")
+        }
+    }
+
     // ── Track known symbol IDs for detecting new additions ────────────────
     property var _knownSymbolIds: []
     property bool _initialized: false
@@ -341,16 +512,46 @@ PluginComponent {
         for (var i = 0; i < symbols.length; i++)
             currentIds.push(symbols[i].id)
 
+        var newTimes = {}
+        for (var k in lastFetchTimes) newTimes[k] = lastFetchTimes[k]
+        var now = Date.now()
+        var hasNew = false
+
         for (var j = 0; j < symbols.length; j++) {
             if (_knownSymbolIds.indexOf(symbols[j].id) === -1) {
                 doFetch(symbols[j], "price")
                 doFetch(symbols[j], "graph")
+                newTimes[symbols[j].id + "_price"] = now
+                newTimes[symbols[j].id + "_graph"] = now
+                hasNew = true
             }
         }
+        if (hasNew) lastFetchTimes = newTimes
         _knownSymbolIds = currentIds
     }
 
     // ── Initial fetch on load ────────────────────────────────────────────────
+    // Stagger initial graph fetches to avoid overwhelming the server.
+    // Prices fire immediately; graph fetches are queued with 500ms delay each.
+    property var _initialGraphQueue: []
+
+    Timer {
+        id: initialGraphTimer
+        interval: 500
+        repeat: false
+        onTriggered: root._processInitialGraphQueue()
+    }
+
+    function _processInitialGraphQueue() {
+        if (_initialGraphQueue.length === 0) return
+        var q = _initialGraphQueue.slice()
+        var sym = q.shift()
+        _initialGraphQueue = q
+        doFetch(sym, "graph")
+        if (q.length > 0)
+            initialGraphTimer.restart()
+    }
+
     Component.onCompleted: {
         // Populate known IDs before enabling change detection
         var ids = []
@@ -359,8 +560,24 @@ PluginComponent {
         _knownSymbolIds = ids
         _initialized = true
 
-        if (symbols.length > 0)
-            checkAndFetch()
+        if (symbols.length > 0) {
+            // Fetch prices immediately for all symbols
+            var now = Date.now()
+            var newTimes = {}
+            var graphQueue = []
+            for (var j = 0; j < symbols.length; j++) {
+                var sym = symbols[j]
+                doFetch(sym, "price")
+                newTimes[sym.id + "_price"] = now
+                newTimes[sym.id + "_graph"] = now
+                graphQueue.push(sym)
+            }
+            lastFetchTimes = newTimes
+            // Stagger graph fetches: first after 300ms, then 500ms apart
+            _initialGraphQueue = graphQueue
+            initialGraphTimer.interval = 300
+            initialGraphTimer.restart()
+        }
     }
 
     // ── Configurable popout rows ─────────────────────────────────────────────
@@ -428,7 +645,7 @@ PluginComponent {
             detailsText:     root.symbols.length > 0
                              ? root.symbols.length + " symbol" + (root.symbols.length !== 1 ? "s" : "") + " tracked"
                              : "Add symbols in Settings"
-            showCloseButton: root.showPopoutCloseButton
+            showCloseButton: false
 
             Item {
                 width: parent.width
@@ -436,6 +653,97 @@ PluginComponent {
                                 - popout.headerHeight
                                 - popout.detailsHeight
                                 - Theme.spacingXL
+
+                // ── Header hover overlay (refresh all + close) ───────
+                // Positioned over the header area using negative y offset
+                MouseArea {
+                    id: headerHoverArea
+                    x: 0; width: parent.width
+                    y: -(popout.headerHeight + popout.detailsHeight)
+                    height: popout.headerHeight + popout.detailsHeight
+                    hoverEnabled: true
+                    acceptedButtons: Qt.NoButton   // pass clicks through
+                    z: 100
+                }
+
+                Row {
+                    id: headerBtns
+                    anchors.right: parent.right
+                    anchors.rightMargin: Theme.spacingS
+                    y: -(popout.headerHeight + popout.detailsHeight) + Math.round((popout.headerHeight - 28) / 2)
+                    spacing: 6
+                    visible: headerHoverArea.containsMouse || refreshAllArea.containsMouse || closePopoutArea.containsMouse || _anyLoading
+                    z: 101
+
+                    property bool _anyLoading: {
+                        for (var k in root._pendingFetches)
+                            if (root._pendingFetches[k] > 0) return true
+                        return false
+                    }
+
+                    // ── Refresh-all button ───────────────────────────
+                    Rectangle {
+                        width: 28; height: 28; radius: 14
+                        color: refreshAllArea.containsMouse
+                               ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.15)
+                               : Qt.rgba(Theme.surfaceContainer.r, Theme.surfaceContainer.g, Theme.surfaceContainer.b, 0.85)
+
+                        MouseArea {
+                            id: refreshAllArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            enabled: !headerBtns._anyLoading
+                            onClicked: root.forceRefreshAll()
+                        }
+
+                        DankIcon {
+                            id: headerRefreshIcon
+                            anchors.centerIn: parent
+                            name: "refresh"
+                            size: 18
+                            color: headerBtns._anyLoading ? Theme.primary : Theme.surfaceText
+
+                            RotationAnimation on rotation {
+                                running: headerBtns._anyLoading
+                                from: 0; to: 360
+                                duration: 800
+                                loops: Animation.Infinite
+                            }
+
+                            Connections {
+                                target: headerBtns
+                                function on_AnyLoadingChanged() {
+                                    if (!headerBtns._anyLoading)
+                                        headerRefreshIcon.rotation = 0
+                                }
+                            }
+                        }
+                    }
+
+                    // ── Close popup button ───────────────────────────
+                    Rectangle {
+                        width: 28; height: 28; radius: 14
+                        color: closePopoutArea.containsMouse
+                               ? Qt.rgba(Theme.error.r, Theme.error.g, Theme.error.b, 0.15)
+                               : Qt.rgba(Theme.surfaceContainer.r, Theme.surfaceContainer.g, Theme.surfaceContainer.b, 0.85)
+
+                        MouseArea {
+                            id: closePopoutArea
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: root.closePopout()
+                        }
+
+                        DankIcon {
+                            anchors.centerIn: parent
+                            name: "close"
+                            size: 18
+                            color: closePopoutArea.containsMouse ? Theme.error : Theme.surfaceText
+                        }
+                    }
+                }
 
                 // ── Symbol list ──────────────────────────────────────────
                 ListView {
@@ -455,11 +763,17 @@ PluginComponent {
                         priceInfo:  root.priceData[modelData.id] || ({})
                         chartData:  root.graphData[modelData.id] || []
                         isLoading:  (root._pendingFetches[modelData.id] || 0) > 0
+                        lastFetchTime: root.lastFetchTimes[modelData.id + "_price"] || 0
                         upColor:    root.upColor
                         downColor:  root.downColor
+                        showTicker:         root.showTicker
+                        showPriceRange:     root.showPriceRange
+                        showChartRange:     root.showChartRange
+                        showRefreshedSince: root.showRefreshedSince
 
                         onTogglePin:    root.togglePin(modelData.id)
                         onRemoveSymbol: root.removeSymbol(modelData.id)
+                        onRefreshSymbol: root.forceRefreshSymbol(modelData.id)
                     }
                 }
 

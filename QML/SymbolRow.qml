@@ -21,9 +21,19 @@ Item {
     property var  priceInfo:  ({})       // { open, high, low, close, change, changePercent, date, time }
     property var  chartData:  []         // DataPoint[] for sparkline
     property bool isLoading:  false      // True while fetching data
+    property real lastFetchTime: 0       // epoch ms of last price fetch
+    property int  _agoTick: 0            // bumped by timer to refresh "ago" text
 
     signal togglePin()
     signal removeSymbol()
+    signal refreshSymbol()
+
+    Timer {
+        interval: 15000
+        running:  lastFetchTime > 0
+        repeat:   true
+        onTriggered: symbolRow._agoTick++
+    }
 
     // ── Derived ──────────────────────────────────────────────────────────────
     property bool  isPinned:    symbolData.pinned || false
@@ -38,6 +48,12 @@ Item {
     property color downColor: "#F44336"
     property color changeColor: isPositive ? upColor : downColor
 
+    // Global display toggles (passed from widget)
+    property bool showTicker:         true
+    property bool showPriceRange:     true
+    property bool showChartRange:     true
+    property bool showRefreshedSince: true
+
     // ── Number formatting with thousands separator ───────────────────────────
     function formatNumber(num, decimals) {
         if (isNaN(num)) return "—"
@@ -45,6 +61,18 @@ Item {
         var parts = fixed.split(".")
         parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",")
         return parts.join(".")
+    }
+
+    function _timeAgo(epochMs) {
+        if (!epochMs || epochMs <= 0) return ""
+        var secs = Math.floor((Date.now() - epochMs) / 1000)
+        if (secs < 60)   return secs + " sec. ago"
+        var mins = Math.floor(secs / 60)
+        if (mins < 60)   return mins + " min. ago"
+        var hrs  = Math.floor(mins / 60)
+        if (hrs < 24)    return hrs + " hr. ago"
+        var days = Math.floor(hrs / 24)
+        return days + " day" + (days !== 1 ? "s" : "") + " ago"
     }
 
     height: 76
@@ -75,11 +103,19 @@ Item {
         }
 
         StyledText {
+            visible: symbolRow.showTicker
             text: (symbolData.id || "") + " • " + (symbolData.priceInterval || "1d")
             font.pixelSize: Theme.fontSizeSmall
             color: Theme.surfaceVariantText
             elide: Text.ElideRight
             width: parent.width
+        }
+
+        StyledText {
+            visible: symbolRow.showRefreshedSince && (lastFetchTime > 0 || isLoading)
+            text: { void _agoTick; return isLoading ? "refreshing…" : _timeAgo(lastFetchTime) }
+            font.pixelSize: 10
+            color: isLoading ? Theme.primary : Theme.surfaceVariantText
         }
     }
 
@@ -100,14 +136,14 @@ Item {
         }
 
         StyledText {
-            visible: hasData
+            visible: hasData && symbolRow.showPriceRange
             text: (isPositive ? "+" : "") + formatNumber(change)
             font.pixelSize: 10
             color: changeColor
         }
 
         StyledText {
-            visible: hasData
+            visible: hasData && symbolRow.showPriceRange
             text: "(" + (isPositive ? "+" : "") + changePct.toFixed(2) + "%)"
             font.pixelSize: 10
             color: changeColor
@@ -132,6 +168,7 @@ Item {
             dataPoints: symbolRow.chartData
             isLoading: symbolRow.isLoading
             graphInterval: symbolData.graphInterval || "1M"
+            showRangeLabel: symbolRow.showChartRange
             positiveColor: symbolRow.upColor
             negativeColor: symbolRow.downColor
         }
@@ -154,7 +191,7 @@ Item {
             anchors.rightMargin: 2
             anchors.topMargin: 2
             spacing: 4
-            visible: chartMouseArea.containsMouse
+            visible: chartMouseArea.containsMouse || refreshBtnMouse.containsMouse || pinBtnMouse.containsMouse || removeBtnMouse.containsMouse || symbolRow.isLoading
             z: 10
 
             Rectangle {
@@ -162,8 +199,48 @@ Item {
                 color: Qt.rgba(Theme.surfaceContainer.r, Theme.surfaceContainer.g, Theme.surfaceContainer.b, 0.85)
 
                 MouseArea {
+                    id: refreshBtnMouse
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
+                    hoverEnabled: true
+                    enabled: !symbolRow.isLoading
+                    onClicked: symbolRow.refreshSymbol()
+                }
+
+                DankIcon {
+                    id: refreshIcon
+                    anchors.centerIn: parent
+                    name: "refresh"
+                    size: 14
+                    color: symbolRow.isLoading ? Theme.primary : Theme.surfaceVariantText
+
+                    RotationAnimation on rotation {
+                        running: symbolRow.isLoading
+                        from: 0; to: 360
+                        duration: 800
+                        loops: Animation.Infinite
+                    }
+
+                    // Reset rotation when loading stops
+                    Connections {
+                        target: symbolRow
+                        function onIsLoadingChanged() {
+                            if (!symbolRow.isLoading)
+                                refreshIcon.rotation = 0
+                        }
+                    }
+                }
+            }
+
+            Rectangle {
+                width: 22; height: 22; radius: 11
+                color: Qt.rgba(Theme.surfaceContainer.r, Theme.surfaceContainer.g, Theme.surfaceContainer.b, 0.85)
+
+                MouseArea {
+                    id: pinBtnMouse
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    hoverEnabled: true
                     onClicked: symbolRow.togglePin()
                 }
 

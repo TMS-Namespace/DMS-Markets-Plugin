@@ -15,6 +15,7 @@ Canvas {
 
     // Chart range label displayed in the top-left corner
     property string graphInterval: ""
+    property bool showRangeLabel: true
 
     // Override automatic direction detection
     property bool isPositive: {
@@ -96,7 +97,7 @@ Canvas {
 
     // ── Chart range label (top-left corner) ──────────────────────────────
     Text {
-        visible: chart.graphInterval !== "" && chart.dataPoints && chart.dataPoints.length >= 2
+        visible: chart.showRangeLabel && chart.graphInterval !== "" && chart.dataPoints && chart.dataPoints.length >= 2
         anchors.left: parent.left
         anchors.top: parent.top
         anchors.leftMargin: 4

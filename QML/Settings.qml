@@ -279,12 +279,49 @@ PluginSettings {
         }
     }
 
+    StyledText {
+        width: parent.width
+        text: "Symbol Row Display"
+        font.pixelSize: Theme.fontSizeMedium
+        font.weight: Font.DemiBold
+        color: Theme.surfaceText
+        topPadding: Theme.spacingM
+    }
+
+    StyledText {
+        width: parent.width
+        text: "Choose which details to show for each symbol in the popup"
+        font.pixelSize: Theme.fontSizeSmall
+        color: Theme.surfaceVariantText
+        wrapMode: Text.WordWrap
+    }
+
     ToggleSetting {
-        id: showCloseBtnToggle
-        settingKey: "showCloseButton"
-        label: "Show Close Button"
-        description: "Display a close button at the top of the popup panel"
-        defaultValue: false
+        settingKey: "showTicker"
+        label: "Show Symbol Ticker"
+        description: "Show the ticker ID and price interval below the symbol name"
+        defaultValue: true
+    }
+
+    ToggleSetting {
+        settingKey: "showPriceRange"
+        label: "Show Price Change"
+        description: "Show the price change amount and percentage"
+        defaultValue: true
+    }
+
+    ToggleSetting {
+        settingKey: "showChartRange"
+        label: "Show Chart Time Range"
+        description: "Show the time range label on the sparkline chart"
+        defaultValue: true
+    }
+
+    ToggleSetting {
+        settingKey: "showRefreshedSince"
+        label: "Show Refreshed Since"
+        description: "Show how long ago the symbol data was last refreshed"
+        defaultValue: true
     }
 
     Rectangle { width: parent.width; height: 1; color: Theme.outlineVariant }
