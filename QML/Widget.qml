@@ -15,6 +15,7 @@ import qs.Widgets
 import qs.Modules.Plugins
 import "../JS/ProviderInterface.js" as Providers
 import "../JS/StooqProvider.js" as StooqProvider
+import "../JS/Helpers.js" as Helpers
 
 PluginComponent {
     id: root
@@ -23,30 +24,18 @@ PluginComponent {
 
     // ── Global colors ─────────────────────────────────────────────────────────
     property color upColor: {
-        var c = (pluginData.upColor || "").trim()
-        return c !== "" ? c : "#4CAF50"
+        var colorValue = (pluginData.upColor || "").trim()
+        return colorValue !== "" ? colorValue : "#4CAF50"
     }
     property color downColor: {
-        var c = (pluginData.downColor || "").trim()
-        return c !== "" ? c : "#F44336"
+        var colorValue = (pluginData.downColor || "").trim()
+        return colorValue !== "" ? colorValue : "#F44336"
     }
     // ── Global popout display toggles (all default to true) ──────────────
-    property bool showTicker: {
-        var v = pluginData.showTicker
-        return v === undefined || v === "" || v === true || v === "true"
-    }
-    property bool showPriceRange: {
-        var v = pluginData.showPriceRange
-        return v === undefined || v === "" || v === true || v === "true"
-    }
-    property bool showChartRange: {
-        var v = pluginData.showChartRange
-        return v === undefined || v === "" || v === true || v === "true"
-    }
-    property bool showRefreshedSince: {
-        var v = pluginData.showRefreshedSince
-        return v === undefined || v === "" || v === true || v === "true"
-    }
+    property bool showTicker:         Helpers.pluginDataBool(pluginData.showTicker)
+    property bool showPriceRange:     Helpers.pluginDataBool(pluginData.showPriceRange)
+    property bool showChartRange:     Helpers.pluginDataBool(pluginData.showChartRange)
+    property bool showRefreshedSince: Helpers.pluginDataBool(pluginData.showRefreshedSince)
 
     // ── Persisted symbols list ───────────────────────────────────────────────
     // Stored as JSON string in pluginData.symbols
@@ -73,20 +62,14 @@ PluginComponent {
     // Loading state: number of active fetches per symbol
     property var _pendingFetches: ({})
 
-    // ── Number formatting with thousands separator ───────────────────────────
-    function formatNumber(num, decimals) {
-        if (isNaN(num)) return "—"
-        var fixed = num.toFixed(decimals !== undefined ? decimals : 2)
-        var parts = fixed.split(".")
-        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",")
-        return parts.join(".")
-    }
+    // ── Number formatting (delegated to Helpers.js) ──────────────────────────
+    function formatNumber(number, decimals) { return Helpers.formatNumber(number, decimals) }
 
     // ── Computed bar display ─────────────────────────────────────────────────
     property var pinnedSymbols: {
         var result = []
-        for (var i = 0; i < symbols.length; i++) {
-            if (symbols[i].pinned) result.push(symbols[i])
+        for (var symbolIndex = 0; symbolIndex < symbols.length; symbolIndex++) {
+            if (symbols[symbolIndex].pinned) result.push(symbols[symbolIndex])
         }
         return result
     }
@@ -94,38 +77,27 @@ PluginComponent {
     property string barDisplayText: {
         if (pinnedSymbols.length === 0) return "Markets"
         var parts = []
-        for (var i = 0; i < pinnedSymbols.length; i++) {
-            var sym = pinnedSymbols[i]
-            var d   = priceData[sym.id]
-            if (d && d.close !== undefined && !isNaN(d.close)) {
-                var closeVal = d.close
-                var label = sym.name + " " + formatNumber(closeVal)
-                if (sym.showChangeWhenPinned) {
-                    var ch   = d.change || 0
-                    var sign = ch >= 0 ? "+" : ""
-                    label += " " + sign + formatNumber(ch)
+        for (var symbolIndex = 0; symbolIndex < pinnedSymbols.length; symbolIndex++) {
+            var symbol = pinnedSymbols[symbolIndex]
+            var symbolPriceData = priceData[symbol.id]
+            if (symbolPriceData && symbolPriceData.close !== undefined && !isNaN(symbolPriceData.close)) {
+                var closeVal = symbolPriceData.close
+                var label = symbol.name + " " + formatNumber(closeVal)
+                if (symbol.showChangeWhenPinned) {
+                    var changeAmount = symbolPriceData.change || 0
+                    var sign = changeAmount >= 0 ? "+" : ""
+                    label += " " + sign + formatNumber(changeAmount)
                 }
                 parts.push(label)
             } else {
-                parts.push(sym.name + " …")
+                parts.push(symbol.name + " …")
             }
         }
         return parts.join("  │  ")
     }
 
-    // ── Interval helpers ─────────────────────────────────────────────────────
-    function intervalToMs(interval) {
-        var map = {
-            "1m":  60000,
-            "5m":  300000,
-            "15m": 900000,
-            "1h":  3600000,
-            "1d":  86400000,
-            "1w":  604800000,
-            "1M":  2592000000
-        }
-        return map[interval] || 3600000
-    }
+    // ── Interval helpers (delegated to Helpers.js) ───────────────────────────
+    function intervalToMs(interval) { return Helpers.intervalToMs(interval) }
 
     // ── Polling timer ────────────────────────────────────────────────────────
     // Fires every 30 s and checks per-symbol whether each fetch type is due.
@@ -141,38 +113,38 @@ PluginComponent {
         var now      = Date.now()
         var newTimes = {}
         // shallow copy
-        for (var k in lastFetchTimes)
-            newTimes[k] = lastFetchTimes[k]
+        for (var key in lastFetchTimes)
+            newTimes[key] = lastFetchTimes[key]
 
-        for (var i = 0; i < symbols.length; i++) {
-            var sym = symbols[i]
+        for (var symbolIndex = 0; symbolIndex < symbols.length; symbolIndex++) {
+            var symbol = symbols[symbolIndex]
 
             // Price — refresh based on price interval
-            var pk  = sym.id + "_price"
-            var lp  = newTimes[pk] || 0
-            var priceRefresh = intervalToMs(sym.priceInterval)
-            if (now - lp >= priceRefresh) {
-                doFetch(sym, "price")
-                newTimes[pk] = now
+            var priceKey      = symbol.id + "_price"
+            var lastPriceTime = newTimes[priceKey] || 0
+            var priceRefresh  = intervalToMs(symbol.priceInterval)
+            if (now - lastPriceTime >= priceRefresh) {
+                doFetch(symbol, "price")
+                newTimes[priceKey] = now
             }
 
             // Graph — full re-download only once per day (86400000 ms) or
             // on first load; otherwise merge latest price into existing graph.
-            var gk = sym.id + "_graph"
-            var lg = newTimes[gk] || 0
-            var histConfig = Providers.getHistoryConfig(sym.graphInterval)
-            if (now - lg >= histConfig.refreshMs) {
-                var lastFull = _lastFullGraphFetch[sym.id] || 0
-                var existing = graphData[sym.id]
+            var graphKey      = symbol.id + "_graph"
+            var lastGraphTime = newTimes[graphKey] || 0
+            var histConfig    = Providers.getHistoryConfig(symbol.graphInterval)
+            if (now - lastGraphTime >= histConfig.refreshMs) {
+                var lastFull = _lastFullGraphFetch[symbol.id] || 0
+                var existing = graphData[symbol.id]
 
                 if (!existing || existing.length === 0 || now - lastFull >= 86400000) {
                     // No data yet or stale — do a full history download
-                    doFetch(sym, "graph")
+                    doFetch(symbol, "graph")
                 } else {
                     // Incremental — merge last price candle into existing graph
-                    _mergeLatestIntoGraph(sym)
+                    _mergeLatestIntoGraph(symbol)
                 }
-                newTimes[gk] = now
+                newTimes[graphKey] = now
             }
         }
         lastFetchTimes = newTimes
@@ -190,10 +162,10 @@ PluginComponent {
         onTriggered: root._processRetryQueue()
     }
 
-    function _scheduleRetry(sym, fetchType, attempt) {
-        var q = _retryQueue.slice()
-        q.push({ sym: sym, fetchType: fetchType, attempt: attempt })
-        _retryQueue = q
+    function _scheduleRetry(symbol, fetchType, attempt) {
+        var queueCopy = _retryQueue.slice()
+        queueCopy.push({ sym: symbol, fetchType: fetchType, attempt: attempt })
+        _retryQueue = queueCopy
         // Stagger retries: 3 s × attempt number
         retryTimer.interval = 3000 * attempt
         retryTimer.restart()
@@ -201,9 +173,9 @@ PluginComponent {
 
     function _processRetryQueue() {
         if (_retryQueue.length === 0) return
-        var q = _retryQueue.slice()
-        var item = q.shift()
-        _retryQueue = q
+        var queueCopy = _retryQueue.slice()
+        var item = queueCopy.shift()
+        _retryQueue = queueCopy
         console.log("[Markets] Retry", item.sym.id, item.fetchType, "(attempt", item.attempt + "/" + _maxRetries + ")")
         doFetch(item.sym, item.fetchType, item.attempt)
         // If more items remain, schedule next
@@ -243,9 +215,9 @@ PluginComponent {
                     // Genuine fetch failure (connection reset, timeout, etc.)
                     console.warn("[Markets]", symbolId, fetchType, "exited with code", exitCode)
                     if (_attempt < root._maxRetries) {
-                        var sym = root._findSymbol(symbolId)
-                        if (sym)
-                            root._scheduleRetry(sym, fetchType, _attempt + 1)
+                        var symbol = root._findSymbol(symbolId)
+                        if (symbol)
+                            root._scheduleRetry(symbol, fetchType, _attempt + 1)
                     }
                 } else if (!_buffer.trim()) {
                     // curl succeeded but response was empty (e.g. futures with no history)
@@ -258,23 +230,23 @@ PluginComponent {
     }
 
     function _findSymbol(symbolId) {
-        for (var i = 0; i < symbols.length; i++)
-            if (symbols[i].id === symbolId) return symbols[i]
+        for (var symbolIndex = 0; symbolIndex < symbols.length; symbolIndex++)
+            if (symbols[symbolIndex].id === symbolId) return symbols[symbolIndex]
         return null
     }
 
-    function doFetch(sym, fetchType, attempt) {
+    function doFetch(symbol, fetchType, attempt) {
         var retryNum = attempt || 0
         var url
         var tailLines = 0
         if (fetchType === "price") {
             // Map price range to the best candle interval for /q/l/
-            var priceInterval = Providers.getPriceInterval(sym.priceInterval)
-            url = Providers.buildPriceUrl(sym.id, sym.provider, priceInterval)
+            var priceInterval = Providers.getPriceInterval(symbol.priceInterval)
+            url = Providers.buildPriceUrl(symbol.id, symbol.provider, priceInterval)
         } else {
             // Use chart range config to pick the right candle interval
-            var histConfig = Providers.getHistoryConfig(sym.graphInterval)
-            url = Providers.buildHistoryUrl(sym.id, sym.provider, histConfig.interval)
+            var histConfig = Providers.getHistoryConfig(symbol.graphInterval)
+            url = Providers.buildHistoryUrl(symbol.id, symbol.provider, histConfig.interval)
             tailLines = histConfig.maxPoints + 2   // +2 for header + safety
         }
 
@@ -291,55 +263,47 @@ PluginComponent {
                                   : ["sh", "-c", curlCmd]
 
         var proc = fetchComponent.createObject(root, {
-            symbolId:     sym.id,
-            providerName: sym.provider,
+            symbolId:     symbol.id,
+            providerName: symbol.provider,
             fetchType:    fetchType,
-            chartRange:   sym.graphInterval || "1M",
+            chartRange:   symbol.graphInterval || "1M",
             _attempt:     retryNum
         })
         proc.command = shell
         proc.running = true
 
         // Track loading state
-        var pf = {}
-        for (var key in _pendingFetches) pf[key] = _pendingFetches[key]
-        pf[sym.id] = (pf[sym.id] || 0) + 1
-        _pendingFetches = pf
+        var pendingCopy = {}
+        for (var fetchKey in _pendingFetches) pendingCopy[fetchKey] = _pendingFetches[fetchKey]
+        pendingCopy[symbol.id] = (pendingCopy[symbol.id] || 0) + 1
+        _pendingFetches = pendingCopy
     }
 
-    // ── Inversion helper ─────────────────────────────────────────────────
-    function _isInverted(symbolId) {
-        for (var i = 0; i < symbols.length; i++)
-            if (symbols[i].id === symbolId) return !!symbols[i].invert
-        return false
-    }
-
-    function _inv(v) {
-        if (v === 0 || isNaN(v)) return 0
-        return Math.round(100 / v) / 100   // 1/v rounded to 2 decimals
-    }
+    // ── Inversion helpers (delegated to Helpers.js) ──────────────────────
+    function _isInverted(symbolId) { return Helpers.isInverted(symbols, symbolId) }
+    function _inv(value) { return Helpers.inv(value) }
 
     // ── Incremental graph merge ──────────────────────────────────────────
     // Instead of re-downloading all history, update the graph in memory
     // using the already-fetched price data for the symbol.
-    function _mergeLatestIntoGraph(sym) {
-        var pd = priceData[sym.id]
-        if (!pd || pd.close === undefined || isNaN(pd.close)) return
+    function _mergeLatestIntoGraph(symbol) {
+        var currentPriceData = priceData[symbol.id]
+        if (!currentPriceData || currentPriceData.close === undefined || isNaN(currentPriceData.close)) return
 
-        var existing = graphData[sym.id]
+        var existing = graphData[symbol.id]
         if (!existing || existing.length === 0) return
 
-        var latestDate = pd.date || ""
+        var latestDate = currentPriceData.date || ""
         var lastPoint  = existing[existing.length - 1]
 
         // Build a new data point from the current price
-        var newPt = {
+        var newDataPoint = {
             date:   latestDate,
-            time:   pd.time || "",
-            open:   pd.open,
-            high:   pd.high,
-            low:    pd.low,
-            close:  pd.close,
+            time:   currentPriceData.time || "",
+            open:   currentPriceData.open,
+            high:   currentPriceData.high,
+            low:    currentPriceData.low,
+            close:  currentPriceData.close,
             volume: 0
         }
 
@@ -347,18 +311,18 @@ PluginComponent {
 
         if (lastPoint.date === latestDate) {
             // Same date — update the last candle in place
-            updated[updated.length - 1] = newPt
+            updated[updated.length - 1] = newDataPoint
         } else {
             // New date — append and trim oldest if over max
-            var histConfig = Providers.getHistoryConfig(sym.graphInterval)
-            updated.push(newPt)
+            var histConfig = Providers.getHistoryConfig(symbol.graphInterval)
+            updated.push(newDataPoint)
             if (updated.length > histConfig.maxPoints)
                 updated = updated.slice(-histConfig.maxPoints)
         }
 
         var newGraph = {}
-        for (var gk in graphData) newGraph[gk] = graphData[gk]
-        newGraph[sym.id] = updated
+        for (var graphKey in graphData) newGraph[graphKey] = graphData[graphKey]
+        newGraph[symbol.id] = updated
         graphData = newGraph
     }
 
@@ -368,36 +332,44 @@ PluginComponent {
         if (fetchType === "price") {
             var parsed = Providers.parsePriceResponse(providerName, csvText)
             if (parsed.length > 0) {
-                var latest  = parsed[parsed.length - 1]
-                var o = latest.open, h = latest.high, l = latest.low, c = latest.close
+                var latest     = parsed[parsed.length - 1]
+                var openPrice  = latest.open
+                var highPrice  = latest.high
+                var lowPrice   = latest.low
+                var closePrice = latest.close
 
                 if (invert) {
-                    o = _inv(o); h = _inv(h); l = _inv(l); c = _inv(c)
+                    openPrice  = _inv(openPrice)
+                    highPrice  = _inv(highPrice)
+                    lowPrice   = _inv(lowPrice)
+                    closePrice = _inv(closePrice)
                     // After inversion high/low may swap
-                    var tmp = h; h = Math.min(h, l); l = Math.max(tmp, l)
+                    var tempHigh = highPrice
+                    highPrice = Math.min(highPrice, lowPrice)
+                    lowPrice  = Math.max(tempHigh, lowPrice)
                 }
 
                 var newData = {}
-                for (var pk in priceData) newData[pk] = priceData[pk]
+                for (var priceKey in priceData) newData[priceKey] = priceData[priceKey]
                 newData[symbolId] = {
-                    open:   o,
-                    high:   h,
-                    low:    l,
-                    close:  c,
+                    open:   openPrice,
+                    high:   highPrice,
+                    low:    lowPrice,
+                    close:  closePrice,
                     date:   latest.date,
                     time:   latest.time,
-                    change:        c - o,
-                    changePercent: o !== 0
-                                   ? ((c - o) / o * 100)
+                    change:        closePrice - openPrice,
+                    changePercent: openPrice !== 0
+                                   ? ((closePrice - openPrice) / openPrice * 100)
                                    : 0
                 }
                 priceData = newData
 
                 // Update last-fetched timestamp so SymbolRow "ago" reflects actual completion
-                var pt2 = {}
-                for (var tk in lastFetchTimes) pt2[tk] = lastFetchTimes[tk]
-                pt2[symbolId + "_price"] = Date.now()
-                lastFetchTimes = pt2
+                var updatedTimes = {}
+                for (var timeKey in lastFetchTimes) updatedTimes[timeKey] = lastFetchTimes[timeKey]
+                updatedTimes[symbolId + "_price"] = Date.now()
+                lastFetchTimes = updatedTimes
             }
         } else {
             var history = Providers.parseHistoryResponse(providerName, csvText)
@@ -405,45 +377,46 @@ PluginComponent {
                 console.warn("[Markets]", symbolId, "history returned no data — chart unavailable")
             if (history.length > 0) {
                 if (invert) {
-                    for (var j = 0; j < history.length; j++) {
-                        var pt = history[j]
-                        pt.open  = _inv(pt.open)
-                        pt.close = _inv(pt.close)
-                        var ih = _inv(pt.high), il = _inv(pt.low)
-                        pt.high = Math.max(ih, il)
-                        pt.low  = Math.min(ih, il)
+                    for (var historyIndex = 0; historyIndex < history.length; historyIndex++) {
+                        var dataPoint = history[historyIndex]
+                        dataPoint.open  = _inv(dataPoint.open)
+                        dataPoint.close = _inv(dataPoint.close)
+                        var invertedHigh = _inv(dataPoint.high)
+                        var invertedLow  = _inv(dataPoint.low)
+                        dataPoint.high = Math.max(invertedHigh, invertedLow)
+                        dataPoint.low  = Math.min(invertedHigh, invertedLow)
                     }
                 }
                 var newGraph = {}
-                for (var gk in graphData) newGraph[gk] = graphData[gk]
+                for (var graphKey in graphData) newGraph[graphKey] = graphData[graphKey]
                 // Slice to the appropriate number of data points for the chart range
                 var histConfig = Providers.getHistoryConfig(chartRange)
                 newGraph[symbolId] = history.slice(-histConfig.maxPoints)
                 graphData = newGraph
 
                 // Record that a full history download was completed
-                var fg = {}
-                for (var fk in _lastFullGraphFetch) fg[fk] = _lastFullGraphFetch[fk]
-                fg[symbolId] = Date.now()
-                _lastFullGraphFetch = fg
+                var fullGraphCopy = {}
+                for (var fetchKey in _lastFullGraphFetch) fullGraphCopy[fetchKey] = _lastFullGraphFetch[fetchKey]
+                fullGraphCopy[symbolId] = Date.now()
+                _lastFullGraphFetch = fullGraphCopy
             }
         }
     }
 
     // ── Symbol management ────────────────────────────────────────────────────
-    function _decrementPending(symId) {
-        var pf = {}
-        for (var key in _pendingFetches) pf[key] = _pendingFetches[key]
-        pf[symId] = Math.max(0, (pf[symId] || 0) - 1)
-        if (pf[symId] === 0) delete pf[symId]
-        _pendingFetches = pf
+    function _decrementPending(symbolId) {
+        var pendingCopy = {}
+        for (var fetchKey in _pendingFetches) pendingCopy[fetchKey] = _pendingFetches[fetchKey]
+        pendingCopy[symbolId] = Math.max(0, (pendingCopy[symbolId] || 0) - 1)
+        if (pendingCopy[symbolId] === 0) delete pendingCopy[symbolId]
+        _pendingFetches = pendingCopy
     }
 
     function togglePin(symbolId) {
         var newSymbols = JSON.parse(JSON.stringify(symbols))
-        for (var i = 0; i < newSymbols.length; i++) {
-            if (newSymbols[i].id === symbolId) {
-                newSymbols[i].pinned = !newSymbols[i].pinned
+        for (var symbolIndex = 0; symbolIndex < newSymbols.length; symbolIndex++) {
+            if (newSymbols[symbolIndex].id === symbolId) {
+                newSymbols[symbolIndex].pinned = !newSymbols[symbolIndex].pinned
                 break
             }
         }
@@ -453,40 +426,40 @@ PluginComponent {
 
     function removeSymbol(symbolId) {
         var newSymbols = []
-        for (var i = 0; i < symbols.length; i++) {
-            if (symbols[i].id !== symbolId)
-                newSymbols.push(symbols[i])
+        for (var symbolIndex = 0; symbolIndex < symbols.length; symbolIndex++) {
+            if (symbols[symbolIndex].id !== symbolId)
+                newSymbols.push(symbols[symbolIndex])
         }
         if (pluginService)
             pluginService.savePluginData(pluginId, "symbols", JSON.stringify(newSymbols))
     }
 
     function forceRefreshSymbol(symbolId) {
-        for (var i = 0; i < symbols.length; i++) {
-            if (symbols[i].id === symbolId) {
-                var sym = symbols[i]
+        for (var symbolIndex = 0; symbolIndex < symbols.length; symbolIndex++) {
+            if (symbols[symbolIndex].id === symbolId) {
+                var symbol = symbols[symbolIndex]
                 // Reset full graph fetch tracker so doFetch triggers a full download
-                var fg = {}
-                for (var fk in _lastFullGraphFetch) fg[fk] = _lastFullGraphFetch[fk]
-                fg[symbolId] = 0
-                _lastFullGraphFetch = fg
+                var fullGraphCopy = {}
+                for (var fetchKey in _lastFullGraphFetch) fullGraphCopy[fetchKey] = _lastFullGraphFetch[fetchKey]
+                fullGraphCopy[symbolId] = 0
+                _lastFullGraphFetch = fullGraphCopy
                 // Start both fetches — timestamps updated in onFetchComplete
-                doFetch(sym, "price")
-                doFetch(sym, "graph")
+                doFetch(symbol, "price")
+                doFetch(symbol, "graph")
                 break
             }
         }
     }
 
     function forceRefreshAll() {
-        for (var i = 0; i < symbols.length; i++) {
-            var sym = symbols[i]
-            var fg = {}
-            for (var fk in _lastFullGraphFetch) fg[fk] = _lastFullGraphFetch[fk]
-            fg[sym.id] = 0
-            _lastFullGraphFetch = fg
-            doFetch(sym, "price")
-            doFetch(sym, "graph")
+        for (var symbolIndex = 0; symbolIndex < symbols.length; symbolIndex++) {
+            var symbol = symbols[symbolIndex]
+            var fullGraphCopy = {}
+            for (var fetchKey in _lastFullGraphFetch) fullGraphCopy[fetchKey] = _lastFullGraphFetch[fetchKey]
+            fullGraphCopy[symbol.id] = 0
+            _lastFullGraphFetch = fullGraphCopy
+            doFetch(symbol, "price")
+            doFetch(symbol, "graph")
         }
     }
 
@@ -509,20 +482,20 @@ PluginComponent {
 
     function checkForNewSymbols() {
         var currentIds = []
-        for (var i = 0; i < symbols.length; i++)
-            currentIds.push(symbols[i].id)
+        for (var idIndex = 0; idIndex < symbols.length; idIndex++)
+            currentIds.push(symbols[idIndex].id)
 
         var newTimes = {}
-        for (var k in lastFetchTimes) newTimes[k] = lastFetchTimes[k]
+        for (var key in lastFetchTimes) newTimes[key] = lastFetchTimes[key]
         var now = Date.now()
         var hasNew = false
 
-        for (var j = 0; j < symbols.length; j++) {
-            if (_knownSymbolIds.indexOf(symbols[j].id) === -1) {
-                doFetch(symbols[j], "price")
-                doFetch(symbols[j], "graph")
-                newTimes[symbols[j].id + "_price"] = now
-                newTimes[symbols[j].id + "_graph"] = now
+        for (var symbolIndex = 0; symbolIndex < symbols.length; symbolIndex++) {
+            if (_knownSymbolIds.indexOf(symbols[symbolIndex].id) === -1) {
+                doFetch(symbols[symbolIndex], "price")
+                doFetch(symbols[symbolIndex], "graph")
+                newTimes[symbols[symbolIndex].id + "_price"] = now
+                newTimes[symbols[symbolIndex].id + "_graph"] = now
                 hasNew = true
             }
         }
@@ -544,20 +517,20 @@ PluginComponent {
 
     function _processInitialGraphQueue() {
         if (_initialGraphQueue.length === 0) return
-        var q = _initialGraphQueue.slice()
-        var sym = q.shift()
-        _initialGraphQueue = q
-        doFetch(sym, "graph")
-        if (q.length > 0)
+        var queueCopy = _initialGraphQueue.slice()
+        var symbol = queueCopy.shift()
+        _initialGraphQueue = queueCopy
+        doFetch(symbol, "graph")
+        if (queueCopy.length > 0)
             initialGraphTimer.restart()
     }
 
     Component.onCompleted: {
         // Populate known IDs before enabling change detection
-        var ids = []
-        for (var i = 0; i < symbols.length; i++)
-            ids.push(symbols[i].id)
-        _knownSymbolIds = ids
+        var knownIds = []
+        for (var idIndex = 0; idIndex < symbols.length; idIndex++)
+            knownIds.push(symbols[idIndex].id)
+        _knownSymbolIds = knownIds
         _initialized = true
 
         if (symbols.length > 0) {
@@ -565,12 +538,12 @@ PluginComponent {
             var now = Date.now()
             var newTimes = {}
             var graphQueue = []
-            for (var j = 0; j < symbols.length; j++) {
-                var sym = symbols[j]
-                doFetch(sym, "price")
-                newTimes[sym.id + "_price"] = now
-                newTimes[sym.id + "_graph"] = now
-                graphQueue.push(sym)
+            for (var symbolIndex = 0; symbolIndex < symbols.length; symbolIndex++) {
+                var symbol = symbols[symbolIndex]
+                doFetch(symbol, "price")
+                newTimes[symbol.id + "_price"] = now
+                newTimes[symbol.id + "_graph"] = now
+                graphQueue.push(symbol)
             }
             lastFetchTimes = newTimes
             // Stagger graph fetches: first after 300ms, then 500ms apart
@@ -582,8 +555,8 @@ PluginComponent {
 
     // ── Configurable popout rows ─────────────────────────────────────────────
     property int popoutRows: {
-        var v = parseInt(pluginData.popoutRows || "5")
-        return (isNaN(v) || v < 1) ? 5 : v
+        var rowCount = parseInt(pluginData.popoutRows || "5")
+        return (isNaN(rowCount) || rowCount < 1) ? 5 : rowCount
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -647,189 +620,32 @@ PluginComponent {
                              : "Add symbols in Settings"
             showCloseButton: false
 
-            Item {
+            PopoutPanel {
                 width: parent.width
                 implicitHeight: root.popoutHeight
                                 - popout.headerHeight
                                 - popout.detailsHeight
                                 - Theme.spacingXL
 
-                // ── Header hover overlay (refresh all + close) ───────
-                // Positioned over the header area using negative y offset
-                MouseArea {
-                    id: headerHoverArea
-                    x: 0; width: parent.width
-                    y: -(popout.headerHeight + popout.detailsHeight)
-                    height: popout.headerHeight + popout.detailsHeight
-                    hoverEnabled: true
-                    acceptedButtons: Qt.NoButton   // pass clicks through
-                    z: 100
-                }
+                symbols:        root.symbols
+                priceData:      root.priceData
+                graphData:      root.graphData
+                pendingFetches: root._pendingFetches
+                lastFetchTimes: root.lastFetchTimes
+                upColor:        root.upColor
+                downColor:      root.downColor
+                showTicker:         root.showTicker
+                showPriceRange:     root.showPriceRange
+                showChartRange:     root.showChartRange
+                showRefreshedSince: root.showRefreshedSince
+                popoutRows:     root.popoutRows
+                headerOffset:   popout.headerHeight + popout.detailsHeight
 
-                Row {
-                    id: headerBtns
-                    anchors.right: parent.right
-                    anchors.rightMargin: Theme.spacingS
-                    y: -(popout.headerHeight + popout.detailsHeight) + Math.round((popout.headerHeight - 28) / 2)
-                    spacing: 6
-                    visible: headerHoverArea.containsMouse || refreshAllArea.containsMouse || closePopoutArea.containsMouse || _anyLoading
-                    z: 101
-
-                    property bool _anyLoading: {
-                        for (var k in root._pendingFetches)
-                            if (root._pendingFetches[k] > 0) return true
-                        return false
-                    }
-
-                    // ── Refresh-all button ───────────────────────────
-                    Rectangle {
-                        width: 28; height: 28; radius: 14
-                        color: refreshAllArea.containsMouse
-                               ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.15)
-                               : Qt.rgba(Theme.surfaceContainer.r, Theme.surfaceContainer.g, Theme.surfaceContainer.b, 0.85)
-
-                        MouseArea {
-                            id: refreshAllArea
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            enabled: !headerBtns._anyLoading
-                            onClicked: root.forceRefreshAll()
-                        }
-
-                        DankIcon {
-                            id: headerRefreshIcon
-                            anchors.centerIn: parent
-                            name: "refresh"
-                            size: 18
-                            color: headerBtns._anyLoading ? Theme.primary : Theme.surfaceText
-
-                            RotationAnimation on rotation {
-                                running: headerBtns._anyLoading
-                                from: 0; to: 360
-                                duration: 800
-                                loops: Animation.Infinite
-                            }
-
-                            Connections {
-                                target: headerBtns
-                                function on_AnyLoadingChanged() {
-                                    if (!headerBtns._anyLoading)
-                                        headerRefreshIcon.rotation = 0
-                                }
-                            }
-                        }
-                    }
-
-                    // ── Close popup button ───────────────────────────
-                    Rectangle {
-                        width: 28; height: 28; radius: 14
-                        color: closePopoutArea.containsMouse
-                               ? Qt.rgba(Theme.error.r, Theme.error.g, Theme.error.b, 0.15)
-                               : Qt.rgba(Theme.surfaceContainer.r, Theme.surfaceContainer.g, Theme.surfaceContainer.b, 0.85)
-
-                        MouseArea {
-                            id: closePopoutArea
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: root.closePopout()
-                        }
-
-                        DankIcon {
-                            anchors.centerIn: parent
-                            name: "close"
-                            size: 18
-                            color: closePopoutArea.containsMouse ? Theme.error : Theme.surfaceText
-                        }
-                    }
-                }
-
-                // ── Symbol list ──────────────────────────────────────────
-                ListView {
-                    id: symbolList
-                    anchors.left: parent.left
-                    anchors.right: scrollIndicator.visible ? scrollIndicator.left : parent.right
-                    anchors.top: parent.top
-                    anchors.bottom: parent.bottom
-                    spacing: Theme.spacingS
-                    clip: true
-                    model: root.symbols
-                    boundsBehavior: Flickable.StopAtBounds
-
-                    delegate: SymbolRow {
-                        width: symbolList.width
-                        symbolData: modelData
-                        priceInfo:  root.priceData[modelData.id] || ({})
-                        chartData:  root.graphData[modelData.id] || []
-                        isLoading:  (root._pendingFetches[modelData.id] || 0) > 0
-                        lastFetchTime: root.lastFetchTimes[modelData.id + "_price"] || 0
-                        upColor:    root.upColor
-                        downColor:  root.downColor
-                        showTicker:         root.showTicker
-                        showPriceRange:     root.showPriceRange
-                        showChartRange:     root.showChartRange
-                        showRefreshedSince: root.showRefreshedSince
-
-                        onTogglePin:    root.togglePin(modelData.id)
-                        onRemoveSymbol: root.removeSymbol(modelData.id)
-                        onRefreshSymbol: root.forceRefreshSymbol(modelData.id)
-                    }
-                }
-
-                // ── Custom scroll indicator ──────────────────────────────
-                Rectangle {
-                    id: scrollIndicator
-                    visible: root.symbols.length > root.popoutRows
-                    anchors.right: parent.right
-                    anchors.top: parent.top
-                    anchors.bottom: parent.bottom
-                    width: 4
-                    color: "transparent"
-
-                    Rectangle {
-                        width: parent.width
-                        radius: 2
-                        color: Theme.outlineVariant
-                        opacity: symbolList.moving ? 0.8 : 0.4
-
-                        property real ratio: symbolList.height / symbolList.contentHeight
-                        height: Math.max(20, parent.height * ratio)
-                        y: symbolList.contentHeight > symbolList.height
-                           ? (symbolList.contentY / (symbolList.contentHeight - symbolList.height)) * (parent.height - height)
-                           : 0
-
-                        Behavior on opacity { NumberAnimation { duration: 200 } }
-                    }
-                }
-
-                // ── Empty state ──────────────────────────────────────────
-                Column {
-                    visible: root.symbols.length === 0
-                    anchors.centerIn: parent
-                    spacing: Theme.spacingM
-
-                    DankIcon {
-                        name: "add_chart"
-                        size: 48
-                        color: Theme.surfaceVariantText
-                        anchors.horizontalCenter: parent.horizontalCenter
-                    }
-
-                    StyledText {
-                        text: "No symbols added"
-                        font.pixelSize: Theme.fontSizeMedium
-                        color: Theme.surfaceVariantText
-                        anchors.horizontalCenter: parent.horizontalCenter
-                    }
-
-                    StyledText {
-                        text: "Open Settings → Markets to add symbols"
-                        font.pixelSize: Theme.fontSizeSmall
-                        color: Theme.surfaceVariantText
-                        anchors.horizontalCenter: parent.horizontalCenter
-                    }
-                }
+                onTogglePin:    function(symbolId) { root.togglePin(symbolId) }
+                onRemoveSymbol: function(symbolId) { root.removeSymbol(symbolId) }
+                onRefreshSymbol: function(symbolId) { root.forceRefreshSymbol(symbolId) }
+                onRefreshAll:   root.forceRefreshAll()
+                onClosePopout:  root.closePopout()
             }
         }
     }
@@ -837,7 +653,7 @@ PluginComponent {
     popoutWidth:  440
     popoutHeight: {
         // 76 per row + spacingS between + header/details/padding
-        var rowH = 76 + Theme.spacingS
-        return Math.max(200, popoutRows * rowH + 80)
+        var rowHeight = 76 + Theme.spacingS
+        return Math.max(200, popoutRows * rowHeight + 80)
     }
 }

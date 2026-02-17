@@ -94,8 +94,8 @@ function getProviderIds() {
 }
 
 function getProviderName(id) {
-    var p = _providers[id];
-    return p ? p.name : id;
+    var provider = _providers[id];
+    return provider ? provider.name : id;
 }
 
 // Returns the ID of the default provider (first registered)
@@ -105,82 +105,82 @@ function getDefaultProviderId() {
 
 // Returns an array of { label: string, value: string } for use in SelectionSetting
 function getProviderOptions() {
-    var opts = [];
-    var ids = Object.keys(_providers);
-    for (var i = 0; i < ids.length; i++) {
-        opts.push({ label: _providers[ids[i]].name, value: ids[i] });
+    var options = [];
+    var providerIds = Object.keys(_providers);
+    for (var index = 0; index < providerIds.length; index++) {
+        options.push({ label: _providers[providerIds[index]].name, value: providerIds[index] });
     }
-    return opts;
+    return options;
 }
 
 function getSupportedIntervals(providerId) {
-    var p = _providers[providerId];
-    if (!p) return [];
-    return Object.keys(p.intervalMap);
+    var provider = _providers[providerId];
+    if (!provider) return [];
+    return Object.keys(provider.intervalMap);
 }
 
 // ─── Price ───────────────────────────────────────────────────────────────────
 
 function buildPriceUrl(symbol, providerId, interval) {
-    var p = _providers[providerId];
-    if (!p) return "";
-    return p.buildPriceUrl(symbol, interval);
+    var provider = _providers[providerId];
+    if (!provider) return "";
+    return provider.buildPriceUrl(symbol, interval);
 }
 
 function parsePriceResponse(providerId, responseText) {
-    var p = _providers[providerId];
-    if (!p) return [];
-    return p.parsePriceResponse(responseText);
+    var provider = _providers[providerId];
+    if (!provider) return [];
+    return provider.parsePriceResponse(responseText);
 }
 
 // ─── History ─────────────────────────────────────────────────────────────────
 
 function buildHistoryUrl(symbol, providerId, interval) {
-    var p = _providers[providerId];
-    if (!p) return "";
-    return p.buildHistoryUrl(symbol, interval);
+    var provider = _providers[providerId];
+    if (!provider) return "";
+    return provider.buildHistoryUrl(symbol, interval);
 }
 
 function parseHistoryResponse(providerId, responseText) {
-    var p = _providers[providerId];
-    if (!p) return [];
-    return p.parseHistoryResponse(responseText);
+    var provider = _providers[providerId];
+    if (!provider) return [];
+    return provider.parseHistoryResponse(responseText);
 }
 
 // ─── Search ──────────────────────────────────────────────────────────────────
 
 function buildSearchUrl(providerId, query) {
-    var p = _providers[providerId];
-    if (!p) return "";
-    return p.buildSearchUrl(query);
+    var provider = _providers[providerId];
+    if (!provider) return "";
+    return provider.buildSearchUrl(query);
 }
 
 function parseSearchResponse(providerId, responseText) {
-    var p = _providers[providerId];
-    if (!p) return [];
-    return p.parseSearchResponse(responseText);
+    var provider = _providers[providerId];
+    if (!provider) return [];
+    return provider.parseSearchResponse(responseText);
 }
 
 // ─── Validation ──────────────────────────────────────────────────────────────
 
 function buildValidationUrl(providerId, ticker) {
-    var p = _providers[providerId];
-    if (!p) return "";
-    return p.buildValidationUrl(ticker);
+    var provider = _providers[providerId];
+    if (!provider) return "";
+    return provider.buildValidationUrl(ticker);
 }
 
 function parseValidationResponse(providerId, responseText) {
-    var p = _providers[providerId];
-    if (!p) return { valid: false, message: "Unknown provider: " + providerId };
-    return p.parseValidationResponse(responseText);
+    var provider = _providers[providerId];
+    if (!provider) return { valid: false, message: "Unknown provider: " + providerId };
+    return provider.parseValidationResponse(responseText);
 }
 
 // ─── Navigation ──────────────────────────────────────────────────────────────
 
 function buildSymbolPageUrl(providerId, symbolId) {
-    var p = _providers[providerId];
-    if (!p) return "";
-    return p.buildSymbolPageUrl(symbolId);
+    var provider = _providers[providerId];
+    if (!provider) return "";
+    return provider.buildSymbolPageUrl(symbolId);
 }
 
 // ─── Interval Helpers ────────────────────────────────────────────────────────

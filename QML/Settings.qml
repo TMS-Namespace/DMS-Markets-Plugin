@@ -69,11 +69,11 @@ PluginSettings {
     }
 
     Item {
-        width: ghRow.width
-        height: ghRow.height
+        width: githubRow.width
+        height: githubRow.height
 
         Row {
-            id: ghRow
+            id: githubRow
             spacing: Theme.spacingXS
 
             DankIcon {
@@ -81,20 +81,20 @@ PluginSettings {
                 size: Theme.fontSizeSmall
                 color: Theme.primary
                 anchors.verticalCenter: parent.verticalCenter
-                opacity: ghMouse.containsMouse ? 1.0 : 0.65
+                opacity: githubMouseArea.containsMouse ? 1.0 : 0.65
             }
 
             StyledText {
                 text: "Source on GitHub"
                 font.pixelSize: Theme.fontSizeSmall
                 color: Theme.primary
-                opacity: ghMouse.containsMouse ? 1.0 : 0.65
+                opacity: githubMouseArea.containsMouse ? 1.0 : 0.65
                 anchors.verticalCenter: parent.verticalCenter
             }
         }
 
         MouseArea {
-            id: ghMouse
+            id: githubMouseArea
             anchors.fill: parent
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
@@ -245,8 +245,8 @@ PluginSettings {
                     anchors.verticalCenter: parent.verticalCenter
 
                     property real value: {
-                        var v = parseInt(popoutRowsInput.value || "5")
-                        return (isNaN(v) || v < 1) ? 5 : Math.min(v, 50)
+                        var rowCount = parseInt(popoutRowsInput.value || "5")
+                        return (isNaN(rowCount) || rowCount < 1) ? 5 : Math.min(rowCount, 50)
                     }
                 }
 
@@ -263,9 +263,9 @@ PluginSettings {
                     cursorShape: Qt.PointingHandCursor
 
                     function updateValue(mouseX) {
-                        var ratio = Math.max(0, Math.min(1, mouseX / width))
-                        var val   = Math.round(1 + ratio * 49)
-                        popoutSlider.value = val
+                        var ratio       = Math.max(0, Math.min(1, mouseX / width))
+                        var sliderValue = Math.round(1 + ratio * 49)
+                        popoutSlider.value = sliderValue
                     }
 
                     onPressed: function(mouse) { updateValue(mouse.x) }
@@ -440,19 +440,19 @@ PluginSettings {
             spacing: Theme.spacingS
 
             Rectangle {
-                id: addBtn
-                width: root.editIndex >= 0 ? parent.width - cancelBtn.width - Theme.spacingS : parent.width
+                id: addButton
+                width: root.editIndex >= 0 ? parent.width - cancelButton.width - Theme.spacingS : parent.width
                 height: parent.height
                 radius: Theme.cornerRadius
 
                 property bool canAdd: {
-                    var t = (tickerInput.value || "").trim()
-                    var n = (nameInput.value || "").trim()
-                    return t !== "" && n !== "" && !root.isValidating
+                    var ticker      = (tickerInput.value || "").trim()
+                    var displayName = (nameInput.value || "").trim()
+                    return ticker !== "" && displayName !== "" && !root.isValidating
                 }
 
                 color: canAdd
-                    ? (addBtnMouse.containsMouse ? Theme.primary : Theme.surfaceContainerHighest)
+                    ? (addButtonMouseArea.containsMouse ? Theme.primary : Theme.surfaceContainerHighest)
                     : Theme.surfaceContainerHigh
                 border.color: canAdd ? Theme.primary : Theme.outlineVariant
                 border.width: 1
@@ -464,28 +464,28 @@ PluginSettings {
                         : (root.editIndex >= 0 ? "Update Symbol" : "Add Symbol")
                     font.pixelSize: Theme.fontSizeMedium
                     font.weight: Font.Medium
-                    color: addBtn.canAdd
-                        ? (addBtnMouse.containsMouse ? Theme.surfaceContainer : Theme.primary)
+                    color: addButton.canAdd
+                        ? (addButtonMouseArea.containsMouse ? Theme.surfaceContainer : Theme.primary)
                         : Theme.surfaceVariantText
                 }
 
                 MouseArea {
-                    id: addBtnMouse
+                    id: addButtonMouseArea
                     anchors.fill: parent
                     hoverEnabled: true
-                    cursorShape: addBtn.canAdd ? Qt.PointingHandCursor : Qt.ArrowCursor
-                    enabled: addBtn.canAdd
+                    cursorShape: addButton.canAdd ? Qt.PointingHandCursor : Qt.ArrowCursor
+                    enabled: addButton.canAdd
                     onClicked: root.validateAndAdd()
                 }
             }
 
             Rectangle {
-                id: cancelBtn
+                id: cancelButton
                 width: 80
                 height: parent.height
                 radius: Theme.cornerRadius
                 visible: root.editIndex >= 0
-                color: cancelMouse.containsMouse ? Theme.error : Theme.surfaceContainerHighest
+                color: cancelButtonMouseArea.containsMouse ? Theme.error : Theme.surfaceContainerHighest
                 border.color: Theme.error
                 border.width: 1
 
@@ -494,11 +494,11 @@ PluginSettings {
                     text: "Cancel"
                     font.pixelSize: Theme.fontSizeMedium
                     font.weight: Font.Medium
-                    color: cancelMouse.containsMouse ? Theme.surfaceContainer : Theme.error
+                    color: cancelButtonMouseArea.containsMouse ? Theme.surfaceContainer : Theme.error
                 }
 
                 MouseArea {
-                    id: cancelMouse
+                    id: cancelButtonMouseArea
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
@@ -550,9 +550,9 @@ PluginSettings {
         if (!ticker || !name) return
 
         // Duplicate check (skip the entry being edited)
-        for (var i = 0; i < symbolsList.length; i++) {
-            if (i === editIndex) continue
-            if (symbolsList[i].id === ticker) {
+        for (var symbolIndex = 0; symbolIndex < symbolsList.length; symbolIndex++) {
+            if (symbolIndex === editIndex) continue
+            if (symbolsList[symbolIndex].id === ticker) {
                 ToastService.showError("Markets", "'" + ticker + "' is already added")
                 return
             }
@@ -569,14 +569,14 @@ PluginSettings {
         var url = Providers.buildValidationUrl(provider, ticker)
         if (!url) { doSaveSymbol(ticker, name); return }
 
-        var xhr = new XMLHttpRequest()
+        var httpRequest = new XMLHttpRequest()
         isValidating = true
 
-        xhr.onreadystatechange = function() {
-            if (xhr.readyState === XMLHttpRequest.DONE) {
+        httpRequest.onreadystatechange = function() {
+            if (httpRequest.readyState === XMLHttpRequest.DONE) {
                 isValidating = false
-                if (xhr.status === 200 && xhr.responseText) {
-                    var result = Providers.parseValidationResponse(provider, xhr.responseText)
+                if (httpRequest.status === 200 && httpRequest.responseText) {
+                    var result = Providers.parseValidationResponse(provider, httpRequest.responseText)
                     if (result.valid) {
                         doSaveSymbol(ticker, name)
                     } else {
@@ -587,8 +587,8 @@ PluginSettings {
                 }
             }
         }
-        xhr.open("GET", url)
-        xhr.send()
+        httpRequest.open("GET", url)
+        httpRequest.send()
     }
 
     function doSaveSymbol(ticker, name) {
@@ -598,7 +598,7 @@ PluginSettings {
         var showChange = showChangeToggle.value || false
         var invert     = invertToggle.value || false
 
-        var syms  = JSON.parse(JSON.stringify(symbolsList))
+        var symbolsCopy = JSON.parse(JSON.stringify(symbolsList))
         var entry = {
             id:                   ticker,
             name:                 name,
@@ -610,33 +610,32 @@ PluginSettings {
             pinned:               false
         }
 
-        if (editIndex >= 0 && editIndex < syms.length) {
-            entry.pinned     = syms[editIndex].pinned
-            syms[editIndex]  = entry
+        if (editIndex >= 0 && editIndex < symbolsCopy.length) {
+            entry.pinned              = symbolsCopy[editIndex].pinned
+            symbolsCopy[editIndex]    = entry
             ToastService.showInfo("Markets", "Updated " + name + " (" + ticker + ")")
         } else {
-            syms.push(entry)
+            symbolsCopy.push(entry)
             ToastService.showInfo("Markets", "Added " + name + " (" + ticker + ")")
         }
 
-        root.saveValue("symbols", JSON.stringify(syms))
-        symbolsList = syms
-        clearForm()
+        root.saveValue("symbols", JSON.stringify(symbolsCopy))
+        Qt.callLater(clearForm)
     }
 
-    function editSymbol(idx) {
-        if (idx < 0 || idx >= symbolsList.length) return
+    function editSymbol(symbolIndex) {
+        if (symbolIndex < 0 || symbolIndex >= symbolsList.length) return
         // Toggle: clicking the already-selected symbol deselects it
-        if (editIndex === idx) { cancelEdit(); return }
-        var sym  = symbolsList[idx]
-        editIndex = idx
-        root.saveValue("_addTicker",     sym.id || "")
-        root.saveValue("_addName",       sym.name || "")
-        root.saveValue("_addProvider",   sym.provider || Providers.getDefaultProviderId())
-        root.saveValue("_addPriceRange", sym.priceInterval || "1h")
-        root.saveValue("_addChartRange", sym.graphInterval || "1M")
-        root.saveValue("_addShowChange", sym.showChangeWhenPinned ? true : false)
-        root.saveValue("_addInvert",     sym.invert ? true : false)
+        if (editIndex === symbolIndex) { cancelEdit(); return }
+        var symbol = symbolsList[symbolIndex]
+        editIndex  = symbolIndex
+        root.saveValue("_addTicker",     symbol.id || "")
+        root.saveValue("_addName",       symbol.name || "")
+        root.saveValue("_addProvider",   symbol.provider || Providers.getDefaultProviderId())
+        root.saveValue("_addPriceRange", symbol.priceInterval || "1h")
+        root.saveValue("_addChartRange", symbol.graphInterval || "1M")
+        root.saveValue("_addShowChange", symbol.showChangeWhenPinned ? true : false)
+        root.saveValue("_addInvert",     symbol.invert ? true : false)
         Qt.callLater(function() { refreshSymbolsList() })
     }
 
@@ -653,28 +652,29 @@ PluginSettings {
         refreshSymbolsList()
     }
 
-    function removeSymbolAt(idx) {
-        var syms = JSON.parse(JSON.stringify(symbolsList))
-        if (idx < 0 || idx >= syms.length) return
-        var removed = syms[idx]
-        syms.splice(idx, 1)
-        root.saveValue("symbols", JSON.stringify(syms))
-        symbolsList = syms
-        if (editIndex === idx) clearForm()
-        else if (editIndex > idx) editIndex--
+    function removeSymbolAt(symbolIndex) {
+        var symbolsCopy = JSON.parse(JSON.stringify(symbolsList))
+        if (symbolIndex < 0 || symbolIndex >= symbolsCopy.length) return
+        var removed = symbolsCopy[symbolIndex]
+        symbolsCopy.splice(symbolIndex, 1)
+        root.saveValue("symbols", JSON.stringify(symbolsCopy))
+        var wasEditing = (editIndex === symbolIndex)
+        if (editIndex > symbolIndex) editIndex--
         ToastService.showInfo("Markets", "Removed " + (removed.name || removed.id))
+        if (wasEditing) Qt.callLater(clearForm)
+        else Qt.callLater(refreshSymbolsList)
     }
 
-    function moveSymbol(idx, direction) {
-        var newIdx = idx + direction
-        var syms   = JSON.parse(JSON.stringify(symbolsList))
-        if (newIdx < 0 || newIdx >= syms.length) return
-        var tmp        = syms[idx]
-        syms[idx]      = syms[newIdx]
-        syms[newIdx]   = tmp
-        root.saveValue("symbols", JSON.stringify(syms))
-        symbolsList = syms
-        if (editIndex === idx) editIndex = newIdx
-        else if (editIndex === newIdx) editIndex = idx
+    function moveSymbol(symbolIndex, direction) {
+        var targetIndex = symbolIndex + direction
+        var symbolsCopy = JSON.parse(JSON.stringify(symbolsList))
+        if (targetIndex < 0 || targetIndex >= symbolsCopy.length) return
+        var tempSymbol              = symbolsCopy[symbolIndex]
+        symbolsCopy[symbolIndex]    = symbolsCopy[targetIndex]
+        symbolsCopy[targetIndex]    = tempSymbol
+        root.saveValue("symbols", JSON.stringify(symbolsCopy))
+        if (editIndex === symbolIndex) editIndex = targetIndex
+        else if (editIndex === targetIndex) editIndex = symbolIndex
+        Qt.callLater(refreshSymbolsList)
     }
 }

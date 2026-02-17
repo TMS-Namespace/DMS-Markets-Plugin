@@ -21,9 +21,9 @@
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function _safeFloat(s) {
-    if (!s || s === "N/D" || s === "null" || s === "NaN") return NaN;
-    return parseFloat(s);
+function _safeFloat(rawValue) {
+    if (!rawValue || rawValue === "N/D" || rawValue === "null" || rawValue === "NaN") return NaN;
+    return parseFloat(rawValue);
 }
 
 // ─── Provider Registration ───────────────────────────────────────────────────
@@ -44,33 +44,33 @@ PI.registerProvider("stooq", {
 
     // /q/l/?s=SYMBOL&i=INTERVAL → Symbol,Date,Time,Open,High,Low,Close[,Volume]
     buildPriceUrl: function(symbol, interval) {
-        var i = this.intervalMap[interval] || "h";
+        var intervalParam = this.intervalMap[interval] || "h";
         return "https://stooq.com/q/l/?s="
-            + encodeURIComponent(symbol) + "&i=" + i;
+            + encodeURIComponent(symbol) + "&i=" + intervalParam;
     },
 
     // Returns: DataPoint[]
     parsePriceResponse: function(responseText) {
         var lines = responseText.trim().split("\n");
         var results = [];
-        for (var idx = 0; idx < lines.length; idx++) {
-            var line = lines[idx].trim();
+        for (var lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+            var line = lines[lineIndex].trim();
             if (!line) continue;
-            var f = line.split(",");
-            if (f.length < 7) continue;
+            var fields = line.split(",");
+            if (fields.length < 7) continue;
 
-            var open = _safeFloat(f[3]);
+            var open = _safeFloat(fields[3]);
             if (isNaN(open)) continue;           // skip header / invalid rows
 
             results.push({
-                symbol: f[0],
-                date:   f[1],
-                time:   f[2],
+                symbol: fields[0],
+                date:   fields[1],
+                time:   fields[2],
                 open:   open,
-                high:   _safeFloat(f[4]),
-                low:    _safeFloat(f[5]),
-                close:  _safeFloat(f[6]),
-                volume: f.length > 7 ? (parseInt(f[7]) || 0) : 0
+                high:   _safeFloat(fields[4]),
+                low:    _safeFloat(fields[5]),
+                close:  _safeFloat(fields[6]),
+                volume: fields.length > 7 ? (parseInt(fields[7]) || 0) : 0
             });
         }
         return results;
@@ -80,32 +80,32 @@ PI.registerProvider("stooq", {
 
     // /q/d/l/?s=SYMBOL&i=INTERVAL → Date,Open,High,Low,Close[,Volume]
     buildHistoryUrl: function(symbol, interval) {
-        var i = this.intervalMap[interval] || "d";
+        var intervalParam = this.intervalMap[interval] || "d";
         return "https://stooq.com/q/d/l/?s="
-            + encodeURIComponent(symbol) + "&i=" + i;
+            + encodeURIComponent(symbol) + "&i=" + intervalParam;
     },
 
     // Returns: DataPoint[]
     parseHistoryResponse: function(responseText) {
         var lines = responseText.trim().split("\n");
         var results = [];
-        for (var idx = 0; idx < lines.length; idx++) {
-            var line = lines[idx].trim();
+        for (var lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+            var line = lines[lineIndex].trim();
             if (!line) continue;
-            var f = line.split(",");
-            if (f.length < 5) continue;
+            var fields = line.split(",");
+            if (fields.length < 5) continue;
 
-            var open = _safeFloat(f[1]);
+            var open = _safeFloat(fields[1]);
             if (isNaN(open)) continue;           // skip header row
 
             results.push({
-                date:   f[0],
+                date:   fields[0],
                 time:   "",
                 open:   open,
-                high:   _safeFloat(f[2]),
-                low:    _safeFloat(f[3]),
-                close:  _safeFloat(f[4]),
-                volume: f.length > 5 ? (parseInt(f[5]) || 0) : 0
+                high:   _safeFloat(fields[2]),
+                low:    _safeFloat(fields[3]),
+                close:  _safeFloat(fields[4]),
+                volume: fields.length > 5 ? (parseInt(fields[5]) || 0) : 0
             });
         }
         return results;
@@ -125,13 +125,13 @@ PI.registerProvider("stooq", {
         var end   = text.lastIndexOf("'");
         if (start < 0 || end <= start) return [];
 
-        var inner = text.substring(start + 1, end);
-        inner = inner.replace(/<b>/g, "").replace(/<\/b>/g, "");
+        var innerContent = text.substring(start + 1, end);
+        innerContent = innerContent.replace(/<b>/g, "").replace(/<\/b>/g, "");
 
-        var entries = inner.split("|");
+        var entries = innerContent.split("|");
         var results = [];
-        for (var i = 0; i < entries.length; i++) {
-            var parts = entries[i].split("~");
+        for (var entryIndex = 0; entryIndex < entries.length; entryIndex++) {
+            var parts = entries[entryIndex].split("~");
             if (parts.length >= 5) {
                 results.push({
                     id:        parts[0].toLowerCase(),
@@ -159,8 +159,8 @@ PI.registerProvider("stooq", {
         if (!responseText || !responseText.trim()) {
             return { valid: false, message: "Empty response" };
         }
-        var line   = responseText.trim().split("\n")[0];
-        var fields = line.split(",");
+        var firstLine = responseText.trim().split("\n")[0];
+        var fields    = firstLine.split(",");
         if (fields.length >= 7 && fields[6] !== "N/D" && !isNaN(parseFloat(fields[6]))) {
             return { valid: true, message: "" };
         }

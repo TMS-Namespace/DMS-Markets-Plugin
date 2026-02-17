@@ -27,10 +27,10 @@ Item {
         radius: Theme.cornerRadius
         color: configRow.isEditing
             ? Theme.primaryContainer
-            : (symRowMouse.containsMouse ? Theme.surfaceContainerHighest : Theme.surfaceContainerHigh)
+            : (symbolRowMouseArea.containsMouse ? Theme.surfaceContainerHighest : Theme.surfaceContainerHigh)
 
         MouseArea {
-            id: symRowMouse
+            id: symbolRowMouseArea
             anchors.fill: parent
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor

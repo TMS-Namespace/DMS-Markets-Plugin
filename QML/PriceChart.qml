@@ -41,58 +41,58 @@ Canvas {
     onHeightChanged:     requestPaint()
 
     onPaint: {
-        var ctx = getContext("2d")
-        ctx.reset()
+        var context = getContext("2d")
+        context.reset()
 
         if (!dataPoints || dataPoints.length < 2) return
 
         // Extract valid close prices
         var closes = []
-        for (var i = 0; i < dataPoints.length; i++) {
-            var c = dataPoints[i].close
-            if (c !== undefined && !isNaN(c))
-                closes.push(c)
+        for (var dataIndex = 0; dataIndex < dataPoints.length; dataIndex++) {
+            var closeValue = dataPoints[dataIndex].close
+            if (closeValue !== undefined && !isNaN(closeValue))
+                closes.push(closeValue)
         }
         if (closes.length < 2) return
 
         var min   = closes[0]
         var max   = closes[0]
-        for (var m = 1; m < closes.length; m++) {
-            if (closes[m] < min) min = closes[m]
-            if (closes[m] > max) max = closes[m]
+        for (var scanIndex = 1; scanIndex < closes.length; scanIndex++) {
+            if (closes[scanIndex] < min) min = closes[scanIndex]
+            if (closes[scanIndex] > max) max = closes[scanIndex]
         }
         var range = max - min
         if (range === 0) range = 1          // flat line guard
 
-        var pad = 2
-        var w   = width  - pad * 2
-        var h   = height - pad * 2
+        var padding     = 2
+        var chartWidth  = width  - padding * 2
+        var chartHeight = height - padding * 2
 
         // ── Filled area ──────────────────────────────────────────────────
-        ctx.beginPath()
-        ctx.moveTo(pad, height - pad)       // bottom-left anchor
-        for (var j = 0; j < closes.length; j++) {
-            var x = pad + (j / (closes.length - 1)) * w
-            var y = pad + (1 - (closes[j] - min) / range) * h
-            ctx.lineTo(x, y)
+        context.beginPath()
+        context.moveTo(padding, height - padding)       // bottom-left anchor
+        for (var fillIndex = 0; fillIndex < closes.length; fillIndex++) {
+            var pointX = padding + (fillIndex / (closes.length - 1)) * chartWidth
+            var pointY = padding + (1 - (closes[fillIndex] - min) / range) * chartHeight
+            context.lineTo(pointX, pointY)
         }
-        ctx.lineTo(pad + w, height - pad)   // bottom-right anchor
-        ctx.closePath()
-        ctx.fillStyle = fillColor.toString()
-        ctx.fill()
+        context.lineTo(padding + chartWidth, height - padding)   // bottom-right anchor
+        context.closePath()
+        context.fillStyle = fillColor.toString()
+        context.fill()
 
         // ── Line ─────────────────────────────────────────────────────────
-        ctx.beginPath()
-        for (var k = 0; k < closes.length; k++) {
-            var lx = pad + (k / (closes.length - 1)) * w
-            var ly = pad + (1 - (closes[k] - min) / range) * h
-            if (k === 0) ctx.moveTo(lx, ly)
-            else         ctx.lineTo(lx, ly)
+        context.beginPath()
+        for (var lineIndex = 0; lineIndex < closes.length; lineIndex++) {
+            var lineX = padding + (lineIndex / (closes.length - 1)) * chartWidth
+            var lineY = padding + (1 - (closes[lineIndex] - min) / range) * chartHeight
+            if (lineIndex === 0) context.moveTo(lineX, lineY)
+            else                 context.lineTo(lineX, lineY)
         }
-        ctx.strokeStyle = lineColor.toString()
-        ctx.lineWidth   = 1.5
-        ctx.lineJoin    = "round"
-        ctx.stroke()
+        context.strokeStyle = lineColor.toString()
+        context.lineWidth   = 1.5
+        context.lineJoin    = "round"
+        context.stroke()
     }
 
     // ── Chart range label (top-left corner) ──────────────────────────────

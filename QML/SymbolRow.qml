@@ -12,6 +12,7 @@ import qs.Common
 import qs.Widgets
 import "../JS/ProviderInterface.js" as Providers
 import "../JS/StooqProvider.js" as StooqProvider
+import "../JS/Helpers.js" as Helpers
 
 Item {
     id: symbolRow
@@ -54,26 +55,9 @@ Item {
     property bool showChartRange:     true
     property bool showRefreshedSince: true
 
-    // ── Number formatting with thousands separator ───────────────────────────
-    function formatNumber(num, decimals) {
-        if (isNaN(num)) return "—"
-        var fixed = num.toFixed(decimals !== undefined ? decimals : 2)
-        var parts = fixed.split(".")
-        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",")
-        return parts.join(".")
-    }
-
-    function _timeAgo(epochMs) {
-        if (!epochMs || epochMs <= 0) return ""
-        var secs = Math.floor((Date.now() - epochMs) / 1000)
-        if (secs < 60)   return secs + " sec. ago"
-        var mins = Math.floor(secs / 60)
-        if (mins < 60)   return mins + " min. ago"
-        var hrs  = Math.floor(mins / 60)
-        if (hrs < 24)    return hrs + " hr. ago"
-        var days = Math.floor(hrs / 24)
-        return days + " day" + (days !== 1 ? "s" : "") + " ago"
-    }
+    // ── Utility delegates (from Helpers.js) ───────────────────────────────────
+    function formatNumber(number, decimals) { return Helpers.formatNumber(number, decimals) }
+    function _timeAgo(epochMs)           { return Helpers.timeAgo(epochMs) }
 
     height: 76
 
@@ -86,7 +70,7 @@ Item {
 
     // ── Name column (left-anchored) ──────────────────────────────────────────
     Column {
-        id: nameCol
+        id: nameColumn
         width: 90
         anchors.left: parent.left
         anchors.leftMargin: Theme.spacingS
@@ -121,9 +105,9 @@ Item {
 
     // ── Price column ─────────────────────────────────────────────────────────
     Column {
-        id: priceCol
+        id: priceColumn
         width: 86
-        anchors.left: nameCol.right
+        anchors.left: nameColumn.right
         anchors.leftMargin: Theme.spacingS
         anchors.verticalCenter: parent.verticalCenter
         spacing: 1
@@ -153,7 +137,7 @@ Item {
     // ── Mini chart (fills remaining space) ───────────────────────────────────
     Item {
         id: chartArea
-        anchors.left: priceCol.right
+        anchors.left: priceColumn.right
         anchors.leftMargin: Theme.spacingS
         anchors.right: parent.right
         anchors.rightMargin: Theme.spacingS

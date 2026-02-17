@@ -47,17 +47,17 @@ Item {
 
             DankTextField {
                 id: searchTextField
-                width: parent.width - searchBtn.width - Theme.spacingS
+                width: parent.width - searchButton.width - Theme.spacingS
                 leftIconName: "search"
                 placeholderText: "Search…"
                 backgroundColor: Theme.surfaceVariant
                 normalBorderColor: Theme.primarySelected
                 focusedBorderColor: Theme.primary
-                onAccepted: if (searchBtn.canSearch) searchPanel.doSearch()
+                onAccepted: if (searchButton.canSearch) searchPanel.doSearch()
             }
 
             Rectangle {
-                id: searchBtn
+                id: searchButton
                 width: 80
                 height: searchTextField.height
                 radius: Theme.cornerRadius
@@ -66,7 +66,7 @@ Item {
                                          && !searchPanel.isSearching
 
                 color: canSearch
-                    ? (searchBtnMouse.containsMouse ? Theme.primary : Theme.surfaceContainerHighest)
+                    ? (searchButtonMouseArea.containsMouse ? Theme.primary : Theme.surfaceContainerHighest)
                     : Theme.surfaceContainerHigh
                 border.color: canSearch ? Theme.primary : Theme.outlineVariant
                 border.width: 1
@@ -77,17 +77,17 @@ Item {
                     text: searchPanel.isSearching ? "Searching…" : "Search"
                     font.pixelSize: Theme.fontSizeSmall
                     font.weight: Font.Medium
-                    color: searchBtn.canSearch
-                        ? (searchBtnMouse.containsMouse ? Theme.surfaceContainer : Theme.primary)
+                    color: searchButton.canSearch
+                        ? (searchButtonMouseArea.containsMouse ? Theme.surfaceContainer : Theme.primary)
                         : Theme.surfaceVariantText
                 }
 
                 MouseArea {
-                    id: searchBtnMouse
+                    id: searchButtonMouseArea
                     anchors.fill: parent
                     hoverEnabled: true
-                    cursorShape: searchBtn.canSearch ? Qt.PointingHandCursor : Qt.ArrowCursor
-                    enabled: searchBtn.canSearch
+                    cursorShape: searchButton.canSearch ? Qt.PointingHandCursor : Qt.ArrowCursor
+                    enabled: searchButton.canSearch
                     onClicked: searchPanel.doSearch()
                 }
             }
@@ -105,10 +105,10 @@ Item {
                 Rectangle {
                     anchors.fill: parent
                     radius: Theme.cornerRadius
-                    color: srMouse.containsMouse ? Theme.primaryContainer : Theme.surfaceContainerHigh
+                    color: searchResultMouseArea.containsMouse ? Theme.primaryContainer : Theme.surfaceContainerHigh
 
                     MouseArea {
-                        id: srMouse
+                        id: searchResultMouseArea
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
@@ -138,8 +138,8 @@ Item {
 
                             StyledText {
                                 text: {
-                                    var full = (modelData.name || "") + "  ·  " + (modelData.market || "")
-                                    return full.length > 40 ? full.substring(0, 40) + "…" : full
+                                    var fullDescription = (modelData.name || "") + "  ·  " + (modelData.market || "")
+                                    return fullDescription.length > 40 ? fullDescription.substring(0, 40) + "…" : fullDescription
                                 }
                                 font.pixelSize: Theme.fontSizeSmall
                                 color: Theme.surfaceVariantText
@@ -179,13 +179,13 @@ Item {
         var url = Providers.buildSearchUrl(searchPanel.providerId, query)
         if (!url) { isSearching = false; return }
 
-        var xhr = new XMLHttpRequest()
-        xhr.onreadystatechange = function() {
-            if (xhr.readyState === XMLHttpRequest.DONE) {
+        var httpRequest = new XMLHttpRequest()
+        httpRequest.onreadystatechange = function() {
+            if (httpRequest.readyState === XMLHttpRequest.DONE) {
                 isSearching = false
-                if (xhr.status === 200 && xhr.responseText) {
+                if (httpRequest.status === 200 && httpRequest.responseText) {
                     var results = Providers.parseSearchResponse(
-                        searchPanel.providerId, xhr.responseText
+                        searchPanel.providerId, httpRequest.responseText
                     )
                     searchResults = results
                     if (results.length === 0)
@@ -195,7 +195,7 @@ Item {
                 }
             }
         }
-        xhr.open("GET", url)
-        xhr.send()
+        httpRequest.open("GET", url)
+        httpRequest.send()
     }
 }
