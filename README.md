@@ -1,61 +1,45 @@
 # Markets Plugin for DMS
 
-A [DankMaterialShell](https://github.com/dankmaterial/DMS) widget plugin that displays live market prices from [Stooq](https://stooq.com) — forex, indices, commodities, crypto, and equities.
+A [DankMaterialShell](https://github.com/dankmaterial/DMS) widget plugin that displays near-live market prices and charts directly in your desktop shell.
+
+| Dark Theme | Light Theme |
+|:---:|:---:|
+| <img src="Images/Dark-Popup.png" width="400"/> | <img src="Images/Light-Popup.png" width="400"/> |
 
 ## Features
 
-- **Bar pills** — pinned symbols show live prices directly in DankBar
-- **Popout panel** — scrollable list with name, price, change, and sparkline chart
-- **Stooq search** — find symbols by keyword (autocomplete)
-- **Configurable per symbol** — price range, chart range, show-change toggle
-- **Configurable colors** — separate up/down hex colors
-- **Reorder & edit** — drag symbols up/down, click to edit, hover to pin/delete
-- **Adjustable popup height** — slider from 1–50 visible rows
+- **Pin to bar** — display live prices for selected symbols directly in `DankBar`.
+- **Popup panel** — list showing name, price, change percentage, and `sparkline` charts.
+- **Symbol search** — find and add symbols by keyword via provider search `API`.
+- **Per-symbol configuration** — independent price interval, chart range, change display, and price inversion.
+- **Custom colors** — configurable up/down color indicators.
+- **Reorder & edit** — rearrange symbol order, click to edit, hover to pin or delete.
+- **Adjustable popup height** — set the number of visible rows.
+- **Intelligent fetching** — staggered data requests with retry logic to avoid rate limiting.
 
-## Project structure
-
-```
-plugin.json             Plugin manifest (id, paths, permissions)
-QML/
-  Widget.qml            Main PluginComponent — bar pills + popout + data fetching
-  Settings.qml          PluginSettings — add/edit/remove symbols, colors, layout
-  SymbolRow.qml          Popout symbol card (name, price, chart, hover actions)
-  PriceChart.qml         Canvas sparkline / area chart
-  SymbolSearch.qml       Stooq search input + results
-  ConfiguredSymbol.qml   Configured symbol row in settings
-JS/
-  providers.js           Provider abstraction + Stooq implementation
-Support/
-  setup-symlink.sh       One-time symlink into DMS plugins directory
-```
-
-## Quick start
-
-```bash
-git clone <repo-url> ~/Documents/My\ Repos/DMS-Markets-Plugin
-chmod +x Support/setup-symlink.sh
-Support/setup-symlink.sh
-dms restart
-```
-
-Then open **DMS Settings → Plugins → Markets** to add symbols.
+| Settings (1) | Settings (2) |
+|:---:|:---:|
+| <img src="Images/Settings-1-Dark.png" width="400"/> | <img src="Images/Settings-2-Dark.png" width="400"/> |
 
 ## Requirements
 
-- DMS ≥ 1.2.0 (Quickshell-based plugin system)
-- `curl` for data fetching
-- Internet access to `stooq.com`
+- DMS ≥ 1.2.0
+- `curl` installed and available in `$PATH`
+- Internet access
 
-## Data source
+## Data Providers
 
-All market data is provided by [Stooq](https://stooq.com) via their public CSV endpoints. No API key required.
+Currently supported only one provider: [Stooq](https://stooq.com) that has public and free `CSV` endpoints, no `API` key required.
 
-| Endpoint | Purpose |
-|----------|---------|
-| `/q/l/?s=SYMBOL&i=INTERVAL` | Latest candle (price) |
-| `/q/d/l/?s=SYMBOL&i=INTERVAL` | Historical data (chart) |
-| `/cmp/?q=QUERY` | Symbol search / autocomplete |
+> **Limitation:** `Stooq` does not provide historical data for futures symbols (tickers matching `*.f`) through its public `API`. Price data will load, but charts will be unavailable for these symbols.
 
-## License
+## Privacy
 
-MIT
+- No endpoints are contacted other than the configured data provider.
+- All requests are made without cookies to minimize tracking potential.
+- `Stooq` is operated from `Poland` and is presumably `GDPR`-compliant. See their [Privacy & Cookie Policy](https://stooq.com/privacy/) and [Terms of Service](https://stooq.com/terms.html).
+
+## Disclaimers
+
+- The developer has no affiliation with any data provider.
+- This plugin was vibe-coded under my supervision as a software engineer.
