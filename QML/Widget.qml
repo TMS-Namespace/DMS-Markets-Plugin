@@ -30,6 +30,8 @@ PluginComponent {
         var c = (pluginData.downColor || "").trim()
         return c !== "" ? c : "#F44336"
     }
+    property bool showPopoutCloseButton: pluginData.showCloseButton === true
+                                         || pluginData.showCloseButton === "true"
 
     // ── Persisted symbols list ───────────────────────────────────────────────
     // Stored as JSON string in pluginData.symbols
@@ -426,7 +428,7 @@ PluginComponent {
             detailsText:     root.symbols.length > 0
                              ? root.symbols.length + " symbol" + (root.symbols.length !== 1 ? "s" : "") + " tracked"
                              : "Add symbols in Settings"
-            showCloseButton: true
+            showCloseButton: root.showPopoutCloseButton
 
             Item {
                 width: parent.width

@@ -68,6 +68,40 @@ PluginSettings {
         wrapMode: Text.WordWrap
     }
 
+    Item {
+        width: ghRow.width
+        height: ghRow.height
+
+        Row {
+            id: ghRow
+            spacing: Theme.spacingXS
+
+            DankIcon {
+                name: "code"
+                size: Theme.fontSizeSmall
+                color: Theme.primary
+                anchors.verticalCenter: parent.verticalCenter
+                opacity: ghMouse.containsMouse ? 1.0 : 0.65
+            }
+
+            StyledText {
+                text: "Source on GitHub"
+                font.pixelSize: Theme.fontSizeSmall
+                color: Theme.primary
+                opacity: ghMouse.containsMouse ? 1.0 : 0.65
+                anchors.verticalCenter: parent.verticalCenter
+            }
+        }
+
+        MouseArea {
+            id: ghMouse
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: Qt.openUrlExternally("https://github.com/TMS-Namespace/DMS-Markets-Plugin")
+        }
+    }
+
     // ═══════════════════════════════════════════════════════════════════════
     //  CHART COLORS
     // ═══════════════════════════════════════════════════════════════════════
@@ -81,56 +115,53 @@ PluginSettings {
         topPadding: Theme.spacingM
     }
 
-    StringSetting {
-        id: upColorInput
-        settingKey: "upColor"
-        label: "Up / Positive Color"
-        description: "Hex color for positive changes (e.g., #4CAF50)"
-        placeholder: "#4CAF50"
-        defaultValue: "#4CAF50"
-    }
+    Row {
+        width: parent.width
+        spacing: Theme.spacingS
 
-    StringSetting {
-        id: downColorInput
-        settingKey: "downColor"
-        label: "Down / Negative Color"
-        description: "Hex color for negative changes (e.g., #F44336)"
-        placeholder: "#F44336"
-        defaultValue: "#F44336"
+        property real swatchSize: Math.round(Theme.fontSizeMedium * 3.4)
+
+        StringSetting {
+            id: upColorInput
+            settingKey: "upColor"
+            label: "Up / Positive Color"
+            description: "Hex color for positive changes (e.g., #4CAF50)"
+            placeholder: "#4CAF50"
+            defaultValue: "#4CAF50"
+            width: parent.width - parent.swatchSize - Theme.spacingS
+        }
+
+        Rectangle {
+            width: parent.swatchSize; height: parent.swatchSize
+            radius: Theme.cornerRadius
+            anchors.bottom: parent.bottom
+            color: (upColorInput.value || "").trim() !== "" ? upColorInput.value.trim() : "#4CAF50"
+            border.color: Theme.outlineVariant; border.width: 1
+        }
     }
 
     Row {
         width: parent.width
-        spacing: Theme.spacingM
+        spacing: Theme.spacingS
 
-        Row {
-            spacing: Theme.spacingS
-            Rectangle {
-                width: 16; height: 16; radius: 3
-                color: (upColorInput.value || "").trim() !== "" ? upColorInput.value.trim() : "#4CAF50"
-                border.color: Theme.outlineVariant; border.width: 1
-            }
-            StyledText {
-                text: "Up"
-                font.pixelSize: Theme.fontSizeSmall
-                color: Theme.surfaceVariantText
-                anchors.verticalCenter: parent.verticalCenter
-            }
+        property real swatchSize: Math.round(Theme.fontSizeMedium * 3.4)
+
+        StringSetting {
+            id: downColorInput
+            settingKey: "downColor"
+            label: "Down / Negative Color"
+            description: "Hex color for negative changes (e.g., #F44336)"
+            placeholder: "#F44336"
+            defaultValue: "#F44336"
+            width: parent.width - parent.swatchSize - Theme.spacingS
         }
 
-        Row {
-            spacing: Theme.spacingS
-            Rectangle {
-                width: 16; height: 16; radius: 3
-                color: (downColorInput.value || "").trim() !== "" ? downColorInput.value.trim() : "#F44336"
-                border.color: Theme.outlineVariant; border.width: 1
-            }
-            StyledText {
-                text: "Down"
-                font.pixelSize: Theme.fontSizeSmall
-                color: Theme.surfaceVariantText
-                anchors.verticalCenter: parent.verticalCenter
-            }
+        Rectangle {
+            width: parent.swatchSize; height: parent.swatchSize
+            radius: Theme.cornerRadius
+            anchors.bottom: parent.bottom
+            color: (downColorInput.value || "").trim() !== "" ? downColorInput.value.trim() : "#F44336"
+            border.color: Theme.outlineVariant; border.width: 1
         }
     }
 
@@ -246,6 +277,14 @@ PluginSettings {
                 }
             }
         }
+    }
+
+    ToggleSetting {
+        id: showCloseBtnToggle
+        settingKey: "showCloseButton"
+        label: "Show Close Button"
+        description: "Display a close button at the top of the popup panel"
+        defaultValue: false
     }
 
     Rectangle { width: parent.width; height: 1; color: Theme.outlineVariant }

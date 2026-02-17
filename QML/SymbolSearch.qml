@@ -15,7 +15,6 @@ Item {
     id: searchPanel
 
     property string providerId:  ""
-    property alias  searchInput: searchField
     property var    searchResults: []
     property bool   isSearching:   false
 
@@ -27,26 +26,43 @@ Item {
         width: parent.width
         spacing: Theme.spacingS
 
-        StringSetting {
-            id: searchField
-            settingKey: "_searchQuery"
-            label: "Search Symbols"
-            description: "Type to search for symbols (e.g., eur, gold, btc, apple)"
-            placeholder: "Search…"
-            defaultValue: ""
+        StyledText {
+            text: "Search Symbols"
+            font.pixelSize: Theme.fontSizeMedium
+            font.weight: Font.Medium
+            color: Theme.surfaceText
         }
 
-        Item {
+        StyledText {
+            text: "Type to search for symbols (e.g., eur, gold, btc, apple)"
+            font.pixelSize: Theme.fontSizeSmall
+            color: Theme.surfaceVariantText
             width: parent.width
-            height: searchBtn.height
+            wrapMode: Text.WordWrap
+        }
+
+        Row {
+            width: parent.width
+            spacing: Theme.spacingS
+
+            DankTextField {
+                id: searchTextField
+                width: parent.width - searchBtn.width - Theme.spacingS
+                leftIconName: "search"
+                placeholderText: "Search…"
+                backgroundColor: Theme.surfaceVariant
+                normalBorderColor: Theme.primarySelected
+                focusedBorderColor: Theme.primary
+                onAccepted: if (searchBtn.canSearch) searchPanel.doSearch()
+            }
 
             Rectangle {
                 id: searchBtn
-                width: 120
-                height: 36
+                width: 80
+                height: searchTextField.height
                 radius: Theme.cornerRadius
 
-                property bool canSearch: (searchField.value || "").trim().length >= 2
+                property bool canSearch: searchTextField.text.trim().length >= 2
                                          && !searchPanel.isSearching
 
                 color: canSearch
@@ -155,7 +171,7 @@ Item {
     }
 
     function doSearch() {
-        var query = (searchField.value || "").trim()
+        var query = searchTextField.text.trim()
         if (query.length < 2) return
         isSearching = true
         searchResults = []
