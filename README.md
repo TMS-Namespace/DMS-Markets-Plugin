@@ -23,7 +23,7 @@ A [DankMaterialShell](https://github.com/dankmaterial/DMS) widget plugin that di
 
 ## Requirements
 
-- DMS ≥ 1.2.0
+- `DMS` ≥ 1.2.0
 - `curl` installed and available in `$PATH`
 - Internet access
 
