@@ -2,13 +2,16 @@
 //
 // Layout:
 // ┌──────────────────────────────────────────────────────┐
-// │  USDX          104.50  ╱╲ sparkline ╱╲    📌   ✕   │
-// │  dx.f • 1h     +0.30 (+0.29%)                       │
+// │  USDX          104.50  ╱╲ sparkline ╱╲   [📌] [✕]  │
+// │  dx.f • 1h     +0.30                (on hover)      │
+// │                (+0.29%)                              │
 // └──────────────────────────────────────────────────────┘
 
 import QtQuick
 import qs.Common
 import qs.Widgets
+import "../JS/ProviderInterface.js" as Providers
+import "../JS/StooqProvider.js" as StooqProvider
 
 Item {
     id: symbolRow
@@ -138,7 +141,10 @@ Item {
             anchors.fill: parent
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
-            onClicked: Qt.openUrlExternally("https://stooq.com/q/?s=" + encodeURIComponent(symbolData.id || ""))
+            onClicked: {
+                var url = Providers.buildSymbolPageUrl(symbolData.provider || Providers.getDefaultProviderId(), symbolData.id || "")
+                if (url) Qt.openUrlExternally(url)
+            }
         }
 
         // ── Hover action buttons (overlay) ───────────────────────────────

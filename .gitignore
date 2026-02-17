@@ -1,0 +1,12 @@
+# Build / editor artifacts
+.vscode/
+*.swp
+*~
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+
+# Old root-level files (removed during refactor)
+# MarketsWidget.qml
+# MarketsSettings.qml

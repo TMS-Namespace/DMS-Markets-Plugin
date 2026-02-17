@@ -6,8 +6,8 @@
     "author": "TMS-Namespace",
     "icon": "show_chart",
     "type": "widget",
-    "component": "./MarketsWidget.qml",
-    "settings": "./MarketsSettings.qml",
+    "component": "./QML/Widget.qml",
+    "settings": "./QML/Settings.qml",
     "permissions": ["settings_read", "settings_write", "process", "network"],
     "requires_dms": ">=1.2.0"
 }

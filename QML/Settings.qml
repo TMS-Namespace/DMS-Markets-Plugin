@@ -1,22 +1,29 @@
+// Settings.qml — Plugin settings page
+//
+// Provides the configuration interface for the Markets plugin:
+// - Chart colors (up/down)
+// - Popup layout (visible rows slider)
+// - Symbol search (via SymbolSearch component)
+// - Add/edit symbol form
+// - Configured symbols list (via ConfiguredSymbol component)
+
 import QtQuick
 import qs.Common
 import qs.Services
 import qs.Modules.Plugins
 import qs.Widgets
+import "../JS/ProviderInterface.js" as Providers
+import "../JS/StooqProvider.js" as StooqProvider
 
 PluginSettings {
     id: root
-    pluginId: "marketsPlugin"
+    pluginId: "markets"
 
-    property var symbolsList: []
+    property var  symbolsList:  []
     property bool isValidating: false
-    property int editIndex: -1    // -1 = adding new, >= 0 = editing existing
+    property int  editIndex:    -1    // -1 = adding new, >= 0 = editing existing
 
-    // Symbol search
-    property var searchResults: []
-    property bool isSearching: false
-
-    // ── Explicit save/load via pluginService (matches DankNotepadModule pattern) ─
+    // ── Persistence helpers ──────────────────────────────────────────────────
     function saveValue(key, value) {
         if (pluginService)
             pluginService.savePluginData(root.pluginId, key, value)
@@ -34,13 +41,16 @@ PluginSettings {
         catch (e) { symbolsList = [] }
     }
 
-    // pluginService may not be ready at Component.onCompleted
     onPluginServiceChanged: {
         if (pluginService)
             refreshSymbolsList()
     }
 
     Component.onCompleted: refreshSymbolsList()
+
+    // ═══════════════════════════════════════════════════════════════════════
+    //  HEADER
+    // ═══════════════════════════════════════════════════════════════════════
 
     StyledText {
         width: parent.width
@@ -58,7 +68,10 @@ PluginSettings {
         wrapMode: Text.WordWrap
     }
 
-    // ── Global color settings ────────────────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════════════════
+    //  CHART COLORS
+    // ═══════════════════════════════════════════════════════════════════════
+
     StyledText {
         width: parent.width
         text: "Chart Colors"
@@ -86,7 +99,6 @@ PluginSettings {
         defaultValue: "#F44336"
     }
 
-    // Color preview
     Row {
         width: parent.width
         spacing: Theme.spacingM
@@ -122,7 +134,10 @@ PluginSettings {
         }
     }
 
-    // ── Popup layout ─────────────────────────────────────────────────────────
+    // ═══════════════════════════════════════════════════════════════════════
+    //  POPUP LAYOUT
+    // ═══════════════════════════════════════════════════════════════════════
+
     StyledText {
         width: parent.width
         text: "Popup Layout"
@@ -152,12 +167,15 @@ PluginSettings {
 
             Row {
                 width: parent.width
+
                 StyledText {
                     text: "Visible Symbol Rows"
                     font.pixelSize: Theme.fontSizeMedium
                     color: Theme.surfaceText
                 }
+
                 Item { width: Theme.spacingS; height: 1 }
+
                 StyledText {
                     text: popoutSlider.value.toFixed(0)
                     font.pixelSize: Theme.fontSizeMedium
@@ -215,7 +233,7 @@ PluginSettings {
 
                     function updateValue(mouseX) {
                         var ratio = Math.max(0, Math.min(1, mouseX / width))
-                        var val = Math.round(1 + ratio * 49)
+                        var val   = Math.round(1 + ratio * 49)
                         popoutSlider.value = val
                     }
 
@@ -230,11 +248,11 @@ PluginSettings {
         }
     }
 
-    Rectangle {
-        width: parent.width
-        height: 1
-        color: Theme.outlineVariant
-    }
+    Rectangle { width: parent.width; height: 1; color: Theme.outlineVariant }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    //  SYMBOL SEARCH + ADD/EDIT
+    // ═══════════════════════════════════════════════════════════════════════
 
     StyledText {
         width: parent.width
@@ -245,128 +263,16 @@ PluginSettings {
         topPadding: Theme.spacingM
     }
 
-    // ── Symbol Search ─────────────────────────────────────────────────────
-    StringSetting {
-        id: searchInput
-        settingKey: "_searchQuery"
-        label: "Search Stooq Symbols"
-        description: "Type to search for symbols (e.g., eur, gold, btc, apple)"
-        placeholder: "Search…"
-        defaultValue: ""
-    }
-
-    Item {
+    SymbolSearch {
+        id: symbolSearch
         width: parent.width
-        height: searchBtn.height
+        providerId: providerSelect.value || Providers.getDefaultProviderId()
 
-        Rectangle {
-            id: searchBtn
-            width: 120
-            height: 36
-            radius: Theme.cornerRadius
-
-            property bool canSearch: (searchInput.value || "").trim().length >= 2 && !root.isSearching
-
-            color: canSearch
-                ? (searchBtnMouse.containsMouse ? Theme.primary : Theme.surfaceContainerHighest)
-                : Theme.surfaceContainerHigh
-            border.color: canSearch ? Theme.primary : Theme.outlineVariant
-            border.width: 1
-            opacity: canSearch ? 1.0 : 0.5
-
-            StyledText {
-                anchors.centerIn: parent
-                text: root.isSearching ? "Searching…" : "Search"
-                font.pixelSize: Theme.fontSizeSmall
-                font.weight: Font.Medium
-                color: searchBtn.canSearch
-                    ? (searchBtnMouse.containsMouse ? Theme.surfaceContainer : Theme.primary)
-                    : Theme.surfaceVariantText
-            }
-
-            MouseArea {
-                id: searchBtnMouse
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: searchBtn.canSearch ? Qt.PointingHandCursor : Qt.ArrowCursor
-                enabled: searchBtn.canSearch
-                onClicked: root.doSearch()
-            }
+        onSymbolSelected: function(symbolId, symbolName) {
+            root.saveValue("_addTicker", symbolId)
+            root.saveValue("_addName", symbolName)
+            Qt.callLater(function() { root.refreshSymbolsList() })
         }
-    }
-
-    // Search results
-    Repeater {
-        model: root.searchResults
-
-        delegate: Item {
-            width: root.width
-            height: 44
-
-            Rectangle {
-                anchors.fill: parent
-                radius: Theme.cornerRadius
-                color: srMouse.containsMouse ? Theme.primaryContainer : Theme.surfaceContainerHigh
-
-                MouseArea {
-                    id: srMouse
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                        root.saveValue("_addTicker", modelData.id)
-                        root.saveValue("_addName", modelData.name)
-                        root.searchResults = []
-                        Qt.callLater(function() { root.refreshSymbolsList() })
-                    }
-                }
-
-                Row {
-                    anchors.fill: parent
-                    anchors.margins: Theme.spacingS
-                    spacing: Theme.spacingS
-
-                    Column {
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: parent.width - 90 - Theme.spacingS
-
-                        StyledText {
-                            text: modelData.id || ""
-                            font.pixelSize: Theme.fontSizeMedium
-                            font.weight: Font.Medium
-                            color: Theme.surfaceText
-                            elide: Text.ElideRight
-                            width: parent.width
-                        }
-
-                        StyledText {
-                            text: (modelData.name || "") + "  ·  " + (modelData.market || "")
-                            font.pixelSize: Theme.fontSizeSmall
-                            color: Theme.surfaceVariantText
-                            elide: Text.ElideRight
-                            width: parent.width
-                        }
-                    }
-
-                    StyledText {
-                        width: 90
-                        anchors.verticalCenter: parent.verticalCenter
-                        text: (modelData.price || "") + "  " + (modelData.changeStr || "")
-                        font.pixelSize: Theme.fontSizeSmall
-                        color: Theme.surfaceVariantText
-                        horizontalAlignment: Text.AlignRight
-                        elide: Text.ElideRight
-                    }
-                }
-            }
-        }
-    }
-
-    Rectangle {
-        visible: root.searchResults.length > 0
-        width: parent.width
-        height: 1
-        color: Theme.outlineVariant
     }
 
     StringSetting {
@@ -392,10 +298,9 @@ PluginSettings {
         settingKey: "_addProvider"
         label: "Data Provider"
         description: "Source for price data"
-        options: [
-            { label: "Stooq", value: "stooq" }
-        ]
-        defaultValue: "stooq"
+        visible: Providers.getProviderIds().length > 1
+        options: Providers.getProviderOptions()
+        defaultValue: Providers.getDefaultProviderId()
     }
 
     SelectionSetting {
@@ -404,13 +309,13 @@ PluginSettings {
         label: "Price Range"
         description: "Candle period for price display and change calculation"
         options: [
-            { label: "1 Minute",    value: "1m"  },
-            { label: "5 Minutes",   value: "5m"  },
-            { label: "15 Minutes",  value: "15m" },
-            { label: "1 Hour",      value: "1h"  },
-            { label: "1 Day",       value: "1d"  },
-            { label: "1 Week",      value: "1w"  },
-            { label: "1 Month",     value: "1M"  }
+            { label: "1 Minute",   value: "1m"  },
+            { label: "5 Minutes",  value: "5m"  },
+            { label: "15 Minutes", value: "15m" },
+            { label: "1 Hour",     value: "1h"  },
+            { label: "1 Day",      value: "1d"  },
+            { label: "1 Week",     value: "1w"  },
+            { label: "1 Month",    value: "1M"  }
         ]
         defaultValue: "1h"
     }
@@ -421,14 +326,14 @@ PluginSettings {
         label: "Chart Range"
         description: "How much historical data to show in the popup sparkline"
         options: [
-            { label: "1 Week",     value: "1W"  },
-            { label: "1 Month",    value: "1M"  },
-            { label: "3 Months",   value: "3M"  },
-            { label: "6 Months",   value: "6M"  },
-            { label: "1 Year",     value: "1Y"  },
-            { label: "2 Years",    value: "2Y"  },
-            { label: "5 Years",    value: "5Y"  },
-            { label: "10 Years",   value: "10Y" }
+            { label: "1 Week",    value: "1W"  },
+            { label: "1 Month",   value: "1M"  },
+            { label: "3 Months",  value: "3M"  },
+            { label: "6 Months",  value: "6M"  },
+            { label: "1 Year",    value: "1Y"  },
+            { label: "2 Years",   value: "2Y"  },
+            { label: "5 Years",   value: "5Y"  },
+            { label: "10 Years",  value: "10Y" }
         ]
         defaultValue: "1M"
     }
@@ -441,6 +346,15 @@ PluginSettings {
         defaultValue: false
     }
 
+    ToggleSetting {
+        id: invertToggle
+        settingKey: "_addInvert"
+        label: "Invert Value (1/x)"
+        description: "Show and chart the reciprocal of the price (e.g., USD/EUR instead of EUR/USD)"
+        defaultValue: false
+    }
+
+    // ── Add / Update / Cancel buttons ────────────────────────────────────────
     Item {
         width: parent.width
         height: 44
@@ -518,11 +432,11 @@ PluginSettings {
         }
     }
 
-    Rectangle {
-        width: parent.width
-        height: 1
-        color: Theme.outlineVariant
-    }
+    Rectangle { width: parent.width; height: 1; color: Theme.outlineVariant }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    //  CONFIGURED SYMBOLS LIST
+    // ═══════════════════════════════════════════════════════════════════════
 
     StyledText {
         width: parent.width
@@ -536,122 +450,23 @@ PluginSettings {
     Repeater {
         model: root.symbolsList
 
-        delegate: Item {
+        delegate: ConfiguredSymbol {
             width: root.width
-            height: 56
+            symbolData: modelData
+            isEditing:  root.editIndex === index
+            isFirst:    index === 0
+            isLast:     index === root.symbolsList.length - 1
 
-            Rectangle {
-                anchors.fill: parent
-                radius: Theme.cornerRadius
-                color: root.editIndex === index
-                    ? Theme.primaryContainer
-                    : (symRowMouse.containsMouse ? Theme.surfaceContainerHighest : Theme.surfaceContainerHigh)
-
-                MouseArea {
-                    id: symRowMouse
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: root.editSymbol(index)
-                }
-
-                Row {
-                    anchors.fill: parent
-                    anchors.margins: Theme.spacingS
-                    spacing: Theme.spacingS
-
-                    DankIcon {
-                        name: "push_pin"
-                        size: 18
-                        color: modelData.pinned ? Theme.primary : Theme.surfaceContainerHighest
-                        anchors.verticalCenter: parent.verticalCenter
-                        rotation: modelData.pinned ? 0 : 45
-                    }
-
-                    Column {
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: parent.width - 18 - 80 - Theme.spacingS * 3
-
-                        StyledText {
-                            text: modelData.name || modelData.id || ""
-                            font.pixelSize: Theme.fontSizeMedium
-                            font.weight: Font.Medium
-                            color: Theme.surfaceText
-                            elide: Text.ElideRight
-                            width: parent.width
-                        }
-
-                        StyledText {
-                            text: (modelData.id || "") + "  |  " + (modelData.provider || "stooq") + "  |  price " + (modelData.priceInterval || "1M") + "  |  chart " + (modelData.graphInterval || "1M") + (modelData.showChangeWhenPinned ? "  |  Δ on bar" : "")
-                            font.pixelSize: Theme.fontSizeSmall
-                            color: Theme.surfaceVariantText
-                            elide: Text.ElideRight
-                            width: parent.width
-                        }
-                    }
-
-                    Row {
-                        anchors.verticalCenter: parent.verticalCenter
-                        spacing: 2
-
-                        // Move up button
-                        MouseArea {
-                            width: 24
-                            height: 24
-                            cursorShape: index > 0 ? Qt.PointingHandCursor : Qt.ArrowCursor
-                            hoverEnabled: true
-                            enabled: index > 0
-                            onClicked: root.moveSymbol(index, -1)
-
-                            DankIcon {
-                                anchors.centerIn: parent
-                                name: "arrow_upward"
-                                size: 16
-                                color: index > 0
-                                    ? (parent.containsMouse ? Theme.primary : Theme.surfaceVariantText)
-                                    : Theme.surfaceContainerHighest
-                            }
-                        }
-
-                        // Move down button
-                        MouseArea {
-                            width: 24
-                            height: 24
-                            cursorShape: index < root.symbolsList.length - 1 ? Qt.PointingHandCursor : Qt.ArrowCursor
-                            hoverEnabled: true
-                            enabled: index < root.symbolsList.length - 1
-                            onClicked: root.moveSymbol(index, 1)
-
-                            DankIcon {
-                                anchors.centerIn: parent
-                                name: "arrow_downward"
-                                size: 16
-                                color: index < root.symbolsList.length - 1
-                                    ? (parent.containsMouse ? Theme.primary : Theme.surfaceVariantText)
-                                    : Theme.surfaceContainerHighest
-                            }
-                        }
-
-                        // Delete button
-                        MouseArea {
-                            width: 24
-                            height: 24
-                            cursorShape: Qt.PointingHandCursor
-                            hoverEnabled: true
-                            onClicked: root.removeSymbolAt(index)
-
-                            DankIcon {
-                                anchors.centerIn: parent
-                                name: "delete"
-                                size: 18
-                                color: parent.containsMouse ? Theme.error : Theme.surfaceVariantText
-                            }
-                        }
-                    }
-                }
-            }
+            onClicked:   root.editSymbol(index)
+            onRemoved:   root.removeSymbolAt(index)
+            onMovedUp:   root.moveSymbol(index, -1)
+            onMovedDown: root.moveSymbol(index, 1)
         }
     }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    //  FUNCTIONS
+    // ═══════════════════════════════════════════════════════════════════════
 
     function validateAndAdd() {
         var ticker = (tickerInput.value || "").trim()
@@ -673,21 +488,23 @@ PluginSettings {
             return
         }
 
-        // Validate symbol exists on Stooq
-        var url = "https://stooq.com/q/l/?s=" + encodeURIComponent(ticker) + "&i=d"
+        // Validate symbol exists via the selected provider
+        var provider = providerSelect.value || Providers.getDefaultProviderId()
+        var url = Providers.buildValidationUrl(provider, ticker)
+        if (!url) { doSaveSymbol(ticker, name); return }
+
         var xhr = new XMLHttpRequest()
         isValidating = true
 
         xhr.onreadystatechange = function() {
             if (xhr.readyState === XMLHttpRequest.DONE) {
                 isValidating = false
-                if (xhr.status === 200 && xhr.responseText && xhr.responseText.trim()) {
-                    var line   = xhr.responseText.trim().split("\n")[0]
-                    var fields = line.split(",")
-                    if (fields.length >= 7 && fields[6] !== "N/D" && !isNaN(parseFloat(fields[6]))) {
+                if (xhr.status === 200 && xhr.responseText) {
+                    var result = Providers.parseValidationResponse(provider, xhr.responseText)
+                    if (result.valid) {
                         doSaveSymbol(ticker, name)
                     } else {
-                        ToastService.showError("Markets", "Symbol '" + ticker + "' not found on Stooq")
+                        ToastService.showError("Markets", "Symbol '" + ticker + "' — " + (result.message || "not found"))
                     }
                 } else {
                     ToastService.showError("Markets", "Could not verify '" + ticker + "' — check connection")
@@ -699,25 +516,27 @@ PluginSettings {
     }
 
     function doSaveSymbol(ticker, name) {
-        var provider   = providerSelect.value || "stooq"
+        var provider   = providerSelect.value || Providers.getDefaultProviderId()
         var priceRange = priceRangeSelect.value || "1h"
         var chartRange = chartRangeSelect.value || "1M"
         var showChange = showChangeToggle.value || false
+        var invert     = invertToggle.value || false
 
-        var syms = JSON.parse(JSON.stringify(symbolsList))
+        var syms  = JSON.parse(JSON.stringify(symbolsList))
         var entry = {
-            id: ticker,
-            name: name,
-            provider: provider,
-            priceInterval: priceRange,
-            graphInterval: chartRange,
+            id:                   ticker,
+            name:                 name,
+            provider:             provider,
+            priceInterval:        priceRange,
+            graphInterval:        chartRange,
             showChangeWhenPinned: showChange,
-            pinned: false
+            invert:               invert,
+            pinned:               false
         }
 
         if (editIndex >= 0 && editIndex < syms.length) {
-            entry.pinned = syms[editIndex].pinned
-            syms[editIndex] = entry
+            entry.pinned     = syms[editIndex].pinned
+            syms[editIndex]  = entry
             ToastService.showInfo("Markets", "Updated " + name + " (" + ticker + ")")
         } else {
             syms.push(entry)
@@ -733,21 +552,19 @@ PluginSettings {
         if (idx < 0 || idx >= symbolsList.length) return
         // Toggle: clicking the already-selected symbol deselects it
         if (editIndex === idx) { cancelEdit(); return }
-        var sym = symbolsList[idx]
+        var sym  = symbolsList[idx]
         editIndex = idx
-        root.saveValue("_addTicker", sym.id || "")
-        root.saveValue("_addName", sym.name || "")
-        root.saveValue("_addProvider", sym.provider || "stooq")
+        root.saveValue("_addTicker",     sym.id || "")
+        root.saveValue("_addName",       sym.name || "")
+        root.saveValue("_addProvider",   sym.provider || Providers.getDefaultProviderId())
         root.saveValue("_addPriceRange", sym.priceInterval || "1h")
         root.saveValue("_addChartRange", sym.graphInterval || "1M")
         root.saveValue("_addShowChange", sym.showChangeWhenPinned ? true : false)
-        // Force SelectionSettings to re-read from pluginData after save
+        root.saveValue("_addInvert",     sym.invert ? true : false)
         Qt.callLater(function() { refreshSymbolsList() })
     }
 
-    function cancelEdit() {
-        clearForm()
-    }
+    function cancelEdit() { clearForm() }
 
     function clearForm() {
         editIndex = -1
@@ -756,54 +573,8 @@ PluginSettings {
         root.saveValue("_addPriceRange", "1h")
         root.saveValue("_addChartRange", "1M")
         root.saveValue("_addShowChange", false)
+        root.saveValue("_addInvert", false)
         refreshSymbolsList()
-    }
-
-    function doSearch() {
-        var query = (searchInput.value || "").trim()
-        if (query.length < 2) return
-        isSearching = true
-        searchResults = []
-
-        var url = "https://stooq.com/cmp/?q=" + encodeURIComponent(query)
-        var xhr = new XMLHttpRequest()
-        xhr.onreadystatechange = function() {
-            if (xhr.readyState === XMLHttpRequest.DONE) {
-                isSearching = false
-                if (xhr.status === 200 && xhr.responseText) {
-                    var text = xhr.responseText
-                    // Extract content from window.cmp_r('...')
-                    var start = text.indexOf("'")
-                    var end   = text.lastIndexOf("'")
-                    if (start >= 0 && end > start) {
-                        var inner = text.substring(start + 1, end)
-                        // Remove HTML bold tags
-                        inner = inner.replace(/<b>/g, "").replace(/<\/b>/g, "")
-                        var entries = inner.split("|")
-                        var results = []
-                        for (var i = 0; i < entries.length; i++) {
-                            var parts = entries[i].split("~")
-                            if (parts.length >= 5) {
-                                results.push({
-                                    id:        parts[0].toLowerCase(),
-                                    name:      parts[1],
-                                    market:    parts[2],
-                                    price:     parts[3],
-                                    changeStr: parts[4]
-                                })
-                            }
-                        }
-                        searchResults = results
-                        if (results.length === 0)
-                            ToastService.showInfo("Markets", "No results for '" + query + "'")
-                    }
-                } else {
-                    ToastService.showError("Markets", "Search failed — check connection")
-                }
-            }
-        }
-        xhr.open("GET", url)
-        xhr.send()
     }
 
     function removeSymbolAt(idx) {
@@ -820,14 +591,13 @@ PluginSettings {
 
     function moveSymbol(idx, direction) {
         var newIdx = idx + direction
-        var syms = JSON.parse(JSON.stringify(symbolsList))
+        var syms   = JSON.parse(JSON.stringify(symbolsList))
         if (newIdx < 0 || newIdx >= syms.length) return
-        var tmp = syms[idx]
-        syms[idx] = syms[newIdx]
-        syms[newIdx] = tmp
+        var tmp        = syms[idx]
+        syms[idx]      = syms[newIdx]
+        syms[newIdx]   = tmp
         root.saveValue("symbols", JSON.stringify(syms))
         symbolsList = syms
-        // Update editIndex if the edited item moved
         if (editIndex === idx) editIndex = newIdx
         else if (editIndex === newIdx) editIndex = idx
     }

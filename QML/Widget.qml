@@ -1,10 +1,10 @@
-// MarketsWidget.qml — Main DMS bar widget with popout
+// Widget.qml — Main DMS bar widget with popout
 //
 // Shows pinned market symbols in the bar and provides a popout panel listing
 // all tracked symbols with live prices, change indicators, and sparkline charts.
 //
-// Data fetching is abstracted through providers.js — the widget itself knows
-// nothing about Stooq or any specific data source.
+// Data fetching is abstracted through ProviderInterface.js — the widget itself
+// knows nothing about Stooq or any specific data source.
 
 import QtQuick
 import Quickshell
@@ -13,7 +13,8 @@ import qs.Common
 import qs.Services
 import qs.Widgets
 import qs.Modules.Plugins
-import "providers.js" as Providers
+import "../JS/ProviderInterface.js" as Providers
+import "../JS/StooqProvider.js" as StooqProvider
 
 PluginComponent {
     id: root
@@ -76,7 +77,8 @@ PluginComponent {
             var sym = pinnedSymbols[i]
             var d   = priceData[sym.id]
             if (d && d.close !== undefined && !isNaN(d.close)) {
-                var label = sym.name + " " + formatNumber(d.close)
+                var closeVal = d.close
+                var label = sym.name + " " + formatNumber(closeVal)
                 if (sym.showChangeWhenPinned) {
                     var ch   = d.change || 0
                     var sign = ch >= 0 ? "+" : ""
@@ -216,23 +218,45 @@ PluginComponent {
         _pendingFetches = pf
     }
 
+    // ── Inversion helper ─────────────────────────────────────────────────
+    function _isInverted(symbolId) {
+        for (var i = 0; i < symbols.length; i++)
+            if (symbols[i].id === symbolId) return !!symbols[i].invert
+        return false
+    }
+
+    function _inv(v) {
+        if (v === 0 || isNaN(v)) return 0
+        return Math.round(100 / v) / 100   // 1/v rounded to 2 decimals
+    }
+
     function onFetchComplete(symbolId, providerName, fetchType, chartRange, csvText) {
+        var invert = _isInverted(symbolId)
+
         if (fetchType === "price") {
             var parsed = Providers.parsePriceResponse(providerName, csvText)
             if (parsed.length > 0) {
                 var latest  = parsed[parsed.length - 1]
+                var o = latest.open, h = latest.high, l = latest.low, c = latest.close
+
+                if (invert) {
+                    o = _inv(o); h = _inv(h); l = _inv(l); c = _inv(c)
+                    // After inversion high/low may swap
+                    var tmp = h; h = Math.min(h, l); l = Math.max(tmp, l)
+                }
+
                 var newData = {}
                 for (var pk in priceData) newData[pk] = priceData[pk]
                 newData[symbolId] = {
-                    open:   latest.open,
-                    high:   latest.high,
-                    low:    latest.low,
-                    close:  latest.close,
+                    open:   o,
+                    high:   h,
+                    low:    l,
+                    close:  c,
                     date:   latest.date,
                     time:   latest.time,
-                    change:        latest.close - latest.open,
-                    changePercent: latest.open !== 0
-                                   ? ((latest.close - latest.open) / latest.open * 100)
+                    change:        c - o,
+                    changePercent: o !== 0
+                                   ? ((c - o) / o * 100)
                                    : 0
                 }
                 priceData = newData
@@ -242,6 +266,16 @@ PluginComponent {
             if (history.length === 0)
                 console.warn("[Markets]", symbolId, "history returned no data — chart unavailable")
             if (history.length > 0) {
+                if (invert) {
+                    for (var j = 0; j < history.length; j++) {
+                        var pt = history[j]
+                        pt.open  = _inv(pt.open)
+                        pt.close = _inv(pt.close)
+                        var ih = _inv(pt.high), il = _inv(pt.low)
+                        pt.high = Math.max(ih, il)
+                        pt.low  = Math.min(ih, il)
+                    }
+                }
                 var newGraph = {}
                 for (var gk in graphData) newGraph[gk] = graphData[gk]
                 // Slice to the appropriate number of data points for the chart range
