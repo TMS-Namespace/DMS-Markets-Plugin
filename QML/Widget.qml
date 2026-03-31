@@ -254,6 +254,7 @@ PluginComponent {
 
         var curlCmd = "curl -fsSL --connect-timeout 10 --max-time 20"
                     + " -H 'User-Agent: Mozilla/5.0 (X11; Linux x86_64)'"
+                    + " -b 'cookie_uu=p'"
                     + " '" + url + "'"
         if (tailLines > 0)
             curlCmd += " | tail -n " + tailLines
