@@ -14,10 +14,14 @@ import qs.Modules.Plugins
 import qs.Widgets
 import "../JS/ProviderInterface.js" as Providers
 import "../JS/StooqProvider.js" as StooqProvider
+import "./Helpers"
+import "./Views"
 
 PluginSettings {
     id: root
     pluginId: "markets"
+
+    Constants { id: c }
 
     property var  symbolsList:  []
     property bool isValidating: false
@@ -126,8 +130,8 @@ PluginSettings {
             settingKey: "upColor"
             label: "Up / Positive Color"
             description: "Hex color for positive changes (e.g., #4CAF50)"
-            placeholder: "#4CAF50"
-            defaultValue: "#4CAF50"
+            placeholder: c.defaultUpColor
+            defaultValue: c.defaultUpColor
             width: parent.width - parent.swatchSize - Theme.spacingS
         }
 
@@ -135,7 +139,7 @@ PluginSettings {
             width: parent.swatchSize; height: parent.swatchSize
             radius: Theme.cornerRadius
             anchors.bottom: parent.bottom
-            color: (upColorInput.value || "").trim() !== "" ? upColorInput.value.trim() : "#4CAF50"
+            color: (upColorInput.value || "").trim() !== "" ? upColorInput.value.trim() : c.defaultUpColor
             border.color: Theme.outlineVariant; border.width: 1
         }
     }
@@ -151,8 +155,8 @@ PluginSettings {
             settingKey: "downColor"
             label: "Down / Negative Color"
             description: "Hex color for negative changes (e.g., #F44336)"
-            placeholder: "#F44336"
-            defaultValue: "#F44336"
+            placeholder: c.defaultDownColor
+            defaultValue: c.defaultDownColor
             width: parent.width - parent.swatchSize - Theme.spacingS
         }
 
@@ -160,7 +164,7 @@ PluginSettings {
             width: parent.swatchSize; height: parent.swatchSize
             radius: Theme.cornerRadius
             anchors.bottom: parent.bottom
-            color: (downColorInput.value || "").trim() !== "" ? downColorInput.value.trim() : "#F44336"
+            color: (downColorInput.value || "").trim() !== "" ? downColorInput.value.trim() : c.defaultDownColor
             border.color: Theme.outlineVariant; border.width: 1
         }
     }
@@ -183,14 +187,14 @@ PluginSettings {
         settingKey: "popoutRows"
         label: "Visible Symbol Rows"
         description: ""
-        placeholder: "5"
-        defaultValue: "5"
+        placeholder: c.defaultPopoutRows
+        defaultValue: c.defaultPopoutRows
         visible: false
     }
 
     Item {
         width: parent.width
-        height: 48
+        height: c.sliderContainerHeight
 
         Column {
             anchors.fill: parent
@@ -217,36 +221,36 @@ PluginSettings {
 
             Item {
                 width: parent.width
-                height: 24
+                height: c.sliderAreaHeight
 
                 Rectangle {
                     id: sliderTrack
                     anchors.left: parent.left
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
-                    height: 4
-                    radius: 2
+                    height: c.sliderTrackHeight
+                    radius: c.sliderTrackHeight / 2
                     color: Theme.surfaceContainerHighest
 
                     Rectangle {
                         width: (popoutSlider.value - 1) / 49 * parent.width
                         height: parent.height
-                        radius: 2
+                        radius: parent.radius
                         color: Theme.primary
                     }
                 }
 
                 Rectangle {
                     id: sliderHandle
-                    width: 18; height: 18; radius: 9
+                    width: c.sliderHandleSize; height: c.sliderHandleSize; radius: c.sliderHandleSize / 2
                     color: sliderMouse.pressed ? Theme.primary : Theme.surfaceContainerHighest
                     border.color: Theme.primary; border.width: 2
                     x: (popoutSlider.value - 1) / 49 * (parent.width - width)
                     anchors.verticalCenter: parent.verticalCenter
 
                     property real value: {
-                        var rowCount = parseInt(popoutRowsInput.value || "5")
-                        return (isNaN(rowCount) || rowCount < 1) ? 5 : Math.min(rowCount, 50)
+                        var rowCount = parseInt(popoutRowsInput.value || c.defaultPopoutRows)
+                        return (isNaN(rowCount) || rowCount < 1) ? c.defaultPopoutRows : Math.min(rowCount, 50)
                     }
                 }
 
@@ -433,7 +437,7 @@ PluginSettings {
     // ── Add / Update / Cancel buttons ────────────────────────────────────────
     Item {
         width: parent.width
-        height: 44
+        height: c.compactRowHeight
 
         Row {
             anchors.fill: parent
@@ -481,7 +485,7 @@ PluginSettings {
 
             Rectangle {
                 id: cancelButton
-                width: 80
+                width: c.smallButtonWidth
                 height: parent.height
                 radius: Theme.cornerRadius
                 visible: root.editIndex >= 0
