@@ -36,8 +36,17 @@ Currently supported only one provider: [Stooq](https://stooq.com) that has publi
 ## Privacy
 
 - No endpoints are contacted other than the configured data provider.
-- All requests are made without cookies to minimize tracking potential.
+- ~~struck-through All requests are made without cookies to minimize tracking potential.~~ (see version 1.0.1 in [Version History](#version-history))
 - `Stooq` is operated from `Poland` and is presumably `GDPR`-compliant. See their [Privacy & Cookie Policy](https://stooq.com/privacy/) and [Terms of Service](https://stooq.com/terms.html).
+
+## Version History
+
+- v1.0.1 :
+  - Fixed the issue with charts for previously working symbols, are not displayed (Unfortunately, `Stooq` now requires using cookies).
+  - Added logging capability.
+  - Refactoring.
+- v1.0.0 :
+  - Initial version.
 
 ## Disclaimers
 
