@@ -56,3 +56,29 @@ function isInverted(symbols, symbolId) {
         if (symbols[symbolIndex].id === symbolId) return !!symbols[symbolIndex].invert
     return false
 }
+
+// ── API key obfuscation (XOR + base64) ──────────────────────────────────────
+// Not cryptographic — just prevents the key from sitting as plain text on disk.
+var _obfKey = "https://github.com/TMS-Namespace/DMS-Markets-Plugin"
+
+function obfuscate(text) {
+    if (!text) return ""
+    var out = []
+    for (var i = 0; i < text.length; i++)
+        out.push(text.charCodeAt(i) ^ _obfKey.charCodeAt(i % _obfKey.length))
+    return btoa(String.fromCharCode.apply(null, out))
+}
+
+function deobfuscate(encoded) {
+    if (!encoded) return ""
+    try {
+        var raw = atob(encoded)
+        var out = []
+        for (var i = 0; i < raw.length; i++)
+            out.push(String.fromCharCode(raw.charCodeAt(i) ^ _obfKey.charCodeAt(i % _obfKey.length)))
+        return out.join("")
+    } catch (e) {
+        // Not valid base64 — treat as a legacy plain-text value and return as-is
+        return encoded
+    }
+}

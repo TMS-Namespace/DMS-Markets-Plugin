@@ -12,6 +12,7 @@ import qs.Common
 import qs.Services
 import qs.Modules.Plugins
 import qs.Widgets
+import "../JS/Helpers.js" as Helpers
 import "../JS/ProviderInterface.js" as Providers
 import "../JS/StooqProvider.js" as StooqProvider
 import "./Helpers"
@@ -145,7 +146,7 @@ PluginSettings {
             repeat: false
             onTriggered: {
                 var newKey = apiKeyField.text.trim()
-                root.saveValue(c.stooqApiKeySettingKey, newKey)
+                root.saveValue(c.stooqApiKeySettingKey, Helpers.obfuscate(newKey))
                 root._currentApiKey = newKey
                 Providers.setApiKey(c.stooqProviderId, newKey)
             }
@@ -892,7 +893,8 @@ PluginSettings {
 
     function _initApiKey() {
         if (!pluginService) return
-        var key = loadValue(c.stooqApiKeySettingKey, "")
+        var stored = loadValue(c.stooqApiKeySettingKey, "")
+        var key = Helpers.deobfuscate(stored)
         _currentApiKey = key
         Providers.setApiKey(c.stooqProviderId, key)
         if (apiKeyField.text !== key) {
