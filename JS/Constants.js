@@ -19,3 +19,6 @@ var SYMBOL_WATCH_DELAY_MS    = 500      // debounce window for onSymbolsChanged
 
 // ── Fetch limits ──────────────────────────────────────────────────────────────
 var MAX_RETRIES = 3
+
+// ── API key obfuscation ───────────────────────────────────────────────────────
+var API_KEY_OBF_SEED         = "https://github.com/TMS-Namespace/DMS-Markets-Plugin"

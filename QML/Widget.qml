@@ -52,7 +52,12 @@ PluginComponent {
         return (isNaN(n) || n < 1) ? c.defaultPopoutRows : n
     }
 
-    property bool hasApiKey: (pluginData.stooqApiKey || "").trim() !== ""
+    // Deobfuscate the stored key once and share it — used for validation and fetching.
+    property string _apiKey: Helpers.deobfuscate(pluginData.stooqApiKey || "")
+    property bool hasApiKey: {
+        var k = _apiKey.trim()
+        return k.length >= c.apiKeyMinLength && k.length <= c.apiKeyMaxLength
+    }
 
     // ── Persisted symbol list ─────────────────────────────────────────────────
     property var symbols: {
@@ -70,7 +75,7 @@ PluginComponent {
     // ── Helpers ───────────────────────────────────────────────────────────────
     MarketDataFetcher {
         id: fetcher
-        apiKey:              pluginData.stooqApiKey || ""
+        apiKey:              root._apiKey
         symbols:             root.symbols
         priceData:           root.priceData
         graphData:           root.graphData
@@ -78,11 +83,11 @@ PluginComponent {
         _pendingFetches:     root._pendingFetches
         _lastFullGraphFetch: root._lastFullGraphFetch
 
-        onPriceDataReady:          root.priceData           = newPriceData
-        onGraphDataReady:          root.graphData           = newGraphData
-        onFetchTimesUpdated:       root.lastFetchTimes      = newTimes
-        onPendingFetchesUpdated:   root._pendingFetches     = newPending
-        onFullGraphFetchUpdated:   root._lastFullGraphFetch = newFullFetch
+        onPriceDataReady:          function(newPriceData)  { root.priceData           = newPriceData  }
+        onGraphDataReady:          function(newGraphData)  { root.graphData           = newGraphData  }
+        onFetchTimesUpdated:       function(newTimes)      { root.lastFetchTimes      = newTimes      }
+        onPendingFetchesUpdated:   function(newPending)    { root._pendingFetches     = newPending    }
+        onFullGraphFetchUpdated:   function(newFullFetch)  { root._lastFullGraphFetch = newFullFetch  }
     }
 
     SymbolManager {

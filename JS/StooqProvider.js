@@ -26,6 +26,12 @@ function _safeFloat(rawValue) {
     return parseFloat(rawValue);
 }
 
+function _appendApiKey(url) {
+    var apiKey = PI.getApiKey("stooq");
+    if (apiKey) url += "&apikey=" + encodeURIComponent(apiKey);
+    return url;
+}
+
 // ─── Provider Registration ───────────────────────────────────────────────────
 
 PI.registerProvider("stooq", {
@@ -47,9 +53,7 @@ PI.registerProvider("stooq", {
         var intervalParam = this.intervalMap[interval] || "h";
         var url = "https://stooq.com/q/l/?s="
             + encodeURIComponent(symbol) + "&i=" + intervalParam;
-        var apiKey = PI.getApiKey("stooq");
-        if (apiKey) url += "&apikey=" + encodeURIComponent(apiKey);
-        return url;
+        return _appendApiKey(url);
     },
 
     // Returns: DataPoint[]
@@ -86,9 +90,7 @@ PI.registerProvider("stooq", {
         var intervalParam = this.intervalMap[interval] || "d";
         var url = "https://stooq.com/q/d/l/?s="
             + encodeURIComponent(symbol) + "&i=" + intervalParam;
-        var apiKey = PI.getApiKey("stooq");
-        if (apiKey) url += "&apikey=" + encodeURIComponent(apiKey);
-        return url;
+        return _appendApiKey(url);
     },
 
     // Returns: DataPoint[]
@@ -158,9 +160,7 @@ PI.registerProvider("stooq", {
     buildValidationUrl: function(ticker) {
         var url = "https://stooq.com/q/l/?s="
             + encodeURIComponent(ticker) + "&i=d";
-        var apiKey = PI.getApiKey("stooq");
-        if (apiKey) url += "&apikey=" + encodeURIComponent(apiKey);
-        return url;
+        return _appendApiKey(url);
     },
 
     // Returns: ValidationResult { valid: bool, message: string }

@@ -28,7 +28,17 @@ PluginSettings {
     property bool isValidating: false
     property int  editIndex:    -1    // -1 = adding new, >= 0 = editing existing
     property string _currentApiKey: ""
-    property bool   hasApiKey:      _currentApiKey.trim() !== ""
+    // Drive hasApiKey and format validation off the live field text so the UI
+    // reacts immediately while typing — not only after the debounce timer fires.
+    property bool   hasApiKey: {
+        var k = apiKeyField.text.trim()
+        return k.length >= c.apiKeyMinLength && k.length <= c.apiKeyMaxLength
+    }
+    // true only when field has content but it's outside the valid length range
+    property bool   _apiKeyFormatInvalid: {
+        var k = apiKeyField.text.trim()
+        return k.length > 0 && (k.length < c.apiKeyMinLength || k.length > c.apiKeyMaxLength)
+    }
 
     // ── Persistence helpers ──────────────────────────────────────────────────
     function saveValue(key, value) {
@@ -146,6 +156,10 @@ PluginSettings {
             repeat: false
             onTriggered: {
                 var newKey = apiKeyField.text.trim()
+                // Only persist and activate keys that are valid-length, or empty (to clear).
+                var isValid = newKey === "" ||
+                              (newKey.length >= c.apiKeyMinLength && newKey.length <= c.apiKeyMaxLength)
+                if (!isValid) return
                 root.saveValue(c.stooqApiKeySettingKey, Helpers.obfuscate(newKey))
                 root._currentApiKey = newKey
                 Providers.setApiKey(c.stooqProviderId, newKey)
@@ -156,7 +170,7 @@ PluginSettings {
             anchors.fill: parent
             radius: Theme.cornerRadius
             color: Theme.surfaceContainer
-            border.color: apiKeyField.activeFocus ? Theme.primary : Theme.outlineVariant
+            border.color: apiKeyField.activeFocus ? Theme.primary : (root._apiKeyFormatInvalid ? Theme.error : Theme.outlineVariant)
             border.width: apiKeyField.activeFocus ? 2 : 1
 
             TextInput {
@@ -214,6 +228,15 @@ PluginSettings {
                 }
             }
         }
+    }
+
+    Text {
+        width: parent.width
+        visible: root._apiKeyFormatInvalid
+        text: "Invalid key: expected " + c.apiKeyMinLength + "-" + c.apiKeyMaxLength + " characters"
+        font.pixelSize: Theme.fontSizeSmall
+        color: "#F44336"
+        wrapMode: Text.WordWrap
     }
 
     Column {

@@ -96,4 +96,6 @@ QtObject {
     readonly property int    apiKeyOpacityAnimMs:   150   // disabled-settings fade duration
     readonly property string stooqProviderId:       "stooq"
     readonly property string stooqApiKeySettingKey: "stooqApiKey"
+    readonly property int    apiKeyMinLength:       25
+    readonly property int    apiKeyMaxLength:       40
 }
