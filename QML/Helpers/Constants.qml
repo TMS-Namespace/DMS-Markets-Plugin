@@ -89,4 +89,11 @@ QtObject {
 
     // ── Button hover / background alphas ─────────────────────────────────────
     readonly property real   buttonHoverAlpha:      0.15  // hover highlight tint
+
+    // ── API key / settings ────────────────────────────────────────────────────
+    readonly property int    apiKeySaveDebounceMs:  600   // delay before persisting the API key
+    readonly property int    tokenErrorCooldownMs:  10000 // min gap between token-error toasts
+    readonly property int    apiKeyOpacityAnimMs:   150   // disabled-settings fade duration
+    readonly property string stooqProviderId:       "stooq"
+    readonly property string stooqApiKeySettingKey: "stooqApiKey"
 }

@@ -16,6 +16,7 @@ import qs.Common
 import qs.Services
 import qs.Widgets
 import qs.Modules.Plugins
+import "../JS/ProviderInterface.js" as Providers
 import "../JS/StooqProvider.js" as StooqProvider
 import "../JS/Helpers.js" as Helpers
 import "./Helpers"
@@ -25,6 +26,8 @@ PluginComponent {
     id: root
 
     layerNamespacePlugin: "markets"
+
+    onHasApiKeyChanged: setVisibilityOverride(hasApiKey)
 
     // ── QML constants ─────────────────────────────────────────────────────────
     Constants { id: c }
@@ -49,6 +52,8 @@ PluginComponent {
         return (isNaN(n) || n < 1) ? c.defaultPopoutRows : n
     }
 
+    property bool hasApiKey: (pluginData.stooqApiKey || "").trim() !== ""
+
     // ── Persisted symbol list ─────────────────────────────────────────────────
     property var symbols: {
         try { return JSON.parse(pluginData.symbols || "[]") }
@@ -65,6 +70,7 @@ PluginComponent {
     // ── Helpers ───────────────────────────────────────────────────────────────
     MarketDataFetcher {
         id: fetcher
+        apiKey:              pluginData.stooqApiKey || ""
         symbols:             root.symbols
         priceData:           root.priceData
         graphData:           root.graphData
@@ -108,11 +114,32 @@ PluginComponent {
     }
 
     Component.onCompleted: {
+        setVisibilityOverride(hasApiKey)
         _knownSymbolIds = symbols.map(function(s) { return s.id })
         _initialized    = true
         if (c.devMode) console.log("[Markets/Widget] initialized —", symbols.length, "symbols")
         if (symbols.length > 0)
             fetcher.startInitialFetches(symbols)
+    }
+
+    // ── Token error handling ──────────────────────────────────────────────────
+    Timer {
+        id: tokenErrorCooldown
+        interval: c.tokenErrorCooldownMs
+        repeat: false
+        property bool active: false
+        onTriggered: active = false
+    }
+
+    Connections {
+        target: fetcher
+        function onTokenError(message) {
+            if (!tokenErrorCooldown.active) {
+                tokenErrorCooldown.active = true
+                tokenErrorCooldown.restart()
+                ToastService.showError("Markets", message)
+            }
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════════════

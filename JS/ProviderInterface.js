@@ -78,6 +78,22 @@
 
 var _providers = {};
 var _defaultProviderId = "";
+var _apiKeys = {};
+
+// ─── API Key Management ───────────────────────────────────────────────────────
+
+function setApiKey(providerId, apiKey) {
+    _apiKeys[providerId] = apiKey || "";
+}
+
+function getApiKey(providerId) {
+    return _apiKeys[providerId] || "";
+}
+
+// Returns true when a response indicates a missing or invalid API key
+function isApiKeyError(responseText) {
+    return !!(responseText && responseText.trim().startsWith("Get your apikey"));
+}
 
 function registerProvider(id, provider) {
     _providers[id] = provider;

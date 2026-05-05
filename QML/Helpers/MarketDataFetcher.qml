@@ -21,12 +21,16 @@ Item {
     Constants { id: c }
 
     // ── Inputs (bound from Widget.qml) ────────────────────────────────────────
-    property var  symbols:             []
-    property var  priceData:           ({})
-    property var  graphData:           ({})
-    property var  lastFetchTimes:      ({})
-    property var  _pendingFetches:     ({})
-    property var  _lastFullGraphFetch: ({})
+    property string apiKey:              ""
+    property var    symbols:             []
+    property var    priceData:           ({})
+    property var    graphData:           ({})
+    property var    lastFetchTimes:      ({})
+    property var    _pendingFetches:     ({})
+    property var    _lastFullGraphFetch: ({})
+
+    onApiKeyChanged:      Providers.setApiKey(c.stooqProviderId, apiKey)
+    Component.onCompleted: Providers.setApiKey(c.stooqProviderId, apiKey)
 
     // ── Signals ───────────────────────────────────────────────────────────────
     // Emit updated copies so Widget.qml can assign them back to its properties.
@@ -35,12 +39,13 @@ Item {
     signal fetchTimesUpdated(var newTimes)
     signal pendingFetchesUpdated(var newPending)
     signal fullGraphFetchUpdated(var newFullFetch)
+    signal tokenError(string message)
 
     // ── Polling timer ─────────────────────────────────────────────────────────
     Timer {
         id: checkTimer
         interval: JsK.POLL_INTERVAL_MS
-        running: symbols.length > 0
+        running: symbols.length > 0 && apiKey !== ""
         repeat: true
         onTriggered: _checkAndFetch()
     }
@@ -183,7 +188,6 @@ Item {
 
         var curlCmd = "curl -fsSL --connect-timeout 10 --max-time 20"
                     + " -H 'User-Agent: Mozilla/5.0 (X11; Linux x86_64)'"
-                    + " -b 'cookie_uu=p'"
                     + " '" + url + "'"
         if (tailLines > 0)
             curlCmd += " | tail -n " + tailLines
@@ -241,6 +245,10 @@ Item {
 
     // ── Parse and store completed fetch ───────────────────────────────────────
     function _onFetchComplete(symbolId, providerName, fetchType, chartRange, csvText) {
+        if (Providers.isApiKeyError(csvText)) {
+            tokenError("API key missing or invalid — enter your Stooq API key in plugin settings")
+            return
+        }
         var invert = Helpers.isInverted(symbols, symbolId)
 
         if (fetchType === "price") {
