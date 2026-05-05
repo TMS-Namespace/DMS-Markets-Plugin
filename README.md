@@ -47,6 +47,7 @@ Currently supported only one provider: [Stooq](https://stooq.com) that publishes
 - No endpoints are contacted other than the configured data provider.
 - All requests are made without cookies to minimize tracking potential. (However, see [Version History](#version-history))
 - `Stooq` is operated from `Poland` and is presumably `GDPR`-compliant. See their [Privacy & Cookie Policy](https://stooq.com/privacy/) and [Terms of Service](https://stooq.com/terms.html).
+- The API key is obfuscated and stored locally on your disk.
 
 ## Version History
 
