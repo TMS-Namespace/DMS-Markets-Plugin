@@ -54,10 +54,7 @@ PluginComponent {
 
     // Deobfuscate the stored key once and share it — used for validation and fetching.
     property string _apiKey: Helpers.deobfuscate(pluginData.stooqApiKey || "")
-    property bool hasApiKey: {
-        var k = _apiKey.trim()
-        return k.length >= c.apiKeyMinLength && k.length <= c.apiKeyMaxLength
-    }
+    property bool hasApiKey: Helpers.isValidApiKey(_apiKey)
 
     // ── Persisted symbol list ─────────────────────────────────────────────────
     property var symbols: {

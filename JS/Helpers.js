@@ -84,8 +84,17 @@ function deobfuscate(encoded) {
             for (var i = 0; i < encoded.length; i += 2)
                 out += String.fromCharCode(parseInt(encoded.substring(i, i + 2), 16) ^ key.charCodeAt((i / 2) % key.length))
             return out
-        } catch (e) {}
+        } catch (e) {
+            console.warn("[Markets/Helpers] deobfuscate failed:", e)
+        }
     }
     // Fallback: treat as a legacy plain-text value and return as-is
     return encoded
+}
+
+// ── API key validation ────────────────────────────────────────────────────────
+// Single source of truth for what constitutes a valid (plaintext) API key.
+function isValidApiKey(key) {
+    var k = (key || "").trim()
+    return k.length >= JsK.API_KEY_MIN_LENGTH && k.length <= JsK.API_KEY_MAX_LENGTH
 }

@@ -30,15 +30,9 @@ PluginSettings {
     property string _currentApiKey: ""
     // Drive hasApiKey and format validation off the live field text so the UI
     // reacts immediately while typing — not only after the debounce timer fires.
-    property bool   hasApiKey: {
-        var k = apiKeyField.text.trim()
-        return k.length >= c.apiKeyMinLength && k.length <= c.apiKeyMaxLength
-    }
+    property bool   hasApiKey:          Helpers.isValidApiKey(apiKeyField.text)
     // true only when field has content but it's outside the valid length range
-    property bool   _apiKeyFormatInvalid: {
-        var k = apiKeyField.text.trim()
-        return k.length > 0 && (k.length < c.apiKeyMinLength || k.length > c.apiKeyMaxLength)
-    }
+    property bool   _apiKeyFormatInvalid: apiKeyField.text.trim().length > 0 && !Helpers.isValidApiKey(apiKeyField.text)
 
     // ── Persistence helpers ──────────────────────────────────────────────────
     function saveValue(key, value) {
