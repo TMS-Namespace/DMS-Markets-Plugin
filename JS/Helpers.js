@@ -3,6 +3,9 @@
 // Usage:  import "../JS/Helpers.js" as Helpers
 //         Helpers.formatNumber(1234.5)
 
+.pragma library
+.import "Constants.js" as JsK
+
 // ── Number formatting with thousands separator ──────────────────────────────
 function formatNumber(number, decimals) {
     if (isNaN(number)) return "—"
@@ -55,4 +58,43 @@ function isInverted(symbols, symbolId) {
     for (var symbolIndex = 0; symbolIndex < symbols.length; symbolIndex++)
         if (symbols[symbolIndex].id === symbolId) return !!symbols[symbolIndex].invert
     return false
+}
+
+// ── API key obfuscation (XOR + hex) ─────────────────────────────────────────
+// Not cryptographic — just prevents the key from sitting as plain text on disk.
+// Uses hex instead of base64 to avoid btoa/atob (browser-only Web APIs).
+function obfuscate(text) {
+    if (!text) return ""
+    var key = JsK.API_KEY_OBF_SEED
+    var out = ""
+    for (var i = 0; i < text.length; i++) {
+        var xored = text.charCodeAt(i) ^ key.charCodeAt(i % key.length)
+        out += ("0" + xored.toString(16)).slice(-2)
+    }
+    return out
+}
+
+function deobfuscate(encoded) {
+    if (!encoded) return ""
+    // Hex-encoded XOR format: even-length string of hex digits
+    if (/^[0-9a-fA-F]+$/.test(encoded) && encoded.length % 2 === 0) {
+        try {
+            var key = JsK.API_KEY_OBF_SEED
+            var out = ""
+            for (var i = 0; i < encoded.length; i += 2)
+                out += String.fromCharCode(parseInt(encoded.substring(i, i + 2), 16) ^ key.charCodeAt((i / 2) % key.length))
+            return out
+        } catch (e) {
+            console.warn("[Markets/Helpers] deobfuscate failed:", e)
+        }
+    }
+    // Fallback: treat as a legacy plain-text value and return as-is
+    return encoded
+}
+
+// ── API key validation ────────────────────────────────────────────────────────
+// Single source of truth for what constitutes a valid (plaintext) API key.
+function isValidApiKey(key) {
+    var k = (key || "").trim()
+    return k.length >= JsK.API_KEY_MIN_LENGTH && k.length <= JsK.API_KEY_MAX_LENGTH
 }

@@ -26,6 +26,12 @@ function _safeFloat(rawValue) {
     return parseFloat(rawValue);
 }
 
+function _appendApiKey(url) {
+    var apiKey = PI.getApiKey("stooq");
+    if (apiKey) url += "&apikey=" + encodeURIComponent(apiKey);
+    return url;
+}
+
 // ─── Provider Registration ───────────────────────────────────────────────────
 
 PI.registerProvider("stooq", {
@@ -45,8 +51,9 @@ PI.registerProvider("stooq", {
     // /q/l/?s=SYMBOL&i=INTERVAL → Symbol,Date,Time,Open,High,Low,Close[,Volume]
     buildPriceUrl: function(symbol, interval) {
         var intervalParam = this.intervalMap[interval] || "h";
-        return "https://stooq.com/q/l/?s="
+        var url = "https://stooq.com/q/l/?s="
             + encodeURIComponent(symbol) + "&i=" + intervalParam;
+        return _appendApiKey(url);
     },
 
     // Returns: DataPoint[]
@@ -81,8 +88,9 @@ PI.registerProvider("stooq", {
     // /q/d/l/?s=SYMBOL&i=INTERVAL → Date,Open,High,Low,Close[,Volume]
     buildHistoryUrl: function(symbol, interval) {
         var intervalParam = this.intervalMap[interval] || "d";
-        return "https://stooq.com/q/d/l/?s="
+        var url = "https://stooq.com/q/d/l/?s="
             + encodeURIComponent(symbol) + "&i=" + intervalParam;
+        return _appendApiKey(url);
     },
 
     // Returns: DataPoint[]
@@ -150,8 +158,9 @@ PI.registerProvider("stooq", {
     // Uses the price endpoint with daily interval to check whether a symbol
     // returns valid data (not "N/D").
     buildValidationUrl: function(ticker) {
-        return "https://stooq.com/q/l/?s="
+        var url = "https://stooq.com/q/l/?s="
             + encodeURIComponent(ticker) + "&i=d";
+        return _appendApiKey(url);
     },
 
     // Returns: ValidationResult { valid: bool, message: string }
