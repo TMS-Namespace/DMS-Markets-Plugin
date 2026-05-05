@@ -29,8 +29,18 @@ Item {
     property var    _pendingFetches:     ({})
     property var    _lastFullGraphFetch: ({})
 
-    onApiKeyChanged:      Providers.setApiKey(c.stooqProviderId, apiKey)
-    Component.onCompleted: Providers.setApiKey(c.stooqProviderId, apiKey)
+    onApiKeyChanged: {
+        // Only push the key into the provider registry when it is valid;
+        // clear it when the key is removed or invalid to stop active fetches.
+        if (Helpers.isValidApiKey(apiKey))
+            Providers.setApiKey(c.stooqProviderId, apiKey)
+        else
+            Providers.setApiKey(c.stooqProviderId, "")
+    }
+    Component.onCompleted: {
+        if (Helpers.isValidApiKey(apiKey))
+            Providers.setApiKey(c.stooqProviderId, apiKey)
+    }
 
     // ── Signals ───────────────────────────────────────────────────────────────
     // Emit updated copies so Widget.qml can assign them back to its properties.

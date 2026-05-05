@@ -150,10 +150,8 @@ PluginSettings {
             repeat: false
             onTriggered: {
                 var newKey = apiKeyField.text.trim()
-                // Only persist and activate keys that are valid-length, or empty (to clear).
-                var isValid = newKey === "" ||
-                              (newKey.length >= c.apiKeyMinLength && newKey.length <= c.apiKeyMaxLength)
-                if (!isValid) return
+                // Only persist and activate valid-length keys, or empty string (to clear).
+                if (newKey !== "" && !Helpers.isValidApiKey(newKey)) return
                 root.saveValue(c.stooqApiKeySettingKey, Helpers.obfuscate(newKey))
                 root._currentApiKey = newKey
                 Providers.setApiKey(c.stooqProviderId, newKey)

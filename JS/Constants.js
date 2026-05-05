@@ -24,3 +24,6 @@ var MAX_RETRIES = 3
 var API_KEY_OBF_SEED         = "https://github.com/TMS-Namespace/DMS-Markets-Plugin"
 var API_KEY_MIN_LENGTH       = 25
 var API_KEY_MAX_LENGTH       = 40
+
+// ── API error detection ────────────────────────────────────────────────
+var API_KEY_ERROR_SENTINEL   = "get your apikey"   // matched case-insensitively

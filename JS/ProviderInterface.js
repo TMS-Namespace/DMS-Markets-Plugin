@@ -92,7 +92,7 @@ function getApiKey(providerId) {
 
 // Returns true when a response indicates a missing or invalid API key
 function isApiKeyError(responseText) {
-    return !!(responseText && responseText.trim().startsWith("Get your apikey"));
+    return !!(responseText && responseText.trim().toLowerCase().startsWith(JsK.API_KEY_ERROR_SENTINEL))
 }
 
 function registerProvider(id, provider) {

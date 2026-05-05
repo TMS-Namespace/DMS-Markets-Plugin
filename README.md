@@ -37,7 +37,7 @@ Currently supported only one provider: [Stooq](https://stooq.com) that publishes
 
 1. Open [stooq.com/q/d/?s=eurusd&get_apikey](https://stooq.com/q/d/?s=eurusd&get_apikey) in your browser.
 2. Enter the captcha code shown on the page.
-3. Copy the CSV download link shown at the bottom of the page (it contains your `apikey` value).
+3. Copy the CSV download link shown at the bottom of the page (it contains your `API` key value).
 4. Paste the link in some text editor, and copy the last part of the link after `apikey=`, and paste it in the plugin **Settings** before adding symbols.
 
 > **Limitation:** `Stooq` does not provide historical data for futures symbols (tickers matching `*.f`) through its public `API`. Price data will load, but charts will be unavailable for these symbols.
