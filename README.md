@@ -1,6 +1,6 @@
 # Markets Plugin for DMS
 
-A [DankMaterialShell](https://github.com/dankmaterial/DMS) widget plugin that displays near-live market prices and charts directly in your desktop shell, using free to obtain `API` key.
+A [DankMaterialShell](https://github.com/dankmaterial/DMS) widget plugin that displays near-live market prices and charts directly in your desktop shell, using free to obtain `API` key (No registration is required).
 
 | Dark Theme | Light Theme |
 |:---:|:---:|
