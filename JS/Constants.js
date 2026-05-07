@@ -3,8 +3,8 @@
 // Only values consumed by JS logic live here (fetching, parsing, timing).
 // UI constants (sizes, colors, strings) live in QML/Constants.qml.
 //
-// Usage in QML:  import "../JS/Constants.js" as JsK
-// Usage in JS:   .import "Constants.js" as JsK
+// Usage in QML:  import "../JS/Constants.js" as Constants
+// Usage in JS:   .import "Constants.js" as Constants
 
 .pragma library
 
@@ -25,5 +25,3 @@ var API_KEY_OBF_SEED         = "https://github.com/TMS-Namespace/DMS-Markets-Plu
 var API_KEY_MIN_LENGTH       = 25
 var API_KEY_MAX_LENGTH       = 40
 
-// ── API error detection ────────────────────────────────────────────────
-var API_KEY_ERROR_SENTINEL   = "get your apikey"   // matched case-insensitively

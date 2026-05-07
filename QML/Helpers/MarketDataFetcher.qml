@@ -13,7 +13,7 @@ import Quickshell
 import Quickshell.Io
 import "../../JS/ProviderInterface.js" as Providers
 import "../../JS/Helpers.js" as Helpers
-import "../../JS/Constants.js" as JsK
+import "../../JS/Constants.js" as Constants
 
 Item {
 
@@ -54,7 +54,7 @@ Item {
     // ── Polling timer ─────────────────────────────────────────────────────────
     Timer {
         id: checkTimer
-        interval: JsK.POLL_INTERVAL_MS
+        interval: Constants.POLL_INTERVAL_MS
         running: symbols.length > 0 && apiKey !== ""
         repeat: true
         onTriggered: _checkAndFetch()
@@ -84,7 +84,7 @@ Item {
                 var lastFull = _lastFullGraphFetch[symbol.id] || 0
                 var existing = graphData[symbol.id]
 
-                if (!existing || existing.length === 0 || now - lastFull >= JsK.FULL_GRAPH_REFRESH_MS) {
+                if (!existing || existing.length === 0 || now - lastFull >= Constants.FULL_GRAPH_REFRESH_MS) {
                     doFetch(symbol, "graph")
                 } else {
                     _mergeLatestIntoGraph(symbol)
@@ -96,12 +96,12 @@ Item {
     }
 
     // ── Retry queue ───────────────────────────────────────────────────────────
-    property int _maxRetries: JsK.MAX_RETRIES
+    property int _maxRetries: Constants.MAX_RETRIES
     property var _retryQueue: []
 
     Timer {
         id: retryTimer
-        interval: JsK.RETRY_INTERVAL_MS
+        interval: Constants.RETRY_INTERVAL_MS
         repeat: false
         onTriggered: _processRetryQueue()
     }
@@ -110,7 +110,7 @@ Item {
         var q = _retryQueue.slice()
         q.push({ sym: symbol, fetchType: fetchType, attempt: attempt })
         _retryQueue = q
-        retryTimer.interval = JsK.RETRY_INTERVAL_MS * attempt
+        retryTimer.interval = Constants.RETRY_INTERVAL_MS * attempt
         retryTimer.restart()
     }
 
@@ -123,7 +123,7 @@ Item {
                     "(attempt", item.attempt + "/" + _maxRetries + ")")
         doFetch(item.sym, item.fetchType, item.attempt)
         if (_retryQueue.length > 0) {
-            retryTimer.interval = JsK.RETRY_SUBSEQUENT_MS
+            retryTimer.interval = Constants.RETRY_SUBSEQUENT_MS
             retryTimer.restart()
         }
     }
@@ -372,7 +372,7 @@ Item {
 
     Timer {
         id: initialGraphTimer
-        interval: JsK.INITIAL_GRAPH_STAGGER_MS
+        interval: Constants.INITIAL_GRAPH_STAGGER_MS
         repeat: false
         onTriggered: _processInitialGraphQueue()
     }
@@ -401,7 +401,7 @@ Item {
         }
         fetchTimesUpdated(newTimes)
         _initialGraphQueue     = queue
-        initialGraphTimer.interval = JsK.INITIAL_GRAPH_DELAY_MS
+        initialGraphTimer.interval = Constants.INITIAL_GRAPH_DELAY_MS
         initialGraphTimer.restart()
     }
 

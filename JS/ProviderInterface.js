@@ -80,6 +80,9 @@ var _providers = {};
 var _defaultProviderId = "";
 var _apiKeys = {};
 
+// Sentinel matched case-insensitively against API responses to detect auth errors
+var _apiKeyErrorSentinel = "get your apikey";
+
 // ─── API Key Management ───────────────────────────────────────────────────────
 
 function setApiKey(providerId, apiKey) {
@@ -92,7 +95,7 @@ function getApiKey(providerId) {
 
 // Returns true when a response indicates a missing or invalid API key
 function isApiKeyError(responseText) {
-    return !!(responseText && responseText.trim().toLowerCase().startsWith(JsK.API_KEY_ERROR_SENTINEL))
+    return !!(responseText && responseText.trim().toLowerCase().startsWith(_apiKeyErrorSentinel))
 }
 
 function registerProvider(id, provider) {
