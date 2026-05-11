@@ -69,8 +69,10 @@ Item {
     // ── Background card ──────────────────────────────────────────────────────
     Rectangle {
         anchors.fill: parent
-        radius: Theme.cornerRadius
-        color:  Theme.surfaceContainerHigh
+        radius:       Theme.cornerRadius
+        color:        Theme.nestedSurface
+        border.color: Theme.outlineMedium
+        border.width: 1
     }
 
     // ── Name column ──────────────────────────────────────────────────────────
