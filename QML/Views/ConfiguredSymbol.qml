@@ -28,10 +28,12 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        radius: Theme.cornerRadius
+        radius:       Theme.cornerRadius
         color: configRow.isEditing
                ? Theme.primaryContainer
-               : (rowHover.containsMouse ? Theme.surfaceContainerHighest : Theme.surfaceContainerHigh)
+               : (rowHover.containsMouse ? Theme.surfaceContainerHighest : Theme.nestedSurface)
+        border.color: configRow.isEditing ? Theme.primary : Theme.outlineMedium
+        border.width: 1
 
         MouseArea {
             id: rowHover

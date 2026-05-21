@@ -12,6 +12,7 @@ import qs.Common
 import qs.Services
 import qs.Modules.Plugins
 import qs.Widgets
+import "../JS/Helpers.js" as Helpers
 import "../JS/ProviderInterface.js" as Providers
 import "../JS/StooqProvider.js" as StooqProvider
 import "./Helpers"
@@ -26,6 +27,12 @@ PluginSettings {
     property var  symbolsList:  []
     property bool isValidating: false
     property int  editIndex:    -1    // -1 = adding new, >= 0 = editing existing
+    property string _currentApiKey: ""
+    // Drive hasApiKey and format validation off the live field text so the UI
+    // reacts immediately while typing — not only after the debounce timer fires.
+    property bool   hasApiKey:          Helpers.isValidApiKey(apiKeyField.text)
+    // true only when field has content but it's outside the valid length range
+    property bool   _apiKeyFormatInvalid: apiKeyField.text.trim().length > 0 && !Helpers.isValidApiKey(apiKeyField.text)
 
     // ── Persistence helpers ──────────────────────────────────────────────────
     function saveValue(key, value) {
@@ -46,11 +53,16 @@ PluginSettings {
     }
 
     onPluginServiceChanged: {
-        if (pluginService)
+        if (pluginService) {
             refreshSymbolsList()
+            _initApiKey()
+        }
     }
 
-    Component.onCompleted: refreshSymbolsList()
+    Component.onCompleted: {
+        refreshSymbolsList()
+        _initApiKey()
+    }
 
     // ═══════════════════════════════════════════════════════════════════════
     //  HEADER
@@ -107,14 +119,220 @@ PluginSettings {
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    //  CHART COLORS
+    //  API KEY
     // ═══════════════════════════════════════════════════════════════════════
 
     StyledText {
         width: parent.width
+        text: "Data Provider API Key"
+        font.pixelSize: Theme.fontSizeLarge
+        font.weight: Font.Bold
+        color: Theme.surfaceText
+        topPadding: Theme.spacingM
+    }
+
+    StyledText {
+        width: parent.width
+        text: "A free Stooq API key is required to fetch market data."
+        font.pixelSize: Theme.fontSizeSmall
+        color: Theme.surfaceVariantText
+        wrapMode: Text.WordWrap
+    }
+
+    Item {
+        id: apiKeyFieldContainer
+        width: parent.width
+        height: c.compactRowHeight
+
+        Timer {
+            id: apiKeySaveTimer
+            interval: c.apiKeySaveDebounceMs
+            repeat: false
+            onTriggered: {
+                var newKey = apiKeyField.text.trim()
+                // Only persist and activate valid-length keys, or empty string (to clear).
+                if (newKey !== "" && !Helpers.isValidApiKey(newKey)) return
+                root.saveValue(c.stooqApiKeySettingKey, Helpers.obfuscate(newKey))
+                root._currentApiKey = newKey
+                Providers.setApiKey(c.stooqProviderId, newKey)
+            }
+        }
+
+        Rectangle {
+            anchors.fill: parent
+            radius: Theme.cornerRadius
+            color: Theme.surfaceContainer
+            border.color: apiKeyField.activeFocus ? Theme.primary : (root._apiKeyFormatInvalid ? Theme.error : Theme.outlineVariant)
+            border.width: apiKeyField.activeFocus ? 2 : 1
+
+            TextInput {
+                id: apiKeyField
+                anchors {
+                    left: parent.left
+                    right: apiKeyRevealBtn.left
+                    top: parent.top
+                    bottom: parent.bottom
+                    leftMargin: Theme.spacingS
+                    rightMargin: Theme.spacingXS
+                }
+                verticalAlignment: TextInput.AlignVCenter
+                echoMode: apiKeyRevealBtn.revealed ? TextInput.Normal : TextInput.Password
+                color: Theme.surfaceText
+                font.pixelSize: Theme.fontSizeMedium
+                clip: true
+                selectByMouse: true
+
+                property bool _initializing: false
+                onTextChanged: { if (!_initializing) apiKeySaveTimer.restart() }
+
+                Text {
+                    anchors.fill: parent
+                    text: "Paste your Stooq API key here"
+                    color: Theme.surfaceVariantText
+                    font.pixelSize: Theme.fontSizeMedium
+                    verticalAlignment: Text.AlignVCenter
+                    visible: apiKeyField.text.length === 0
+                }
+            }
+
+            Rectangle {
+                id: apiKeyRevealBtn
+                property bool revealed: false
+                width: c.compactRowHeight
+                height: c.compactRowHeight
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                color: "transparent"
+
+                DankIcon {
+                    name: apiKeyRevealBtn.revealed ? "visibility_off" : "visibility"
+                    size: Theme.fontSizeMedium
+                    color: apiKeyRevealMouse.containsMouse ? Theme.primary : Theme.surfaceVariantText
+                    anchors.centerIn: parent
+                }
+
+                MouseArea {
+                    id: apiKeyRevealMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: apiKeyRevealBtn.revealed = !apiKeyRevealBtn.revealed
+                }
+            }
+        }
+    }
+
+    Text {
+        width: parent.width
+        visible: root._apiKeyFormatInvalid
+        text: "Invalid key: expected " + c.apiKeyMinLength + "-" + c.apiKeyMaxLength + " characters"
+        font.pixelSize: Theme.fontSizeSmall
+        color: "#F44336"
+        wrapMode: Text.WordWrap
+    }
+
+    Column {
+        width: parent.width
+        spacing: 0
+
+        Item {
+            id: apiKeyHelpHeader
+            width: parent.width
+            height: c.compactRowHeight
+            property bool expanded: false
+
+            Row {
+                id: apiKeyHelpRow
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: Theme.spacingXS
+
+                DankIcon {
+                    name: apiKeyHelpHeader.expanded ? "expand_less" : "expand_more"
+                    size: Theme.fontSizeSmall
+                    color: Theme.primary
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+
+                StyledText {
+                    text: "How to get a free Stooq API key"
+                    font.pixelSize: Theme.fontSizeSmall
+                    color: Theme.primary
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+            }
+
+            MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: apiKeyHelpHeader.expanded = !apiKeyHelpHeader.expanded
+            }
+        }
+
+        Column {
+            id: apiKeyHelpContent
+            width: parent.width
+            visible: apiKeyHelpHeader.expanded
+            spacing: Theme.spacingXS
+            topPadding: Theme.spacingXS
+
+            Text {
+                width: parent.width
+                textFormat: Text.RichText
+                text: "1.  Open <a href='https://stooq.com/q/d/?s=eurusd&amp;get_apikey'>stooq.com/q/d/?s=eurusd&amp;get_apikey</a> in your browser."
+                font.pixelSize: Theme.fontSizeSmall
+                color: Theme.surfaceVariantText
+                linkColor: Theme.primary
+                wrapMode: Text.WordWrap
+                onLinkActivated: function(link) { Qt.openUrlExternally(link) }
+                MouseArea {
+                    anchors.fill: parent
+                    acceptedButtons: Qt.NoButton
+                    cursorShape: parent.hoveredLink !== "" ? Qt.PointingHandCursor : Qt.ArrowCursor
+                }
+            }
+            StyledText {
+                width: parent.width
+                text: "2.  Enter the captcha code shown on the page."
+                font.pixelSize: Theme.fontSizeSmall
+                color: Theme.surfaceVariantText
+                wrapMode: Text.WordWrap
+            }
+            StyledText {
+                width: parent.width
+                text: "3.  Copy the CSV download link at the bottom of the page (it contains your apikey value)."
+                font.pixelSize: Theme.fontSizeSmall
+                color: Theme.surfaceVariantText
+                wrapMode: Text.WordWrap
+            }
+            StyledText {
+                width: parent.width
+                text: "4.  Paste the link in some text editor, and copy the last part (the key) of the link after `apikey=`, and paste it in the above field."
+                font.pixelSize: Theme.fontSizeSmall
+                color: Theme.surfaceVariantText
+                wrapMode: Text.WordWrap
+            }
+        }
+    }
+
+    Rectangle { width: parent.width; height: 1; color: Theme.outlineVariant }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    //  CHART COLORS
+    // ═══════════════════════════════════════════════════════════════════════
+
+    Column {
+        id: settingsBody
+        width: parent.width
+        spacing: Theme.spacingS
+        enabled: root.hasApiKey
+        opacity: root.hasApiKey ? 1.0 : 0.5
+        Behavior on opacity { NumberAnimation { duration: c.apiKeyOpacityAnimMs } }
+
+    StyledText {
+        width: parent.width
         text: "Chart Colors"
-        font.pixelSize: Theme.fontSizeMedium
-        font.weight: Font.DemiBold
+        font.pixelSize: Theme.fontSizeLarge
+        font.weight: Font.Bold
         color: Theme.surfaceText
         topPadding: Theme.spacingM
     }
@@ -176,8 +394,8 @@ PluginSettings {
     StyledText {
         width: parent.width
         text: "Popup Layout"
-        font.pixelSize: Theme.fontSizeMedium
-        font.weight: Font.DemiBold
+        font.pixelSize: Theme.fontSizeLarge
+        font.weight: Font.Bold
         color: Theme.surfaceText
         topPadding: Theme.spacingM
     }
@@ -205,7 +423,7 @@ PluginSettings {
 
                 StyledText {
                     text: "Visible Symbol Rows"
-                    font.pixelSize: Theme.fontSizeMedium
+                    font.pixelSize: Theme.fontSizeLarge
                     color: Theme.surfaceText
                 }
 
@@ -213,7 +431,7 @@ PluginSettings {
 
                 StyledText {
                     text: popoutSlider.value.toFixed(0)
-                    font.pixelSize: Theme.fontSizeMedium
+                    font.pixelSize: Theme.fontSizeLarge
                     font.weight: Font.Bold
                     color: Theme.primary
                 }
@@ -286,8 +504,8 @@ PluginSettings {
     StyledText {
         width: parent.width
         text: "Symbol Row Display"
-        font.pixelSize: Theme.fontSizeMedium
-        font.weight: Font.DemiBold
+        font.pixelSize: Theme.fontSizeLarge
+        font.weight: Font.Bold
         color: Theme.surfaceText
         topPadding: Theme.spacingM
     }
@@ -337,8 +555,8 @@ PluginSettings {
     StyledText {
         width: parent.width
         text: root.editIndex >= 0 ? "Edit Symbol" : "Add New Symbol"
-        font.pixelSize: Theme.fontSizeMedium
-        font.weight: Font.DemiBold
+        font.pixelSize: Theme.fontSizeLarge
+        font.weight: Font.Bold
         color: Theme.surfaceText
         topPadding: Theme.spacingM
     }
@@ -521,8 +739,8 @@ PluginSettings {
     StyledText {
         width: parent.width
         text: "Configured Symbols"
-        font.pixelSize: Theme.fontSizeMedium
-        font.weight: Font.DemiBold
+        font.pixelSize: Theme.fontSizeLarge
+        font.weight: Font.Bold
         color: Theme.surfaceText
         topPadding: Theme.spacingS
     }
@@ -543,6 +761,8 @@ PluginSettings {
             onMovedDown: root.moveSymbol(index, 1)
         }
     }
+
+    } // settingsBody
 
     // ═══════════════════════════════════════════════════════════════════════
     //  FUNCTIONS
@@ -580,6 +800,10 @@ PluginSettings {
             if (httpRequest.readyState === XMLHttpRequest.DONE) {
                 isValidating = false
                 if (httpRequest.status === 200 && httpRequest.responseText) {
+                    if (Providers.isApiKeyError(httpRequest.responseText)) {
+                        ToastService.showError("Markets", "API key missing or invalid — check plugin settings")
+                        return
+                    }
                     var result = Providers.parseValidationResponse(provider, httpRequest.responseText)
                     if (result.valid) {
                         doSaveSymbol(ticker, name)
@@ -592,7 +816,6 @@ PluginSettings {
             }
         }
         httpRequest.open("GET", url)
-        httpRequest.setRequestHeader("Cookie", "")
         httpRequest.send()
     }
 
@@ -681,5 +904,18 @@ PluginSettings {
         if (editIndex === symbolIndex) editIndex = targetIndex
         else if (editIndex === targetIndex) editIndex = symbolIndex
         Qt.callLater(refreshSymbolsList)
+    }
+
+    function _initApiKey() {
+        if (!pluginService) return
+        var stored = loadValue(c.stooqApiKeySettingKey, "")
+        var key = Helpers.deobfuscate(stored)
+        _currentApiKey = key
+        Providers.setApiKey(c.stooqProviderId, key)
+        if (apiKeyField.text !== key) {
+            apiKeyField._initializing = true
+            apiKeyField.text = key
+            apiKeyField._initializing = false
+        }
     }
 }

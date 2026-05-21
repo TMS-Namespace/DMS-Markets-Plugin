@@ -38,6 +38,10 @@ Item {
             if (req.readyState !== XMLHttpRequest.DONE) return
             isSearching = false
             if (req.status === 200 && req.responseText) {
+                if (Providers.isApiKeyError(req.responseText)) {
+                    ToastService.showError("Markets", "API key missing or invalid — check plugin settings")
+                    return
+                }
                 var found = Providers.parseSearchResponse(searcher.providerId, req.responseText)
                 results = found
                 if (c.devMode) console.log("[Markets/Searcher] results:", found.length, "for", query)
@@ -49,7 +53,6 @@ Item {
             }
         }
         req.open("GET", url)
-        req.setRequestHeader("Cookie", "")
         req.send()
     }
 
