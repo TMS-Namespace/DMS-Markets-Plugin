@@ -60,6 +60,26 @@ Currently supported only one provider: [Stooq](https://stooq.com) that publishes
 - v1.0.0 :
   - Initial version.
 
+## Install
+
+### Method 1
+
+In DMS:
+
+1. Open `Settings -> Plugins`
+2. Click `Scan for Plugins`
+3. Enable `GitHub Inbox`
+4. Add widget to DankBar
+
+### Method 2
+
+Or clone repo, and run (this will add `Symlink` to plugin folder):
+
+```bash
+chmod +x Support/setup-symlink.sh
+Support/setup-symlink.sh
+```
+
 ## Disclaimers
 
 - The developer has no affiliation with any data provider.
