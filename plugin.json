@@ -13,8 +13,8 @@
     "settings": "./QML/Settings.qml",
     "permissions": ["settings_read", "settings_write", "process", "network"],
     "requires_dms": ">=1.2.0",
-    "distro": ["fedora"],
+    "distro": ["any"],
     "compositors": ["any"],
-    "dependencies": ["any"],
+    "dependencies": ["curl"],
     "screenshot": "https://github.com/TMS-Namespace/DMS-Markets-Plugin/blob/main/Images/Dark-Popup.png"
 }
