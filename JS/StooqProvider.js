@@ -4,16 +4,12 @@
 // instruments: forex, indices, commodities, crypto, equities.
 //
 // Endpoints:
-//   Latest candle (no header):   GET /q/l/?s=<symbol>&i=<interval>
-//   Historical data (header):    GET /q/d/l/?s=<symbol>&i=<interval>
-//   Symbol search / autocomplete: GET /cmp/?q=<query>
+//   Latest candle/history CSV:   GET /q/d/l/?s=<symbol>&i=<interval>
 //   Symbol page:                  https://stooq.com/q/?s=<symbol>
 //
-// Common symbols:
-//   dx.f    USDX (Dollar Index)       eurusd  EUR/USD
-//   gbpusd  GBP/USD                   usdjpy  USD/JPY
-//   gc.f    Gold futures              si.f    Silver futures
-//   cl.f    Crude Oil futures          btcusd  Bitcoin/USD
+// Common CSV symbols:
+//   eurusd  EUR/USD                   gbpusd  GBP/USD
+//   usdjpy  USD/JPY                   btcusd  Bitcoin/USD
 //   ^spx    S&P 500                   ^dji    Dow Jones
 //   ^ndq    Nasdaq 100                ^ftse   FTSE 100
 
@@ -48,10 +44,15 @@ PI.registerProvider("stooq", {
 
     // ── Price ────────────────────────────────────────────────────────────
 
-    // /q/l/?s=SYMBOL&i=INTERVAL → Symbol,Date,Time,Open,High,Low,Close[,Volume]
+    // /q/d/l/?s=SYMBOL&i=INTERVAL → Date,Open,High,Low,Close[,Volume]
     buildPriceUrl: function(symbol, interval) {
-        var intervalParam = this.intervalMap[interval] || "h";
-        var url = "https://stooq.com/q/l/?s="
+        // Stooq's former latest-candle endpoint (/q/l/) now returns 404.
+        // The downloadable CSV endpoint currently serves daily/weekly/monthly
+        // data with an API key, so intraday selections fall back to daily.
+        var intervalParam = (interval === "1w" || interval === "1M")
+            ? this.intervalMap[interval]
+            : "d";
+        var url = "https://stooq.com/q/d/l/?s="
             + encodeURIComponent(symbol) + "&i=" + intervalParam;
         return _appendApiKey(url);
     },
@@ -63,21 +64,23 @@ PI.registerProvider("stooq", {
         for (var lineIndex = 0; lineIndex < lines.length; lineIndex++) {
             var line = lines[lineIndex].trim();
             if (!line) continue;
-            var fields = line.split(",");
-            if (fields.length < 7) continue;
+            if (line === "No data") continue;
 
-            var open = _safeFloat(fields[3]);
+            var fields = line.split(",");
+            if (fields.length < 5) continue;
+
+            var open = _safeFloat(fields[1]);
             if (isNaN(open)) continue;           // skip header / invalid rows
 
             results.push({
-                symbol: fields[0],
-                date:   fields[1],
-                time:   fields[2],
+                symbol: "",
+                date:   fields[0],
+                time:   "",
                 open:   open,
-                high:   _safeFloat(fields[4]),
-                low:    _safeFloat(fields[5]),
-                close:  _safeFloat(fields[6]),
-                volume: fields.length > 7 ? (parseInt(fields[7]) || 0) : 0
+                high:   _safeFloat(fields[2]),
+                low:    _safeFloat(fields[3]),
+                close:  _safeFloat(fields[4]),
+                volume: fields.length > 5 ? (parseInt(fields[5]) || 0) : 0
             });
         }
         return results;
@@ -117,63 +120,6 @@ PI.registerProvider("stooq", {
             });
         }
         return results;
-    },
-
-    // ── Search ───────────────────────────────────────────────────────────
-
-    // /cmp/?q=QUERY → window.cmp_r('ID~Name~Market~Price~Change%~...|...')
-    buildSearchUrl: function(query) {
-        return "https://stooq.com/cmp/?q=" + encodeURIComponent(query);
-    },
-
-    // Returns: SearchResult[]
-    parseSearchResponse: function(responseText) {
-        var text  = responseText || "";
-        var start = text.indexOf("'");
-        var end   = text.lastIndexOf("'");
-        if (start < 0 || end <= start) return [];
-
-        var innerContent = text.substring(start + 1, end);
-        innerContent = innerContent.replace(/<b>/g, "").replace(/<\/b>/g, "");
-
-        var entries = innerContent.split("|");
-        var results = [];
-        for (var entryIndex = 0; entryIndex < entries.length; entryIndex++) {
-            var parts = entries[entryIndex].split("~");
-            if (parts.length >= 5) {
-                results.push({
-                    id:        parts[0].toLowerCase(),
-                    name:      parts[1],
-                    market:    parts[2],
-                    price:     parts[3],
-                    changeStr: parts[4]
-                });
-            }
-        }
-        return results;
-    },
-
-    // ── Validation ───────────────────────────────────────────────────────
-
-    // Uses the price endpoint with daily interval to check whether a symbol
-    // returns valid data (not "N/D").
-    buildValidationUrl: function(ticker) {
-        var url = "https://stooq.com/q/l/?s="
-            + encodeURIComponent(ticker) + "&i=d";
-        return _appendApiKey(url);
-    },
-
-    // Returns: ValidationResult { valid: bool, message: string }
-    parseValidationResponse: function(responseText) {
-        if (!responseText || !responseText.trim()) {
-            return { valid: false, message: "Empty response" };
-        }
-        var firstLine = responseText.trim().split("\n")[0];
-        var fields    = firstLine.split(",");
-        if (fields.length >= 7 && fields[6] !== "N/D" && !isNaN(parseFloat(fields[6]))) {
-            return { valid: true, message: "" };
-        }
-        return { valid: false, message: "Symbol not found" };
     },
 
     // ── Navigation ───────────────────────────────────────────────────────

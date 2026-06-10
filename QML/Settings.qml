@@ -3,7 +3,6 @@
 // Provides the configuration interface for the Markets plugin:
 // - Chart colors (up/down)
 // - Popup layout (visible rows slider)
-// - Symbol search (via SymbolSearch component)
 // - Add/edit symbol form
 // - Configured symbols list (via ConfiguredSymbol component)
 
@@ -25,7 +24,6 @@ PluginSettings {
     Constants { id: c }
 
     property var  symbolsList:  []
-    property bool isValidating: false
     property int  editIndex:    -1    // -1 = adding new, >= 0 = editing existing
     property string _currentApiKey: ""
     // Drive hasApiKey and format validation off the live field text so the UI
@@ -254,7 +252,7 @@ PluginSettings {
                 }
 
                 StyledText {
-                    text: "How to get a free Stooq API key"
+                    text: "Stooq API key availability"
                     font.pixelSize: Theme.fontSizeSmall
                     color: Theme.primary
                     anchors.verticalCenter: parent.verticalCenter
@@ -278,35 +276,14 @@ PluginSettings {
             Text {
                 width: parent.width
                 textFormat: Text.RichText
-                text: "1.  Open <a href='https://stooq.com/q/d/?s=eurusd&amp;get_apikey'>stooq.com/q/d/?s=eurusd&amp;get_apikey</a> in your browser."
-                font.pixelSize: Theme.fontSizeSmall
-                color: Theme.surfaceVariantText
-                linkColor: Theme.primary
-                wrapMode: Text.WordWrap
-                onLinkActivated: function(link) { Qt.openUrlExternally(link) }
-                MouseArea {
-                    anchors.fill: parent
-                    acceptedButtons: Qt.NoButton
-                    cursorShape: parent.hoveredLink !== "" ? Qt.PointingHandCursor : Qt.ArrowCursor
-                }
-            }
-            StyledText {
-                width: parent.width
-                text: "2.  Enter the captcha code shown on the page."
+                text: "Stooq's previous API-key request page currently returns an empty page, so the plugin cannot guide you through generating a new key right now."
                 font.pixelSize: Theme.fontSizeSmall
                 color: Theme.surfaceVariantText
                 wrapMode: Text.WordWrap
             }
             StyledText {
                 width: parent.width
-                text: "3.  Copy the CSV download link at the bottom of the page (it contains your apikey value)."
-                font.pixelSize: Theme.fontSizeSmall
-                color: Theme.surfaceVariantText
-                wrapMode: Text.WordWrap
-            }
-            StyledText {
-                width: parent.width
-                text: "4.  Paste the link in some text editor, and copy the last part (the key) of the link after `apikey=`, and paste it in the above field."
+                text: "Existing valid keys can still be pasted above, but if Stooq returns an API-key error, data fetching will stay unavailable until Stooq restores key issuance or this plugin adds another provider."
                 font.pixelSize: Theme.fontSizeSmall
                 color: Theme.surfaceVariantText
                 wrapMode: Text.WordWrap
@@ -549,7 +526,7 @@ PluginSettings {
     Rectangle { width: parent.width; height: 1; color: Theme.outlineVariant }
 
     // ═══════════════════════════════════════════════════════════════════════
-    //  SYMBOL SEARCH + ADD/EDIT
+    //  SYMBOL LOOKUP + ADD/EDIT
     // ═══════════════════════════════════════════════════════════════════════
 
     StyledText {
@@ -561,34 +538,113 @@ PluginSettings {
         topPadding: Theme.spacingM
     }
 
-    SymbolSearch {
-        id: symbolSearch
+    Item {
         width: parent.width
-        providerId: providerSelect.value || Providers.getDefaultProviderId()
+        height: c.compactRowHeight
 
-        onSymbolSelected: function(symbolId, symbolName) {
-            root.saveValue("_addTicker", symbolId)
-            root.saveValue("_addName", symbolName)
-            Qt.callLater(function() { root.refreshSymbolsList() })
+        Rectangle {
+            anchors.fill: parent
+            radius: Theme.cornerRadius
+            color: stooqSearchMouseArea.containsMouse ? Theme.primary : Theme.surfaceContainerHighest
+            border.color: Theme.primary
+            border.width: 1
+
+            Row {
+                anchors.centerIn: parent
+                spacing: Theme.spacingXS
+
+                DankIcon {
+                    name: "open_in_new"
+                    size: Theme.fontSizeMedium
+                    color: stooqSearchMouseArea.containsMouse ? Theme.surfaceContainer : Theme.primary
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+
+                StyledText {
+                    text: "Open Stooq Symbol Search"
+                    font.pixelSize: Theme.fontSizeMedium
+                    font.weight: Font.Medium
+                    color: stooqSearchMouseArea.containsMouse ? Theme.surfaceContainer : Theme.primary
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+            }
+
+            MouseArea {
+                id: stooqSearchMouseArea
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: Qt.openUrlExternally("https://stooq.com")
+            }
         }
     }
 
-    StringSetting {
+    Column {
         id: tickerInput
-        settingKey: "_addTicker"
-        label: "Symbol Ticker"
-        description: "Provider-specific symbol — fill manually or pick from search above"
-        placeholder: "eurusd"
-        defaultValue: ""
+        width: parent.width
+        spacing: Theme.spacingS
+
+        property alias value: tickerField.text
+
+        Component.onCompleted: Qt.callLater(function() {
+            tickerInput.value = root.loadValue("_addTicker", "")
+        })
+
+        StyledText {
+            text: "Symbol Ticker"
+            font.pixelSize: Theme.fontSizeMedium
+            font.weight: Font.Medium
+            color: Theme.surfaceText
+        }
+
+        StyledText {
+            text: "Provider-specific symbol from Stooq"
+            font.pixelSize: Theme.fontSizeSmall
+            color: Theme.surfaceVariantText
+            width: parent.width
+            wrapMode: Text.WordWrap
+        }
+
+        DankTextField {
+            id: tickerField
+            width: parent.width
+            placeholderText: "eurusd"
+            onEditingFinished: root.saveValue("_addTicker", text.trim())
+        }
     }
 
-    StringSetting {
+    Column {
         id: nameInput
-        settingKey: "_addName"
-        label: "Display Name"
-        description: "Short label shown in the bar and popup (e.g., EUR/USD, Gold)"
-        placeholder: "EUR/USD"
-        defaultValue: ""
+        width: parent.width
+        spacing: Theme.spacingS
+
+        property alias value: nameField.text
+
+        Component.onCompleted: Qt.callLater(function() {
+            nameInput.value = root.loadValue("_addName", "")
+        })
+
+        StyledText {
+            text: "Display Name"
+            font.pixelSize: Theme.fontSizeMedium
+            font.weight: Font.Medium
+            color: Theme.surfaceText
+        }
+
+        StyledText {
+            text: "Short label shown in the bar and popup (e.g., EUR/USD, Gold)"
+            font.pixelSize: Theme.fontSizeSmall
+            color: Theme.surfaceVariantText
+            width: parent.width
+            wrapMode: Text.WordWrap
+        }
+
+        DankTextField {
+            id: nameField
+            width: parent.width
+            placeholderText: "EUR/USD"
+            onEditingFinished: root.saveValue("_addName", text.trim())
+        }
     }
 
     SelectionSetting {
@@ -636,20 +692,38 @@ PluginSettings {
         defaultValue: "1M"
     }
 
-    ToggleSetting {
+    DankToggle {
         id: showChangeToggle
-        settingKey: "_addShowChange"
-        label: "Show Change When Pinned"
+        width: parent.width
+        property bool value: false
+        text: "Show Change When Pinned"
         description: "Display price change in the bar when this symbol is pinned"
-        defaultValue: false
+        checked: value
+        Component.onCompleted: Qt.callLater(function() {
+            showChangeToggle.value = Helpers.boolValue(root.loadValue("_addShowChange", false), false)
+        })
+        onToggled: checkedValue => {
+            showChangeToggle.value = checkedValue
+            root.saveValue("_addShowChange", checkedValue)
+            root.saveEditedSymbolFlags()
+        }
     }
 
-    ToggleSetting {
+    DankToggle {
         id: invertToggle
-        settingKey: "_addInvert"
-        label: "Invert Value (1/x)"
+        width: parent.width
+        property bool value: false
+        text: "Invert Value (1/x)"
         description: "Show and chart the reciprocal of the price (e.g., USD/EUR instead of EUR/USD)"
-        defaultValue: false
+        checked: value
+        Component.onCompleted: Qt.callLater(function() {
+            invertToggle.value = Helpers.boolValue(root.loadValue("_addInvert", false), false)
+        })
+        onToggled: checkedValue => {
+            invertToggle.value = checkedValue
+            root.saveValue("_addInvert", checkedValue)
+            root.saveEditedSymbolFlags()
+        }
     }
 
     // ── Add / Update / Cancel buttons ────────────────────────────────────────
@@ -670,7 +744,7 @@ PluginSettings {
                 property bool canAdd: {
                     var ticker      = (tickerInput.value || "").trim()
                     var displayName = (nameInput.value || "").trim()
-                    return ticker !== "" && displayName !== "" && !root.isValidating
+                    return ticker !== "" && displayName !== ""
                 }
 
                 color: canAdd
@@ -682,8 +756,7 @@ PluginSettings {
 
                 StyledText {
                     anchors.centerIn: parent
-                    text: root.isValidating ? "Verifying…"
-                        : (root.editIndex >= 0 ? "Update Symbol" : "Add Symbol")
+                    text: root.editIndex >= 0 ? "Update Symbol" : "Add Symbol"
                     font.pixelSize: Theme.fontSizeMedium
                     font.weight: Font.Medium
                     color: addButton.canAdd
@@ -697,7 +770,7 @@ PluginSettings {
                     hoverEnabled: true
                     cursorShape: addButton.canAdd ? Qt.PointingHandCursor : Qt.ArrowCursor
                     enabled: addButton.canAdd
-                    onClicked: root.validateAndAdd()
+                    onClicked: root.addOrUpdateSymbol()
                 }
             }
 
@@ -768,7 +841,7 @@ PluginSettings {
     //  FUNCTIONS
     // ═══════════════════════════════════════════════════════════════════════
 
-    function validateAndAdd() {
+    function addOrUpdateSymbol() {
         var ticker = (tickerInput.value || "").trim()
         var name   = (nameInput.value || "").trim()
         if (!ticker || !name) return
@@ -782,49 +855,15 @@ PluginSettings {
             }
         }
 
-        // When editing and ticker unchanged, skip re-validation
-        if (editIndex >= 0 && symbolsList[editIndex].id === ticker) {
-            doSaveSymbol(ticker, name)
-            return
-        }
-
-        // Validate symbol exists via the selected provider
-        var provider = providerSelect.value || Providers.getDefaultProviderId()
-        var url = Providers.buildValidationUrl(provider, ticker)
-        if (!url) { doSaveSymbol(ticker, name); return }
-
-        var httpRequest = new XMLHttpRequest()
-        isValidating = true
-
-        httpRequest.onreadystatechange = function() {
-            if (httpRequest.readyState === XMLHttpRequest.DONE) {
-                isValidating = false
-                if (httpRequest.status === 200 && httpRequest.responseText) {
-                    if (Providers.isApiKeyError(httpRequest.responseText)) {
-                        ToastService.showError("Markets", "API key missing or invalid — check plugin settings")
-                        return
-                    }
-                    var result = Providers.parseValidationResponse(provider, httpRequest.responseText)
-                    if (result.valid) {
-                        doSaveSymbol(ticker, name)
-                    } else {
-                        ToastService.showError("Markets", "Symbol '" + ticker + "' — " + (result.message || "not found"))
-                    }
-                } else {
-                    ToastService.showError("Markets", "Could not verify '" + ticker + "' — check connection")
-                }
-            }
-        }
-        httpRequest.open("GET", url)
-        httpRequest.send()
+        doSaveSymbol(ticker, name)
     }
 
     function doSaveSymbol(ticker, name) {
         var provider   = providerSelect.value || Providers.getDefaultProviderId()
         var priceRange = priceRangeSelect.value || "1h"
         var chartRange = chartRangeSelect.value || "1M"
-        var showChange = showChangeToggle.value || false
-        var invert     = invertToggle.value || false
+        var showChange = Helpers.boolValue(showChangeToggle.value, false)
+        var invert     = Helpers.boolValue(invertToggle.value, false)
 
         var symbolsCopy = JSON.parse(JSON.stringify(symbolsList))
         var entry = {
@@ -857,13 +896,13 @@ PluginSettings {
         if (editIndex === symbolIndex) { cancelEdit(); return }
         var symbol = symbolsList[symbolIndex]
         editIndex  = symbolIndex
-        root.saveValue("_addTicker",     symbol.id || "")
-        root.saveValue("_addName",       symbol.name || "")
-        root.saveValue("_addProvider",   symbol.provider || Providers.getDefaultProviderId())
-        root.saveValue("_addPriceRange", symbol.priceInterval || "1h")
-        root.saveValue("_addChartRange", symbol.graphInterval || "1M")
-        root.saveValue("_addShowChange", symbol.showChangeWhenPinned ? true : false)
-        root.saveValue("_addInvert",     symbol.invert ? true : false)
+        setDraftValues(symbol.id || "",
+                       symbol.name || "",
+                       symbol.provider || Providers.getDefaultProviderId(),
+                       symbol.priceInterval || "1h",
+                       symbol.graphInterval || "1M",
+                       Helpers.boolValue(symbol.showChangeWhenPinned, false),
+                       Helpers.boolValue(symbol.invert, false))
         Qt.callLater(function() { refreshSymbolsList() })
     }
 
@@ -871,12 +910,39 @@ PluginSettings {
 
     function clearForm() {
         editIndex = -1
-        root.saveValue("_addTicker", "")
-        root.saveValue("_addName", "")
-        root.saveValue("_addPriceRange", "1h")
-        root.saveValue("_addChartRange", "1M")
-        root.saveValue("_addShowChange", false)
-        root.saveValue("_addInvert", false)
+        setDraftValues("", "",
+                       Providers.getDefaultProviderId(),
+                       "1h", "1M",
+                       false, false)
+        refreshSymbolsList()
+    }
+
+    function setDraftValues(ticker, name, provider, priceRange, chartRange, showChange, invert) {
+        tickerInput.value = ticker
+        nameInput.value = name
+        providerSelect.value = provider
+        priceRangeSelect.value = priceRange
+        chartRangeSelect.value = chartRange
+        showChangeToggle.value = Helpers.boolValue(showChange, false)
+        invertToggle.value = Helpers.boolValue(invert, false)
+
+        root.saveValue("_addTicker", ticker)
+        root.saveValue("_addName", name)
+        root.saveValue("_addProvider", provider)
+        root.saveValue("_addPriceRange", priceRange)
+        root.saveValue("_addChartRange", chartRange)
+        root.saveValue("_addShowChange", showChangeToggle.value)
+        root.saveValue("_addInvert", invertToggle.value)
+    }
+
+    function saveEditedSymbolFlags() {
+        if (editIndex < 0 || editIndex >= symbolsList.length) return
+
+        var symbolsCopy = JSON.parse(JSON.stringify(symbolsList))
+        symbolsCopy[editIndex].showChangeWhenPinned = Helpers.boolValue(showChangeToggle.value, false)
+        symbolsCopy[editIndex].invert = Helpers.boolValue(invertToggle.value, false)
+
+        root.saveValue("symbols", JSON.stringify(symbolsCopy))
         refreshSymbolsList()
     }
 

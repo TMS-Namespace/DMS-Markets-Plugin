@@ -13,7 +13,7 @@ import Quickshell
 import Quickshell.Io
 import "../../JS/ProviderInterface.js" as Providers
 import "../../JS/Helpers.js" as Helpers
-import "../../JS/Constants.js" as Constants
+import "../../JS/Constants.js" as JsK
 
 Item {
 
@@ -28,6 +28,9 @@ Item {
     property var    lastFetchTimes:      ({})
     property var    _pendingFetches:     ({})
     property var    _lastFullGraphFetch: ({})
+    property int    _activeFetchCount:   0
+    property var    _fetchQueue:         []
+    property var    _queuedFetchKeys:    ({})
 
     onApiKeyChanged: {
         // Only push the key into the provider registry when it is valid;
@@ -54,7 +57,7 @@ Item {
     // ── Polling timer ─────────────────────────────────────────────────────────
     Timer {
         id: checkTimer
-        interval: Constants.POLL_INTERVAL_MS
+        interval: JsK.POLL_INTERVAL_MS
         running: symbols.length > 0 && apiKey !== ""
         repeat: true
         onTriggered: _checkAndFetch()
@@ -84,7 +87,7 @@ Item {
                 var lastFull = _lastFullGraphFetch[symbol.id] || 0
                 var existing = graphData[symbol.id]
 
-                if (!existing || existing.length === 0 || now - lastFull >= Constants.FULL_GRAPH_REFRESH_MS) {
+                if (!existing || existing.length === 0 || now - lastFull >= JsK.FULL_GRAPH_REFRESH_MS) {
                     doFetch(symbol, "graph")
                 } else {
                     _mergeLatestIntoGraph(symbol)
@@ -96,12 +99,12 @@ Item {
     }
 
     // ── Retry queue ───────────────────────────────────────────────────────────
-    property int _maxRetries: Constants.MAX_RETRIES
+    property int _maxRetries: JsK.MAX_RETRIES
     property var _retryQueue: []
 
     Timer {
         id: retryTimer
-        interval: Constants.RETRY_INTERVAL_MS
+        interval: JsK.RETRY_INTERVAL_MS
         repeat: false
         onTriggered: _processRetryQueue()
     }
@@ -110,7 +113,7 @@ Item {
         var q = _retryQueue.slice()
         q.push({ sym: symbol, fetchType: fetchType, attempt: attempt })
         _retryQueue = q
-        retryTimer.interval = Constants.RETRY_INTERVAL_MS * attempt
+        retryTimer.interval = JsK.RETRY_INTERVAL_MS * attempt
         retryTimer.restart()
     }
 
@@ -123,7 +126,7 @@ Item {
                     "(attempt", item.attempt + "/" + _maxRetries + ")")
         doFetch(item.sym, item.fetchType, item.attempt)
         if (_retryQueue.length > 0) {
-            retryTimer.interval = Constants.RETRY_SUBSEQUENT_MS
+            retryTimer.interval = JsK.RETRY_SUBSEQUENT_MS
             retryTimer.restart()
         }
     }
@@ -137,11 +140,14 @@ Item {
             property string providerName: ""
             property string fetchType:    "price"
             property string chartRange:   "1M"
+            property string fetchKey:     ""
             property int    _attempt:     0
             property string _buffer:      ""
 
-            stdout: SplitParser {
-                onRead: line => _buffer += line + "\n"
+            stdout: StdioCollector {
+                onStreamFinished: {
+                    _buffer = text
+                }
             }
 
             stderr: SplitParser {
@@ -165,10 +171,17 @@ Item {
                     if (c.devMode) console.warn("[Markets/Fetcher]", symbolId, fetchType,
                                  "returned empty response — no retry")
                 }
-                _decrementPending(symbolId)
+                _finishFetch(fetchKey, symbolId)
                 destroy()
             }
         }
+    }
+
+    Timer {
+        id: fetchPumpTimer
+        interval: JsK.FETCH_QUEUE_PUMP_MS
+        repeat: false
+        onTriggered: _pumpFetchQueue()
     }
 
     function _findSymbol(symbolId) {
@@ -196,30 +209,112 @@ Item {
 
         if (!url) return
 
-        var curlCmd = "curl -fsSL --connect-timeout 10 --max-time 20"
-                    + " -H 'User-Agent: Mozilla/5.0 (X11; Linux x86_64)'"
-                    + " '" + url + "'"
-        if (tailLines > 0)
-            curlCmd += " | tail -n " + tailLines
+        var fetchKey = symbol.id + "_" + fetchType + "_" + url
+        if (_queuedFetchKeys[fetchKey]) {
+            if (c.devMode) console.log("[Markets/Fetcher] already queued/running", symbol.id, fetchType)
+            return
+        }
 
-        var shell = tailLines > 0
-            ? ["bash", "-o", "pipefail", "-c", curlCmd]
-            : ["sh", "-c", curlCmd]
+        var curlCmd = _buildCurlCommand(url, tailLines)
+        var shell = ["bash", "-o", "pipefail", "-c", curlCmd]
 
-        var proc = fetchComponent.createObject(this, {
+        var queuedKeys = {}
+        for (var qk in _queuedFetchKeys) queuedKeys[qk] = _queuedFetchKeys[qk]
+        queuedKeys[fetchKey] = true
+        _queuedFetchKeys = queuedKeys
+
+        var queue = _fetchQueue.slice()
+        queue.push({
             symbolId:     symbol.id,
             providerName: symbol.provider,
             fetchType:    fetchType,
             chartRange:   symbol.graphInterval || "1M",
-            _attempt:     retryNum
+            fetchKey:     fetchKey,
+            attempt:      retryNum,
+            command:      shell
         })
-        proc.command = shell
-        proc.running = true
+        _fetchQueue = queue
 
         var pending = {}
         for (var k in _pendingFetches) pending[k] = _pendingFetches[k]
         pending[symbol.id] = (pending[symbol.id] || 0) + 1
         pendingFetchesUpdated(pending)
+
+        fetchPumpTimer.restart()
+    }
+
+    function _pumpFetchQueue() {
+        if (_fetchQueue.length === 0) return
+        if (_activeFetchCount >= JsK.MAX_CONCURRENT_FETCHES) return
+
+        var queue = _fetchQueue.slice()
+        var job = queue.shift()
+        _fetchQueue = queue
+        _activeFetchCount = _activeFetchCount + 1
+
+        var proc = fetchComponent.createObject(this, {
+            symbolId:     job.symbolId,
+            providerName: job.providerName,
+            fetchType:    job.fetchType,
+            chartRange:   job.chartRange,
+            fetchKey:     job.fetchKey,
+            _attempt:     job.attempt
+        })
+        proc.command = job.command
+        proc.running = true
+    }
+
+    function _finishFetch(fetchKey, symbolId) {
+        _activeFetchCount = Math.max(0, _activeFetchCount - 1)
+
+        var queuedKeys = {}
+        for (var key in _queuedFetchKeys)
+            if (key !== fetchKey) queuedKeys[key] = _queuedFetchKeys[key]
+        _queuedFetchKeys = queuedKeys
+
+        _decrementPending(symbolId)
+        fetchPumpTimer.restart()
+    }
+
+    function _buildCurlCommand(url, tailLines) {
+        var cmd = ""
+        cmd += "set -e\n"
+        cmd += "if command -v ionice >/dev/null 2>&1; then ionice -c3 -p $$ >/dev/null 2>&1 || true; fi\n"
+        cmd += "if command -v renice >/dev/null 2>&1; then renice -n 19 -p $$ >/dev/null 2>&1 || true; fi\n"
+        cmd += "cookie=\"${XDG_CACHE_HOME:-$HOME/.cache}/dms-markets-stooq.cookies\"\n"
+        cmd += "mkdir -p \"$(dirname \"$cookie\")\"\n"
+        cmd += "tmp=\"$(mktemp)\"\n"
+        cmd += "hdr=\"$(mktemp)\"\n"
+        cmd += "cleanup() { rm -f \"$tmp\" \"$hdr\"; }\n"
+        cmd += "trap cleanup EXIT\n"
+        cmd += "url='" + url + "'\n"
+        cmd += "fetch() {\n"
+        cmd += "  curl -fsSL --connect-timeout 10 --max-time 20"
+        cmd += " -D \"$hdr\""
+        cmd += " -b \"$cookie\" -c \"$cookie\""
+        cmd += " -H 'User-Agent: Mozilla/5.0 (X11; Linux x86_64)'"
+        cmd += " \"$url\" -o \"$tmp\"\n"
+        cmd += "}\n"
+        cmd += "fetch\n"
+        cmd += "if grep -q 'This site requires JavaScript to verify your browser' \"$tmp\"; then\n"
+        cmd += "  challenge=$(sed -n 's/.*const c=\"\\([^\"]*\\)\",d=\\([0-9][0-9]*\\).*/\\1 \\2/p' \"$tmp\" | head -n 1)\n"
+        cmd += "  if [ -z \"$challenge\" ]; then cat \"$tmp\"; exit 0; fi\n"
+        cmd += "  cval=${challenge% *}\n"
+        cmd += "  dval=${challenge##* }\n"
+        cmd += "  n=$(node -e 'const crypto=require(\"crypto\"); const c=process.argv[1], d=Number(process.argv[2]); const target=\"0\".repeat(d); for (let n=0;;n++) { if (crypto.createHash(\"sha256\").update(c+n).digest(\"hex\").startsWith(target)) { console.log(n); break; } }' \"$cval\" \"$dval\")\n"
+        cmd += "  curl -fsSL --connect-timeout 10 --max-time 20"
+        cmd += " -b \"$cookie\" -c \"$cookie\""
+        cmd += " -X POST -H 'Content-Type: application/x-www-form-urlencoded'"
+        cmd += " --data-urlencode \"c=$cval\" --data-urlencode \"n=$n\""
+        cmd += " 'https://stooq.com/__verify' >/dev/null\n"
+        cmd += "  fetch\n"
+        cmd += "fi\n"
+        cmd += "if grep -qi 'filename=error.txt' \"$hdr\"; then echo 'get your apikey'; exit 0; fi\n"
+        if (tailLines > 0)
+            cmd += "tail -n " + tailLines + " \"$tmp\"\n"
+        else
+            cmd += "cat \"$tmp\"\n"
+        return cmd
     }
 
     // ── Incremental graph merge ───────────────────────────────────────────────
@@ -372,7 +467,7 @@ Item {
 
     Timer {
         id: initialGraphTimer
-        interval: Constants.INITIAL_GRAPH_STAGGER_MS
+        interval: JsK.INITIAL_GRAPH_STAGGER_MS
         repeat: false
         onTriggered: _processInitialGraphQueue()
     }
@@ -401,7 +496,7 @@ Item {
         }
         fetchTimesUpdated(newTimes)
         _initialGraphQueue     = queue
-        initialGraphTimer.interval = Constants.INITIAL_GRAPH_DELAY_MS
+        initialGraphTimer.interval = JsK.INITIAL_GRAPH_DELAY_MS
         initialGraphTimer.restart()
     }
 

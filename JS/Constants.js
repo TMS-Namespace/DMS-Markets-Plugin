@@ -3,7 +3,7 @@
 // Only values consumed by JS logic live here (fetching, parsing, timing).
 // UI constants (sizes, colors, strings) live in QML/Constants.qml.
 //
-// Usage in QML:  import "../JS/Constants.js" as Constants
+// Usage in QML:  import "../JS/Constants.js" as JsK
 // Usage in JS:   .import "Constants.js" as Constants
 
 .pragma library
@@ -18,10 +18,11 @@ var INITIAL_GRAPH_STAGGER_MS = 500      // gap between consecutive staggered gra
 var SYMBOL_WATCH_DELAY_MS    = 500      // debounce window for onSymbolsChanged
 
 // ── Fetch limits ──────────────────────────────────────────────────────────────
-var MAX_RETRIES = 3
+var MAX_RETRIES            = 3
+var MAX_CONCURRENT_FETCHES = 1          // keep curl/node bursts off the UI path
+var FETCH_QUEUE_PUMP_MS    = 50
 
 // ── API key obfuscation ───────────────────────────────────────────────────────
 var API_KEY_OBF_SEED         = "https://github.com/TMS-Namespace/DMS-Markets-Plugin"
 var API_KEY_MIN_LENGTH       = 25
 var API_KEY_MAX_LENGTH       = 40
-

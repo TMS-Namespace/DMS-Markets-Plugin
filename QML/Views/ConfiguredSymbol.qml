@@ -6,6 +6,7 @@
 import QtQuick
 import qs.Common
 import qs.Widgets
+import "../../JS/Helpers.js" as Helpers
 import "../Helpers"
 
 Item {
@@ -81,8 +82,8 @@ Item {
                                     + (symbolData.provider || "") + "  |  price "
                                     + (symbolData.priceInterval || "1M") + "  |  chart "
                                     + (symbolData.graphInterval || "1M")
-                        if (symbolData.invert)              parts += "  |  1/x"
-                        if (symbolData.showChangeWhenPinned) parts += "  |  Δ on bar"
+                        if (Helpers.boolValue(symbolData.invert, false))              parts += "  |  1/x"
+                        if (Helpers.boolValue(symbolData.showChangeWhenPinned, false)) parts += "  |  Δ on bar"
                         return parts
                     }
                     font.pixelSize: Theme.fontSizeSmall

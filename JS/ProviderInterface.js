@@ -28,20 +28,6 @@
 //     // Parse response → DataPoint[]
 //     parseHistoryResponse:    function(responseText: string) → DataPoint[],
 //
-//     // ── Search ─────────────────────────────────────────────────────────
-//     // Build URL for symbol search / autocomplete
-//     buildSearchUrl:          function(query: string) → string,
-//     //
-//     // Parse response → SearchResult[]
-//     parseSearchResponse:     function(responseText: string) → SearchResult[],
-//
-//     // ── Validation ─────────────────────────────────────────────────────
-//     // Build URL to verify a symbol exists
-//     buildValidationUrl:      function(ticker: string) → string,
-//     //
-//     // Parse response → ValidationResult
-//     parseValidationResponse: function(responseText: string) → ValidationResult,
-//
 //     // ── Navigation ─────────────────────────────────────────────────────
 //     // Build a browser-friendly URL for the symbol page
 //     buildSymbolPageUrl:      function(symbolId: string) → string
@@ -59,19 +45,6 @@
 //     volume: number        // 0 if unavailable
 // }
 //
-// SearchResult: {
-//     id:        string,    // e.g. "eurusd"
-//     name:      string,    // e.g. "Euro / U.S. Dollar"
-//     market:    string,    // e.g. "Currency"
-//     price:     string,    // e.g. "1.18552" (display string)
-//     changeStr: string     // e.g. "-0.16%" (display string)
-// }
-//
-// ValidationResult: {
-//     valid:   bool,        // true if the symbol exists and has data
-//     message: string       // human-readable reason on failure
-// }
-
 .pragma library
 
 // ─── Registry ────────────────────────────────────────────────────────────────
@@ -164,34 +137,6 @@ function parseHistoryResponse(providerId, responseText) {
     var provider = _providers[providerId];
     if (!provider) return [];
     return provider.parseHistoryResponse(responseText);
-}
-
-// ─── Search ──────────────────────────────────────────────────────────────────
-
-function buildSearchUrl(providerId, query) {
-    var provider = _providers[providerId];
-    if (!provider) return "";
-    return provider.buildSearchUrl(query);
-}
-
-function parseSearchResponse(providerId, responseText) {
-    var provider = _providers[providerId];
-    if (!provider) return [];
-    return provider.parseSearchResponse(responseText);
-}
-
-// ─── Validation ──────────────────────────────────────────────────────────────
-
-function buildValidationUrl(providerId, ticker) {
-    var provider = _providers[providerId];
-    if (!provider) return "";
-    return provider.buildValidationUrl(ticker);
-}
-
-function parseValidationResponse(providerId, responseText) {
-    var provider = _providers[providerId];
-    if (!provider) return { valid: false, message: "Unknown provider: " + providerId };
-    return provider.parseValidationResponse(responseText);
 }
 
 // ─── Navigation ──────────────────────────────────────────────────────────────

@@ -29,10 +29,16 @@ function intervalToMs(interval) {
     return map[interval] || 3600000
 }
 
-// ── Boolean from pluginData (defaults to true when unset) ───────────────────
-// pluginData values can be: undefined, "", true, "true", false, "false"
+// ── Boolean coercion for pluginData and persisted symbol flags ──────────────
+// Stored values can be: undefined, "", true, "true", false, "false".
+function boolValue(value, defaultValue) {
+    if (value === undefined || value === null || value === "")
+        return defaultValue !== undefined ? defaultValue : false
+    return value === true || value === "true" || value === 1 || value === "1"
+}
+
 function pluginDataBool(value) {
-    return value === undefined || value === "" || value === true || value === "true"
+    return boolValue(value, true)
 }
 
 // ── Human-readable "time ago" text ──────────────────────────────────────────
@@ -56,7 +62,7 @@ function inv(value) {
 
 function isInverted(symbols, symbolId) {
     for (var symbolIndex = 0; symbolIndex < symbols.length; symbolIndex++)
-        if (symbols[symbolIndex].id === symbolId) return !!symbols[symbolIndex].invert
+        if (symbols[symbolIndex].id === symbolId) return boolValue(symbols[symbolIndex].invert, false)
     return false
 }
 

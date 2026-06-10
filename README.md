@@ -10,7 +10,7 @@ A [DankMaterialShell](https://github.com/dankmaterial/DMS) widget plugin that di
 
 - **Pin to bar** — display live prices for selected symbols directly in `DankBar`.
 - **Popup panel** — list showing name, price, change percentage, and `sparkline` charts.
-- **Symbol search** — find and add symbols by keyword via provider search `API`.
+- **Manual symbol entry** — open Stooq in your browser, then add the provider symbol manually.
 - **Per-symbol configuration** — independent price interval, chart range, change display, and price inversion.
 - **Custom colors** — configurable up/down color indicators.
 - **Reorder & edit** — rearrange symbol order, click to edit, hover to pin or delete.
@@ -24,28 +24,25 @@ A [DankMaterialShell](https://github.com/dankmaterial/DMS) widget plugin that di
 ## Requirements
 
 - `DMS` ≥ 1.2.0
-- `curl` installed and available in `$PATH`
+- `curl` and `nodejs` installed and available in `$PATH`
 - Internet access
-- Free `Stooq` `API` key (see below how to obtain it).
+- Existing valid `Stooq` `API` key.
 
 ## Data Providers
 
-Currently supported only one provider: [Stooq](https://stooq.com) that publishes free `CSV` quotes for a wide range of instruments. A free API key is required.
+Currently supported only one provider: [Stooq](https://stooq.com) that publishes `CSV` quotes for a wide range of instruments. An API key is required.
 
 
-### Getting a Free Stooq API Key
+### Stooq API Key Status
 
-1. Open [stooq.com/q/d/?s=eurusd&get_apikey](https://stooq.com/q/d/?s=eurusd&get_apikey) in your browser.
-2. Enter the captcha code shown on the page.
-3. Copy the CSV download link shown at the bottom of the page (it contains your `API` key value).
-4. Paste the link in some text editor, and copy the last part of the link after `apikey=`, and paste it in the plugin **Settings** before adding symbols.
+Stooq's previous API-key request page, `https://stooq.com/q/d/?s=eurusd&get_apikey`, currently returns an empty page. Existing valid keys can still be pasted in plugin **Settings**, but new key generation is not currently available through the old flow.
 
-> **Limitation:** `Stooq` does not provide historical data for futures symbols (tickers matching `*.f`) through its public `API`. Price data will load, but charts will be unavailable for these symbols.
+> **Limitation:** Some Stooq symbols shown on the website do not return CSV data through the public API. If a symbol stays empty in the widget, open Stooq in your browser and try the cash/index variant shown there.
 
 ## Privacy
 
 - No endpoints are contacted other than the configured data provider.
-- All requests are made without cookies to minimize tracking potential. (However, see [Version History](#version-history))
+- Stooq fetches use a local cookie jar for Stooq's browser-verification challenge.
 - `Stooq` is operated from `Poland` and is presumably `GDPR`-compliant. See their [Privacy & Cookie Policy](https://stooq.com/privacy/) and [Terms of Service](https://stooq.com/terms.html).
 - The API key is obfuscated and stored locally on your disk.
 

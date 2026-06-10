@@ -76,10 +76,8 @@ QtObject {
     readonly property int    configButtonSpacing:   2
 
     // ── Shared small buttons / compact rows ───────────────────────────────────
-    readonly property int    smallButtonWidth:      80   // search, cancel buttons
-    readonly property int    compactRowHeight:      44   // search results, add/edit row
-    readonly property int    searchPriceColumnW:    90
-    readonly property int    searchDescMaxLen:      40   // chars before truncation
+    readonly property int    smallButtonWidth:      80   // cancel buttons
+    readonly property int    compactRowHeight:      44   // add/edit rows
 
     // ── Slider (settings popout-row slider) ───────────────────────────────────
     readonly property int    sliderContainerHeight: 48

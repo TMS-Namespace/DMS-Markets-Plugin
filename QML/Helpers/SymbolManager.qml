@@ -35,7 +35,7 @@ Item {
             var pd  = priceData[sym.id]
             if (pd && pd.close !== undefined && !isNaN(pd.close)) {
                 var label = sym.name + " " + Helpers.formatNumber(pd.close)
-                if (sym.showChangeWhenPinned) {
+                if (Helpers.boolValue(sym.showChangeWhenPinned, false)) {
                     var chg  = pd.change || 0
                     label += " " + (chg >= 0 ? "+" : "") + Helpers.formatNumber(chg)
                 }

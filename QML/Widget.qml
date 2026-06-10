@@ -97,7 +97,24 @@ PluginComponent {
 
     // ── Symbol change detection ───────────────────────────────────────────────
     property var  _knownSymbolIds: []
+    property var  _knownSymbolFetchSignatures: ({})
     property bool _initialized:    false
+
+    function _symbolFetchSignature(symbol) {
+        return JSON.stringify({
+            provider:      symbol.provider || Providers.getDefaultProviderId(),
+            priceInterval: symbol.priceInterval || "1h",
+            graphInterval: symbol.graphInterval || "1M",
+            invert:        Helpers.boolValue(symbol.invert, false)
+        })
+    }
+
+    function _symbolFetchSignatureMap(symbolList) {
+        var result = {}
+        for (var i = 0; i < symbolList.length; i++)
+            result[symbolList[i].id] = _symbolFetchSignature(symbolList[i])
+        return result
+    }
 
     Timer {
         id: newSymbolChecker
@@ -105,8 +122,17 @@ PluginComponent {
         repeat: false
         onTriggered: {
             var currentIds = symbols.map(function(s) { return s.id })
+            var currentSignatures = _symbolFetchSignatureMap(symbols)
             fetcher.fetchNewSymbols(symbols, _knownSymbolIds)
+            for (var i = 0; i < symbols.length; i++) {
+                var sym = symbols[i]
+                if (_knownSymbolIds.indexOf(sym.id) !== -1
+                        && _knownSymbolFetchSignatures[sym.id] !== currentSignatures[sym.id]) {
+                    fetcher.forceRefreshSymbol(sym.id)
+                }
+            }
             _knownSymbolIds = currentIds
+            _knownSymbolFetchSignatures = currentSignatures
         }
     }
 
@@ -118,6 +144,7 @@ PluginComponent {
     Component.onCompleted: {
         setVisibilityOverride(hasApiKey)
         _knownSymbolIds = symbols.map(function(s) { return s.id })
+        _knownSymbolFetchSignatures = _symbolFetchSignatureMap(symbols)
         _initialized    = true
         if (c.devMode) console.log("[Markets/Widget] initialized —", symbols.length, "symbols")
         if (symbols.length > 0)
@@ -219,4 +246,3 @@ PluginComponent {
                         + c.popoutPadding)
     }
 }
-
