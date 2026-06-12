@@ -13,8 +13,9 @@ import qs.Modules.Plugins
 import qs.Widgets
 import "../JS/Helpers.js" as Helpers
 import "../JS/ProviderInterface.js" as Providers
-import "../JS/StooqProvider.js" as StooqProvider
+import "../JS/ProviderBootstrap.js" as ProviderBootstrap
 import "./Helpers"
+import "./ProviderSettings"
 import "./Views"
 
 PluginSettings {
@@ -23,14 +24,12 @@ PluginSettings {
 
     Constants { id: c }
 
+    readonly property int providerRegistrationCount: ProviderBootstrap.ensureProvidersRegistered()
     property var  symbolsList:  []
     property int  editIndex:    -1    // -1 = adding new, >= 0 = editing existing
-    property string _currentApiKey: ""
-    // Drive hasApiKey and format validation off the live field text so the UI
-    // reacts immediately while typing — not only after the debounce timer fires.
-    property bool   hasApiKey:          Helpers.isValidApiKey(apiKeyField.text)
-    // true only when field has content but it's outside the valid length range
-    property bool   _apiKeyFormatInvalid: apiKeyField.text.trim().length > 0 && !Helpers.isValidApiKey(apiKeyField.text)
+    property var  providerCredentials: ({})
+    readonly property string selectedProviderId: providerSelect.value || Providers.getDefaultProviderId()
+    readonly property bool selectedProviderDisabled: Providers.providerIsDisabled(selectedProviderId)
 
     // ── Persistence helpers ──────────────────────────────────────────────────
     function saveValue(key, value) {
@@ -50,16 +49,21 @@ PluginSettings {
         catch (e) { symbolsList = [] }
     }
 
+    function setProviderCredential(providerId, credential) {
+        var copy = {}
+        for (var id in providerCredentials) copy[id] = providerCredentials[id]
+        copy[providerId] = credential || ""
+        providerCredentials = copy
+    }
+
     onPluginServiceChanged: {
         if (pluginService) {
             refreshSymbolsList()
-            _initApiKey()
         }
     }
 
     Component.onCompleted: {
         refreshSymbolsList()
-        _initApiKey()
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -76,7 +80,7 @@ PluginSettings {
 
     StyledText {
         width: parent.width
-        text: "Track live prices for currencies, stocks, commodities, and crypto.\nNote: futures (.f) symbols show prices but charts may be unavailable."
+        text: c.pluginSubtitle
         font.pixelSize: Theme.fontSizeSmall
         color: Theme.surfaceVariantText
         wrapMode: Text.WordWrap
@@ -95,14 +99,14 @@ PluginSettings {
                 size: Theme.fontSizeSmall
                 color: Theme.primary
                 anchors.verticalCenter: parent.verticalCenter
-                opacity: githubMouseArea.containsMouse ? 1.0 : 0.65
+                opacity: githubMouseArea.containsMouse ? 1.0 : c.linkIdleOpacity
             }
 
             StyledText {
                 text: "Source on GitHub"
                 font.pixelSize: Theme.fontSizeSmall
                 color: Theme.primary
-                opacity: githubMouseArea.containsMouse ? 1.0 : 0.65
+                opacity: githubMouseArea.containsMouse ? 1.0 : c.linkIdleOpacity
                 anchors.verticalCenter: parent.verticalCenter
             }
         }
@@ -112,186 +116,9 @@ PluginSettings {
             anchors.fill: parent
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
-            onClicked: Qt.openUrlExternally("https://github.com/TMS-Namespace/DMS-Markets-Plugin")
+            onClicked: Qt.openUrlExternally(c.sourceUrl)
         }
     }
-
-    // ═══════════════════════════════════════════════════════════════════════
-    //  API KEY
-    // ═══════════════════════════════════════════════════════════════════════
-
-    StyledText {
-        width: parent.width
-        text: "Data Provider API Key"
-        font.pixelSize: Theme.fontSizeLarge
-        font.weight: Font.Bold
-        color: Theme.surfaceText
-        topPadding: Theme.spacingM
-    }
-
-    StyledText {
-        width: parent.width
-        text: "A free Stooq API key is required to fetch market data."
-        font.pixelSize: Theme.fontSizeSmall
-        color: Theme.surfaceVariantText
-        wrapMode: Text.WordWrap
-    }
-
-    Item {
-        id: apiKeyFieldContainer
-        width: parent.width
-        height: c.compactRowHeight
-
-        Timer {
-            id: apiKeySaveTimer
-            interval: c.apiKeySaveDebounceMs
-            repeat: false
-            onTriggered: {
-                var newKey = apiKeyField.text.trim()
-                // Only persist and activate valid-length keys, or empty string (to clear).
-                if (newKey !== "" && !Helpers.isValidApiKey(newKey)) return
-                root.saveValue(c.stooqApiKeySettingKey, Helpers.obfuscate(newKey))
-                root._currentApiKey = newKey
-                Providers.setApiKey(c.stooqProviderId, newKey)
-            }
-        }
-
-        Rectangle {
-            anchors.fill: parent
-            radius: Theme.cornerRadius
-            color: Theme.surfaceContainer
-            border.color: apiKeyField.activeFocus ? Theme.primary : (root._apiKeyFormatInvalid ? Theme.error : Theme.outlineVariant)
-            border.width: apiKeyField.activeFocus ? 2 : 1
-
-            TextInput {
-                id: apiKeyField
-                anchors {
-                    left: parent.left
-                    right: apiKeyRevealBtn.left
-                    top: parent.top
-                    bottom: parent.bottom
-                    leftMargin: Theme.spacingS
-                    rightMargin: Theme.spacingXS
-                }
-                verticalAlignment: TextInput.AlignVCenter
-                echoMode: apiKeyRevealBtn.revealed ? TextInput.Normal : TextInput.Password
-                color: Theme.surfaceText
-                font.pixelSize: Theme.fontSizeMedium
-                clip: true
-                selectByMouse: true
-
-                property bool _initializing: false
-                onTextChanged: { if (!_initializing) apiKeySaveTimer.restart() }
-
-                Text {
-                    anchors.fill: parent
-                    text: "Paste your Stooq API key here"
-                    color: Theme.surfaceVariantText
-                    font.pixelSize: Theme.fontSizeMedium
-                    verticalAlignment: Text.AlignVCenter
-                    visible: apiKeyField.text.length === 0
-                }
-            }
-
-            Rectangle {
-                id: apiKeyRevealBtn
-                property bool revealed: false
-                width: c.compactRowHeight
-                height: c.compactRowHeight
-                anchors.right: parent.right
-                anchors.verticalCenter: parent.verticalCenter
-                color: "transparent"
-
-                DankIcon {
-                    name: apiKeyRevealBtn.revealed ? "visibility_off" : "visibility"
-                    size: Theme.fontSizeMedium
-                    color: apiKeyRevealMouse.containsMouse ? Theme.primary : Theme.surfaceVariantText
-                    anchors.centerIn: parent
-                }
-
-                MouseArea {
-                    id: apiKeyRevealMouse
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: apiKeyRevealBtn.revealed = !apiKeyRevealBtn.revealed
-                }
-            }
-        }
-    }
-
-    Text {
-        width: parent.width
-        visible: root._apiKeyFormatInvalid
-        text: "Invalid key: expected " + c.apiKeyMinLength + "-" + c.apiKeyMaxLength + " characters"
-        font.pixelSize: Theme.fontSizeSmall
-        color: "#F44336"
-        wrapMode: Text.WordWrap
-    }
-
-    Column {
-        width: parent.width
-        spacing: 0
-
-        Item {
-            id: apiKeyHelpHeader
-            width: parent.width
-            height: c.compactRowHeight
-            property bool expanded: false
-
-            Row {
-                id: apiKeyHelpRow
-                anchors.verticalCenter: parent.verticalCenter
-                spacing: Theme.spacingXS
-
-                DankIcon {
-                    name: apiKeyHelpHeader.expanded ? "expand_less" : "expand_more"
-                    size: Theme.fontSizeSmall
-                    color: Theme.primary
-                    anchors.verticalCenter: parent.verticalCenter
-                }
-
-                StyledText {
-                    text: "Stooq API key availability"
-                    font.pixelSize: Theme.fontSizeSmall
-                    color: Theme.primary
-                    anchors.verticalCenter: parent.verticalCenter
-                }
-            }
-
-            MouseArea {
-                anchors.fill: parent
-                cursorShape: Qt.PointingHandCursor
-                onClicked: apiKeyHelpHeader.expanded = !apiKeyHelpHeader.expanded
-            }
-        }
-
-        Column {
-            id: apiKeyHelpContent
-            width: parent.width
-            visible: apiKeyHelpHeader.expanded
-            spacing: Theme.spacingXS
-            topPadding: Theme.spacingXS
-
-            Text {
-                width: parent.width
-                textFormat: Text.RichText
-                text: "Stooq's previous API-key request page currently returns an empty page, so the plugin cannot guide you through generating a new key right now."
-                font.pixelSize: Theme.fontSizeSmall
-                color: Theme.surfaceVariantText
-                wrapMode: Text.WordWrap
-            }
-            StyledText {
-                width: parent.width
-                text: "Existing valid keys can still be pasted above, but if Stooq returns an API-key error, data fetching will stay unavailable until Stooq restores key issuance or this plugin adds another provider."
-                font.pixelSize: Theme.fontSizeSmall
-                color: Theme.surfaceVariantText
-                wrapMode: Text.WordWrap
-            }
-        }
-    }
-
-    Rectangle { width: parent.width; height: 1; color: Theme.outlineVariant }
 
     // ═══════════════════════════════════════════════════════════════════════
     //  CHART COLORS
@@ -301,9 +128,6 @@ PluginSettings {
         id: settingsBody
         width: parent.width
         spacing: Theme.spacingS
-        enabled: root.hasApiKey
-        opacity: root.hasApiKey ? 1.0 : 0.5
-        Behavior on opacity { NumberAnimation { duration: c.apiKeyOpacityAnimMs } }
 
     StyledText {
         width: parent.width
@@ -324,7 +148,7 @@ PluginSettings {
             id: upColorInput
             settingKey: "upColor"
             label: "Up / Positive Color"
-            description: "Hex color for positive changes (e.g., #4CAF50)"
+            description: "Hex color for positive changes (e.g., " + c.defaultUpColor + ")"
             placeholder: c.defaultUpColor
             defaultValue: c.defaultUpColor
             width: parent.width - parent.swatchSize - Theme.spacingS
@@ -349,7 +173,7 @@ PluginSettings {
             id: downColorInput
             settingKey: "downColor"
             label: "Down / Negative Color"
-            description: "Hex color for negative changes (e.g., #F44336)"
+            description: "Hex color for negative changes (e.g., " + c.defaultDownColor + ")"
             placeholder: c.defaultDownColor
             defaultValue: c.defaultDownColor
             width: parent.width - parent.swatchSize - Theme.spacingS
@@ -428,7 +252,8 @@ PluginSettings {
                     color: Theme.surfaceContainerHighest
 
                     Rectangle {
-                        width: (popoutSlider.value - 1) / 49 * parent.width
+                        width: (popoutSlider.value - c.minPopoutRows)
+                               / (c.maxPopoutRows - c.minPopoutRows) * parent.width
                         height: parent.height
                         radius: parent.radius
                         color: Theme.primary
@@ -440,12 +265,15 @@ PluginSettings {
                     width: c.sliderHandleSize; height: c.sliderHandleSize; radius: c.sliderHandleSize / 2
                     color: sliderMouse.pressed ? Theme.primary : Theme.surfaceContainerHighest
                     border.color: Theme.primary; border.width: 2
-                    x: (popoutSlider.value - 1) / 49 * (parent.width - width)
+                    x: (popoutSlider.value - c.minPopoutRows)
+                       / (c.maxPopoutRows - c.minPopoutRows) * (parent.width - width)
                     anchors.verticalCenter: parent.verticalCenter
 
                     property real value: {
                         var rowCount = parseInt(popoutRowsInput.value || c.defaultPopoutRows)
-                        return (isNaN(rowCount) || rowCount < 1) ? c.defaultPopoutRows : Math.min(rowCount, 50)
+                        return (isNaN(rowCount) || rowCount < c.minPopoutRows)
+                               ? c.defaultPopoutRows
+                               : Math.min(rowCount, c.maxPopoutRows)
                     }
                 }
 
@@ -463,7 +291,8 @@ PluginSettings {
 
                     function updateValue(mouseX) {
                         var ratio       = Math.max(0, Math.min(1, mouseX / width))
-                        var sliderValue = Math.round(1 + ratio * 49)
+                        var sliderValue = Math.round(c.minPopoutRows
+                                                     + ratio * (c.maxPopoutRows - c.minPopoutRows))
                         popoutSlider.value = sliderValue
                     }
 
@@ -538,50 +367,30 @@ PluginSettings {
         topPadding: Theme.spacingM
     }
 
-    Item {
+    SelectionSetting {
+        id: providerSelect
+        settingKey: "_addProvider"
+        label: "Data Provider"
+        description: "Source for price data"
+        visible: Providers.getProviderIds().length > 1
+        options: Providers.getProviderOptions()
+        defaultValue: Providers.getDefaultProviderId()
+    }
+
+    StyledText {
         width: parent.width
-        height: c.compactRowHeight
-
-        Rectangle {
-            anchors.fill: parent
-            radius: Theme.cornerRadius
-            color: stooqSearchMouseArea.containsMouse ? Theme.primary : Theme.surfaceContainerHighest
-            border.color: Theme.primary
-            border.width: 1
-
-            Row {
-                anchors.centerIn: parent
-                spacing: Theme.spacingXS
-
-                DankIcon {
-                    name: "open_in_new"
-                    size: Theme.fontSizeMedium
-                    color: stooqSearchMouseArea.containsMouse ? Theme.surfaceContainer : Theme.primary
-                    anchors.verticalCenter: parent.verticalCenter
-                }
-
-                StyledText {
-                    text: "Open Stooq Symbol Search"
-                    font.pixelSize: Theme.fontSizeMedium
-                    font.weight: Font.Medium
-                    color: stooqSearchMouseArea.containsMouse ? Theme.surfaceContainer : Theme.primary
-                    anchors.verticalCenter: parent.verticalCenter
-                }
-            }
-
-            MouseArea {
-                id: stooqSearchMouseArea
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: Qt.openUrlExternally("https://stooq.com")
-            }
-        }
+        visible: root.selectedProviderDisabled
+        text: Providers.getProviderMeta(root.selectedProviderId).disabledMessage
+        font.pixelSize: Theme.fontSizeSmall
+        color: Theme.surfaceVariantText
+        wrapMode: Text.WordWrap
     }
 
     Column {
         id: tickerInput
         width: parent.width
+        visible: !root.selectedProviderDisabled
+        height: visible ? implicitHeight : 0
         spacing: Theme.spacingS
 
         property alias value: tickerField.text
@@ -598,24 +407,81 @@ PluginSettings {
         }
 
         StyledText {
-            text: "Provider-specific symbol from Stooq"
+            text: Providers.getProviderMeta(providerSelect.value || Providers.getDefaultProviderId()).symbolHelpText
             font.pixelSize: Theme.fontSizeSmall
             color: Theme.surfaceVariantText
             width: parent.width
             wrapMode: Text.WordWrap
         }
 
-        DankTextField {
-            id: tickerField
+        Row {
             width: parent.width
-            placeholderText: "eurusd"
-            onEditingFinished: root.saveValue("_addTicker", text.trim())
+            height: c.compactRowHeight
+            spacing: Theme.spacingS
+
+            DankTextField {
+                id: tickerField
+                width: parent.width - providerSearchButton.width - Theme.spacingS
+                placeholderText: Providers.getProviderMeta(providerSelect.value || Providers.getDefaultProviderId()).symbolPlaceholder
+                onEditingFinished: root.saveValue("_addTicker", text.trim())
+            }
+
+            Rectangle {
+                id: providerSearchButton
+                width: Math.min(c.symbolSearchButtonWidth, Math.round(parent.width * 0.48))
+                height: parent.height
+                radius: Theme.cornerRadius
+                color: providerSearchMouseArea.containsMouse ? Theme.primary : Theme.surfaceContainerHighest
+                border.color: Theme.primary
+                border.width: 1
+
+                Row {
+                    anchors {
+                        left: parent.left
+                        right: parent.right
+                        verticalCenter: parent.verticalCenter
+                        leftMargin: c.symbolSearchButtonPadding
+                        rightMargin: c.symbolSearchButtonPadding
+                    }
+                    spacing: Theme.spacingXS
+
+                    DankIcon {
+                        name: "open_in_new"
+                        size: Theme.fontSizeMedium
+                        color: providerSearchMouseArea.containsMouse ? Theme.surfaceContainer : Theme.primary
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+
+                    StyledText {
+                        text: "Open symbols search..."
+                        width: parent.width - x
+                        font.pixelSize: Theme.fontSizeMedium
+                        font.weight: Font.Medium
+                        color: providerSearchMouseArea.containsMouse ? Theme.surfaceContainer : Theme.primary
+                        anchors.verticalCenter: parent.verticalCenter
+                        elide: Text.ElideRight
+                    }
+                }
+
+                MouseArea {
+                    id: providerSearchMouseArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        var meta = Providers.getProviderMeta(providerSelect.value || Providers.getDefaultProviderId())
+                        if (meta.symbolSearchUrl) Qt.openUrlExternally(meta.symbolSearchUrl)
+                    }
+                }
+            }
         }
     }
 
     Column {
         id: nameInput
         width: parent.width
+        visible: !root.selectedProviderDisabled
+        height: visible ? implicitHeight : 0
         spacing: Theme.spacingS
 
         property alias value: nameField.text
@@ -648,20 +514,11 @@ PluginSettings {
     }
 
     SelectionSetting {
-        id: providerSelect
-        settingKey: "_addProvider"
-        label: "Data Provider"
-        description: "Source for price data"
-        visible: Providers.getProviderIds().length > 1
-        options: Providers.getProviderOptions()
-        defaultValue: Providers.getDefaultProviderId()
-    }
-
-    SelectionSetting {
         id: priceRangeSelect
         settingKey: "_addPriceRange"
         label: "Price Range"
         description: "Candle period for price display and change calculation"
+        visible: !root.selectedProviderDisabled
         options: [
             { label: "1 Minute",   value: "1m"  },
             { label: "5 Minutes",  value: "5m"  },
@@ -679,6 +536,7 @@ PluginSettings {
         settingKey: "_addChartRange"
         label: "Chart Range"
         description: "How much historical data to show in the popup sparkline"
+        visible: !root.selectedProviderDisabled
         options: [
             { label: "1 Week",    value: "1W"  },
             { label: "1 Month",   value: "1M"  },
@@ -692,36 +550,28 @@ PluginSettings {
         defaultValue: "1M"
     }
 
-    DankToggle {
+    ToggleSetting {
         id: showChangeToggle
-        width: parent.width
-        property bool value: false
-        text: "Show Change When Pinned"
+        settingKey: "_addShowChange"
+        label: "Show Change When Pinned"
         description: "Display price change in the bar when this symbol is pinned"
-        checked: value
-        Component.onCompleted: Qt.callLater(function() {
-            showChangeToggle.value = Helpers.boolValue(root.loadValue("_addShowChange", false), false)
-        })
-        onToggled: checkedValue => {
-            showChangeToggle.value = checkedValue
-            root.saveValue("_addShowChange", checkedValue)
+        defaultValue: false
+        visible: !root.selectedProviderDisabled
+        onValueChanged: {
+            if (!isInitialized) return
             root.saveEditedSymbolFlags()
         }
     }
 
-    DankToggle {
+    ToggleSetting {
         id: invertToggle
-        width: parent.width
-        property bool value: false
-        text: "Invert Value (1/x)"
+        settingKey: "_addInvert"
+        label: "Invert Value (1/x)"
         description: "Show and chart the reciprocal of the price (e.g., USD/EUR instead of EUR/USD)"
-        checked: value
-        Component.onCompleted: Qt.callLater(function() {
-            invertToggle.value = Helpers.boolValue(root.loadValue("_addInvert", false), false)
-        })
-        onToggled: checkedValue => {
-            invertToggle.value = checkedValue
-            root.saveValue("_addInvert", checkedValue)
+        defaultValue: false
+        visible: !root.selectedProviderDisabled
+        onValueChanged: {
+            if (!isInitialized) return
             root.saveEditedSymbolFlags()
         }
     }
@@ -729,7 +579,8 @@ PluginSettings {
     // ── Add / Update / Cancel buttons ────────────────────────────────────────
     Item {
         width: parent.width
-        height: c.compactRowHeight
+        visible: !root.selectedProviderDisabled
+        height: visible ? c.compactRowHeight : 0
 
         Row {
             anchors.fill: parent
@@ -744,7 +595,8 @@ PluginSettings {
                 property bool canAdd: {
                     var ticker      = (tickerInput.value || "").trim()
                     var displayName = (nameInput.value || "").trim()
-                    return ticker !== "" && displayName !== ""
+                    var provider    = providerSelect.value || Providers.getDefaultProviderId()
+                    return ticker !== "" && displayName !== "" && !Providers.providerIsDisabled(provider)
                 }
 
                 color: canAdd
@@ -972,16 +824,4 @@ PluginSettings {
         Qt.callLater(refreshSymbolsList)
     }
 
-    function _initApiKey() {
-        if (!pluginService) return
-        var stored = loadValue(c.stooqApiKeySettingKey, "")
-        var key = Helpers.deobfuscate(stored)
-        _currentApiKey = key
-        Providers.setApiKey(c.stooqProviderId, key)
-        if (apiKeyField.text !== key) {
-            apiKeyField._initializing = true
-            apiKeyField.text = key
-            apiKeyField._initializing = false
-        }
-    }
 }

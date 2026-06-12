@@ -24,7 +24,7 @@ Item {
     signal movedUp()
     signal movedDown()
 
-    width:  parent ? parent.width : 200
+    width:  parent ? parent.width : c.configDefaultWidth
     height: c.configRowHeight
 
     Rectangle {
@@ -54,7 +54,7 @@ Item {
                 name:     "push_pin"
                 size:     c.configIconSize
                 color:    symbolData.pinned ? Theme.primary : Theme.surfaceContainerHighest
-                rotation: symbolData.pinned ? 0 : 45
+                rotation: symbolData.pinned ? 0 : c.unpinnedRotationDeg
                 anchors.verticalCenter: parent.verticalCenter
             }
 

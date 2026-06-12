@@ -3,7 +3,7 @@
 // Layout:
 // ┌──────────────────────────────────────────────────────┐
 // │  EUR/USD       1.16    ╱╲ sparkline ╱╲   [📌] [✕]  │
-// │  eurusd • 1h   +0.01                (on hover)      │
+// │  symbol • 1h   +0.01                (on hover)      │
 // │                (+0.29%)                              │
 // └──────────────────────────────────────────────────────┘
 //
@@ -86,19 +86,21 @@ Item {
 
         StyledText {
             text:           symbolData.name || symbolData.id || "—"
-            font.pixelSize: Theme.fontSizeMedium
+            font.pixelSize: c.symbolNameFontSize
             font.weight:    Font.Bold
             color:          Theme.surfaceText
             elide: Text.ElideRight
+            wrapMode: Text.NoWrap
             width: parent.width
         }
 
         StyledText {
             visible:        symbolRow.showTicker
             text:           (symbolData.id || "") + " • " + (symbolData.priceInterval || "1d")
-            font.pixelSize: Theme.fontSizeSmall
+            font.pixelSize: c.symbolTickerFontSize
             color:          Theme.surfaceVariantText
             elide:          Text.ElideRight
+            wrapMode:       Text.NoWrap
             width:          parent.width
         }
 
@@ -190,7 +192,7 @@ Item {
                      || pinBtnMouse.containsMouse
                      || removeBtnMouse.containsMouse
                      || symbolRow.isLoading
-            z: 10
+            z: c.overlayZ
 
             // Refresh button
             Rectangle {
@@ -215,7 +217,7 @@ Item {
 
                     RotationAnimation on rotation {
                         running:  symbolRow.isLoading
-                        from: 0; to: 360
+                        from: 0; to: c.fullRotationDeg
                         duration: c.headerAnimDurationMs
                         loops:    Animation.Infinite
                     }
@@ -247,7 +249,7 @@ Item {
                     name:     "push_pin"
                     size:     c.actionIconSize
                     color:    isPinned ? Theme.primary : Theme.surfaceVariantText
-                    rotation: isPinned ? 0 : 45
+                    rotation: isPinned ? 0 : c.unpinnedRotationDeg
                 }
             }
 

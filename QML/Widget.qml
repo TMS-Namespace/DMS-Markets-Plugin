@@ -17,8 +17,9 @@ import qs.Services
 import qs.Widgets
 import qs.Modules.Plugins
 import "../JS/ProviderInterface.js" as Providers
-import "../JS/StooqProvider.js" as StooqProvider
+import "../JS/ProviderBootstrap.js" as ProviderBootstrap
 import "../JS/Helpers.js" as Helpers
+import "../JS/Constants.js" as JsK
 import "./Helpers"
 import "./Views"
 
@@ -27,10 +28,10 @@ PluginComponent {
 
     layerNamespacePlugin: "markets"
 
-    onHasApiKeyChanged: setVisibilityOverride(hasApiKey)
-
     // ── QML constants ─────────────────────────────────────────────────────────
     Constants { id: c }
+
+    readonly property int providerRegistrationCount: ProviderBootstrap.ensureProvidersRegistered()
 
     // ── Settings-driven display properties ────────────────────────────────────
     property color upColor: {
@@ -52,14 +53,41 @@ PluginComponent {
         return (isNaN(n) || n < 1) ? c.defaultPopoutRows : n
     }
 
-    // Deobfuscate the stored key once and share it — used for validation and fetching.
-    property string _apiKey: Helpers.deobfuscate(pluginData.stooqApiKey || "")
-    property bool hasApiKey: Helpers.isValidApiKey(_apiKey)
-
     // ── Persisted symbol list ─────────────────────────────────────────────────
     property var symbols: {
         try { return JSON.parse(pluginData.symbols || "[]") }
         catch (e) { return [] }
+    }
+
+    property var providerCredentials: {
+        var result = {}
+        var ids = Providers.getProviderIds()
+        for (var i = 0; i < ids.length; i++) {
+            var providerId = ids[i]
+            var meta = Providers.getProviderMeta(providerId)
+            if (meta.requiresCredential)
+                result[providerId] = Helpers.deobfuscate(pluginData[meta.credentialSettingKey] || "")
+        }
+        return result
+    }
+    property string _lastProviderCredentialsSignature: ""
+
+    property bool canFetchAnySymbol: {
+        if (symbols.length === 0) return false
+        for (var i = 0; i < symbols.length; i++) {
+            var providerId = symbols[i].provider || Providers.getDefaultProviderId()
+            if (Providers.isValidCredential(providerId, providerCredentials[providerId] || ""))
+                return true
+        }
+        return false
+    }
+
+    onCanFetchAnySymbolChanged: setVisibilityOverride(canFetchAnySymbol)
+    onProviderCredentialsChanged: {
+        var signature = _providerCredentialsSignature(providerCredentials)
+        if (_initialized && signature !== _lastProviderCredentialsSignature)
+            fetcher.forceRefreshAll()
+        _lastProviderCredentialsSignature = signature
     }
 
     // ── Live state ────────────────────────────────────────────────────────────
@@ -72,7 +100,7 @@ PluginComponent {
     // ── Helpers ───────────────────────────────────────────────────────────────
     MarketDataFetcher {
         id: fetcher
-        apiKey:              root._apiKey
+        providerCredentials: root.providerCredentials
         symbols:             root.symbols
         priceData:           root.priceData
         graphData:           root.graphData
@@ -100,6 +128,14 @@ PluginComponent {
     property var  _knownSymbolFetchSignatures: ({})
     property bool _initialized:    false
 
+    function _providerCredentialsSignature(credentials) {
+        var ids = Providers.getProviderIds().sort()
+        var parts = []
+        for (var i = 0; i < ids.length; i++)
+            parts.push(ids[i] + "=" + (credentials[ids[i]] || ""))
+        return parts.join("|")
+    }
+
     function _symbolFetchSignature(symbol) {
         return JSON.stringify({
             provider:      symbol.provider || Providers.getDefaultProviderId(),
@@ -118,7 +154,7 @@ PluginComponent {
 
     Timer {
         id: newSymbolChecker
-        interval: 500
+        interval: JsK.SYMBOL_WATCH_DELAY_MS
         repeat: false
         onTriggered: {
             var currentIds = symbols.map(function(s) { return s.id })
@@ -142,19 +178,20 @@ PluginComponent {
     }
 
     Component.onCompleted: {
-        setVisibilityOverride(hasApiKey)
+        setVisibilityOverride(canFetchAnySymbol)
         _knownSymbolIds = symbols.map(function(s) { return s.id })
         _knownSymbolFetchSignatures = _symbolFetchSignatureMap(symbols)
+        _lastProviderCredentialsSignature = _providerCredentialsSignature(providerCredentials)
         _initialized    = true
         if (c.devMode) console.log("[Markets/Widget] initialized —", symbols.length, "symbols")
         if (symbols.length > 0)
             fetcher.startInitialFetches(symbols)
     }
 
-    // ── Token error handling ──────────────────────────────────────────────────
+    // ── Provider credential error handling ───────────────────────────────────
     Timer {
-        id: tokenErrorCooldown
-        interval: c.tokenErrorCooldownMs
+        id: credentialErrorCooldown
+        interval: c.credentialErrorCooldownMs
         repeat: false
         property bool active: false
         onTriggered: active = false
@@ -162,10 +199,10 @@ PluginComponent {
 
     Connections {
         target: fetcher
-        function onTokenError(message) {
-            if (!tokenErrorCooldown.active) {
-                tokenErrorCooldown.active = true
-                tokenErrorCooldown.restart()
+        function onCredentialError(message) {
+            if (!credentialErrorCooldown.active) {
+                credentialErrorCooldown.active = true
+                credentialErrorCooldown.restart()
                 ToastService.showError("Markets", message)
             }
         }

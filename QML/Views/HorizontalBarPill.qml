@@ -6,11 +6,14 @@
 import QtQuick
 import qs.Common
 import qs.Widgets
+import "../Helpers"
 
 Row {
+    Constants { id: c }
+
     // ── Required bindings (set by Widget.qml) ────────────────────────────────
-    property int    iconSize:    16
-    property string displayText: "Markets"
+    property int    iconSize:    c.defaultBarIconSize
+    property string displayText: c.barDefaultLabel
 
     spacing: Theme.spacingS
 

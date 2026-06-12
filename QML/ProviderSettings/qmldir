@@ -1,0 +1,4 @@
+module Markets.ProviderSettings
+ProviderCredentialsPanel 1.0 ProviderCredentialsPanel.qml
+StooqProviderSettings 1.0 StooqProviderSettings.qml
+YahooProviderSettings 1.0 YahooProviderSettings.qml

@@ -1,6 +1,6 @@
 // ChartDataProcessor.qml — Pure data processing for sparkline charts
 //
-// Consumes a raw dataPoints array (from the Stooq provider) and exposes
+// Consumes a raw dataPoints array from a market data provider and exposes
 // all derived values needed to paint the chart: cleaned close prices,
 // direction, value range, and a coordinate-mapping function.
 // Views/PriceChart.qml instantiates this item and uses its outputs.

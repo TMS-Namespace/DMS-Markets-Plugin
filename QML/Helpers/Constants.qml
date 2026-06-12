@@ -11,15 +11,19 @@ import QtQuick
 QtObject {
 
     // ── Developer / debug mode ────────────────────────────────────────────────
-    readonly property bool devMode: false   // set false to silence all plugin logs
+    readonly property bool devMode: true   // set false to silence all plugin logs
 
     // ── Default chart colors ──────────────────────────────────────────────────
     readonly property color defaultUpColor:   "#4CAF50"
     readonly property color defaultDownColor: "#F44336"
+    readonly property color validationErrorColor: defaultDownColor
 
     // ── Bar-pill display strings ──────────────────────────────────────────────
     readonly property string barDefaultLabel: "Markets"
-    readonly property string barSeparator:    "  │  "
+    readonly property string barSeparator:    "│"
+    readonly property string pluginSubtitle:  "Track live prices for currencies, stocks, commodities, and crypto."
+    readonly property string sourceUrl:       "https://github.com/TMS-Namespace/DMS-Markets-Plugin"
+    readonly property real   linkIdleOpacity: 0.65
 
     // ── Popout / widget layout ────────────────────────────────────────────────
     readonly property int popoutWidth:      440
@@ -27,6 +31,8 @@ QtObject {
     readonly property int popoutPadding:    80   // px added beyond rows × rowHeight
     readonly property int rowHeight:        78   // px per symbol row
     readonly property int defaultPopoutRows: 5
+    readonly property int minPopoutRows:     1
+    readonly property int maxPopoutRows:     50
 
     // ── PopoutPanel internal UI ───────────────────────────────────────────────
     readonly property int    headerButtonSpacing:  6
@@ -34,6 +40,8 @@ QtObject {
     readonly property int    headerButtonRadius:   14
     readonly property int    headerIconSize:       18
     readonly property int    headerAnimDurationMs: 800
+    readonly property int    headerHoverZ:         100
+    readonly property int    headerButtonZ:        101
     readonly property int    scrollBarWidth:       4
     readonly property int    scrollBarRadius:      2
     readonly property int    scrollThumbMin:       20
@@ -47,6 +55,8 @@ QtObject {
     readonly property int    symbolNameColumnW:    90
     readonly property int    symbolPriceColumnW:   86
     readonly property int    symbolColSpacing:     2
+    readonly property int    symbolNameFontSize:   15
+    readonly property int    symbolTickerFontSize: 13
     readonly property int    actionButtonSize:     22
     readonly property int    actionButtonRadius:   11
     readonly property int    actionIconSize:       14
@@ -74,10 +84,14 @@ QtObject {
     readonly property int    configActionSize:      24   // clickable area for move/delete
     readonly property int    configArrowIconSize:   16
     readonly property int    configButtonSpacing:   2
+    readonly property int    configDefaultWidth:    200
 
     // ── Shared small buttons / compact rows ───────────────────────────────────
     readonly property int    smallButtonWidth:      80   // cancel buttons
+    readonly property int    symbolSearchButtonWidth: 290
+    readonly property int    symbolSearchButtonPadding: 14
     readonly property int    compactRowHeight:      44   // add/edit rows
+    readonly property int    providerSettingsWidth: 360
 
     // ── Slider (settings popout-row slider) ───────────────────────────────────
     readonly property int    sliderContainerHeight: 48
@@ -87,13 +101,12 @@ QtObject {
 
     // ── Button hover / background alphas ─────────────────────────────────────
     readonly property real   buttonHoverAlpha:      0.15  // hover highlight tint
+    readonly property int    fullRotationDeg:       360
+    readonly property int    unpinnedRotationDeg:   45
+    readonly property int    overlayZ:              10
+    readonly property int    defaultBarIconSize:    16
 
-    // ── API key / settings ────────────────────────────────────────────────────
-    readonly property int    apiKeySaveDebounceMs:  600   // delay before persisting the API key
-    readonly property int    tokenErrorCooldownMs:  10000 // min gap between token-error toasts
-    readonly property int    apiKeyOpacityAnimMs:   150   // disabled-settings fade duration
-    readonly property string stooqProviderId:       "stooq"
-    readonly property string stooqApiKeySettingKey: "stooqApiKey"
-    readonly property int    apiKeyMinLength:       25
-    readonly property int    apiKeyMaxLength:       40
+    // ── Provider credentials / settings ──────────────────────────────────────
+    readonly property int    credentialSaveDebounceMs: 600
+    readonly property int    credentialErrorCooldownMs: 10000 // min gap between credential-error toasts
 }

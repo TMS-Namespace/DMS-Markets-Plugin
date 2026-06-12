@@ -21,7 +21,7 @@ Item {
     Constants { id: c }
 
     // ── Inputs (bound from Widget.qml) ────────────────────────────────────────
-    property string apiKey:              ""
+    property var    providerCredentials: ({})
     property var    symbols:             []
     property var    priceData:           ({})
     property var    graphData:           ({})
@@ -32,18 +32,8 @@ Item {
     property var    _fetchQueue:         []
     property var    _queuedFetchKeys:    ({})
 
-    onApiKeyChanged: {
-        // Only push the key into the provider registry when it is valid;
-        // clear it when the key is removed or invalid to stop active fetches.
-        if (Helpers.isValidApiKey(apiKey))
-            Providers.setApiKey(c.stooqProviderId, apiKey)
-        else
-            Providers.setApiKey(c.stooqProviderId, "")
-    }
-    Component.onCompleted: {
-        if (Helpers.isValidApiKey(apiKey))
-            Providers.setApiKey(c.stooqProviderId, apiKey)
-    }
+    onProviderCredentialsChanged: _syncProviderCredentials()
+    Component.onCompleted: _syncProviderCredentials()
 
     // ── Signals ───────────────────────────────────────────────────────────────
     // Emit updated copies so Widget.qml can assign them back to its properties.
@@ -52,15 +42,20 @@ Item {
     signal fetchTimesUpdated(var newTimes)
     signal pendingFetchesUpdated(var newPending)
     signal fullGraphFetchUpdated(var newFullFetch)
-    signal tokenError(string message)
+    signal credentialError(string message)
 
     // ── Polling timer ─────────────────────────────────────────────────────────
     Timer {
         id: checkTimer
         interval: JsK.POLL_INTERVAL_MS
-        running: symbols.length > 0 && apiKey !== ""
+        running: symbols.length > 0
         repeat: true
         onTriggered: _checkAndFetch()
+    }
+
+    function _syncProviderCredentials() {
+        for (var providerId in providerCredentials)
+            Providers.setCredential(providerId, providerCredentials[providerId] || "")
     }
 
     function _checkAndFetch() {
@@ -195,18 +190,21 @@ Item {
         var retryNum  = attempt || 0
         if (c.devMode) console.log("[Markets/Fetcher] doFetch", symbol.id, fetchType,
                                    retryNum > 0 ? "(retry " + retryNum + ")" : "")
-        var url
-        var tailLines = 0
+        var providerId = symbol.provider || Providers.getDefaultProviderId()
+        if (!Providers.hasRequiredCredential(providerId))
+            return
+
+        var request
 
         if (fetchType === "price") {
             var priceInterval = Providers.getPriceInterval(symbol.priceInterval)
-            url = Providers.buildPriceUrl(symbol.id, symbol.provider, priceInterval)
+            request = Providers.getPriceRequest(symbol.id, providerId, priceInterval)
         } else {
             var histConfig = Providers.getHistoryConfig(symbol.graphInterval)
-            url = Providers.buildHistoryUrl(symbol.id, symbol.provider, histConfig.interval)
-            tailLines = histConfig.maxPoints + 2
+            request = Providers.getHistoryRequest(symbol.id, providerId, histConfig.interval, histConfig.maxPoints)
         }
 
+        var url = request.url || ""
         if (!url) return
 
         var fetchKey = symbol.id + "_" + fetchType + "_" + url
@@ -215,8 +213,8 @@ Item {
             return
         }
 
-        var curlCmd = _buildCurlCommand(url, tailLines)
-        var shell = ["bash", "-o", "pipefail", "-c", curlCmd]
+        var command = request.command
+        if (!command || command.length === 0) return
 
         var queuedKeys = {}
         for (var qk in _queuedFetchKeys) queuedKeys[qk] = _queuedFetchKeys[qk]
@@ -226,12 +224,12 @@ Item {
         var queue = _fetchQueue.slice()
         queue.push({
             symbolId:     symbol.id,
-            providerName: symbol.provider,
+            providerName: providerId,
             fetchType:    fetchType,
             chartRange:   symbol.graphInterval || "1M",
             fetchKey:     fetchKey,
             attempt:      retryNum,
-            command:      shell
+            command:      command
         })
         _fetchQueue = queue
 
@@ -276,47 +274,6 @@ Item {
         fetchPumpTimer.restart()
     }
 
-    function _buildCurlCommand(url, tailLines) {
-        var cmd = ""
-        cmd += "set -e\n"
-        cmd += "if command -v ionice >/dev/null 2>&1; then ionice -c3 -p $$ >/dev/null 2>&1 || true; fi\n"
-        cmd += "if command -v renice >/dev/null 2>&1; then renice -n 19 -p $$ >/dev/null 2>&1 || true; fi\n"
-        cmd += "cookie=\"${XDG_CACHE_HOME:-$HOME/.cache}/dms-markets-stooq.cookies\"\n"
-        cmd += "mkdir -p \"$(dirname \"$cookie\")\"\n"
-        cmd += "tmp=\"$(mktemp)\"\n"
-        cmd += "hdr=\"$(mktemp)\"\n"
-        cmd += "cleanup() { rm -f \"$tmp\" \"$hdr\"; }\n"
-        cmd += "trap cleanup EXIT\n"
-        cmd += "url='" + url + "'\n"
-        cmd += "fetch() {\n"
-        cmd += "  curl -fsSL --connect-timeout 10 --max-time 20"
-        cmd += " -D \"$hdr\""
-        cmd += " -b \"$cookie\" -c \"$cookie\""
-        cmd += " -H 'User-Agent: Mozilla/5.0 (X11; Linux x86_64)'"
-        cmd += " \"$url\" -o \"$tmp\"\n"
-        cmd += "}\n"
-        cmd += "fetch\n"
-        cmd += "if grep -q 'This site requires JavaScript to verify your browser' \"$tmp\"; then\n"
-        cmd += "  challenge=$(sed -n 's/.*const c=\"\\([^\"]*\\)\",d=\\([0-9][0-9]*\\).*/\\1 \\2/p' \"$tmp\" | head -n 1)\n"
-        cmd += "  if [ -z \"$challenge\" ]; then cat \"$tmp\"; exit 0; fi\n"
-        cmd += "  cval=${challenge% *}\n"
-        cmd += "  dval=${challenge##* }\n"
-        cmd += "  n=$(node -e 'const crypto=require(\"crypto\"); const c=process.argv[1], d=Number(process.argv[2]); const target=\"0\".repeat(d); for (let n=0;;n++) { if (crypto.createHash(\"sha256\").update(c+n).digest(\"hex\").startsWith(target)) { console.log(n); break; } }' \"$cval\" \"$dval\")\n"
-        cmd += "  curl -fsSL --connect-timeout 10 --max-time 20"
-        cmd += " -b \"$cookie\" -c \"$cookie\""
-        cmd += " -X POST -H 'Content-Type: application/x-www-form-urlencoded'"
-        cmd += " --data-urlencode \"c=$cval\" --data-urlencode \"n=$n\""
-        cmd += " 'https://stooq.com/__verify' >/dev/null\n"
-        cmd += "  fetch\n"
-        cmd += "fi\n"
-        cmd += "if grep -qi 'filename=error.txt' \"$hdr\"; then echo 'get your apikey'; exit 0; fi\n"
-        if (tailLines > 0)
-            cmd += "tail -n " + tailLines + " \"$tmp\"\n"
-        else
-            cmd += "cat \"$tmp\"\n"
-        return cmd
-    }
-
     // ── Incremental graph merge ───────────────────────────────────────────────
     function _mergeLatestIntoGraph(symbol) {
         var pd = priceData[symbol.id]
@@ -350,8 +307,9 @@ Item {
 
     // ── Parse and store completed fetch ───────────────────────────────────────
     function _onFetchComplete(symbolId, providerName, fetchType, chartRange, csvText) {
-        if (Providers.isApiKeyError(csvText)) {
-            tokenError("API key missing or invalid — enter your Stooq API key in plugin settings")
+        if (Providers.isCredentialError(providerName, csvText)) {
+            var meta = Providers.getProviderMeta(providerName)
+            credentialError(meta.authErrorMessage || "Provider credential missing or invalid")
             return
         }
         var invert = Helpers.isInverted(symbols, symbolId)
@@ -383,7 +341,7 @@ Item {
                 date: latest.date, time: latest.time,
                 change:        closePrice - openPrice,
                 changePercent: openPrice !== 0
-                               ? ((closePrice - openPrice) / openPrice * 100) : 0
+                               ? ((closePrice - openPrice) / openPrice * JsK.PERCENT_MULTIPLIER) : 0
             }
             priceDataReady(newData)
 

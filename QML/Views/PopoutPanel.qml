@@ -58,7 +58,7 @@ Item {
         height: panel.headerOffset
         hoverEnabled: true
         acceptedButtons: Qt.NoButton
-        z: 100
+        z: c.headerHoverZ
     }
 
     Row {
@@ -71,7 +71,7 @@ Item {
                  || refreshAllArea.containsMouse
                  || closePopoutArea.containsMouse
                  || panel._anyLoading
-        z: 101
+        z: c.headerButtonZ
 
         // ── Refresh-all button ───────────────────────────────────────────
         Rectangle {
@@ -98,7 +98,7 @@ Item {
 
                 RotationAnimation on rotation {
                     running:  panel._anyLoading
-                    from: 0; to: 360
+                    from: 0; to: c.fullRotationDeg
                     duration: c.headerAnimDurationMs
                     loops:    Animation.Infinite
                 }
