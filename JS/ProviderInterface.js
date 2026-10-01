@@ -28,6 +28,7 @@
 //
 //     // Optional provider-specific command builder. Providers that do not need
 //     // custom cookies/challenges can omit this and use the default curl command.
+//     // Script reads the URL from $1; never interpolate it into Bash source.
 //     buildFetchCommand:       function(url: string, tailLines: number) → string,
 //
 //     // ── Price ──────────────────────────────────────────────────────────
@@ -80,7 +81,7 @@ function _buildPlainFetchCommand(url, tailLines) {
     cmd += "tmp=\"$(mktemp)\"\n";
     cmd += "cleanup() { rm -f \"$tmp\"; }\n";
     cmd += "trap cleanup EXIT\n";
-    cmd += "url='" + url + "'\n";
+    cmd += 'url="$1"\n';
     cmd += "curl -fsSL --connect-timeout " + Constants.CURL_CONNECT_TIMEOUT_SECONDS
     cmd += " --max-time " + Constants.CURL_MAX_TIME_SECONDS;
     cmd += " -H 'User-Agent: " + Constants.FETCH_USER_AGENT + "'";
@@ -96,7 +97,7 @@ function _buildRequestCommand(provider, url, tailLines) {
     var commandText = provider.buildFetchCommand
         ? provider.buildFetchCommand(url, tailLines)
         : _buildPlainFetchCommand(url, tailLines);
-    return Constants.FETCH_SHELL_COMMAND.concat([commandText]);
+    return Constants.FETCH_SHELL_COMMAND.concat([commandText, "markets-fetch", url]);
 }
 
 // ─── Credential Management ───────────────────────────────────────────────────

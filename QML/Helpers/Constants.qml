@@ -22,8 +22,6 @@ QtObject {
     readonly property string barDefaultLabel: "Markets"
     readonly property string barSeparator:    "│"
     readonly property string pluginSubtitle:  "Track live prices for currencies, stocks, commodities, and crypto."
-    readonly property string sourceUrl:       "https://github.com/TMS-Namespace/DMS-Markets-Plugin"
-    readonly property real   linkIdleOpacity: 0.65
 
     // ── Popout / widget layout ────────────────────────────────────────────────
     readonly property int popoutWidth:      440
@@ -55,15 +53,16 @@ QtObject {
     readonly property int    symbolNameColumnW:    90
     readonly property int    symbolPriceColumnW:   86
     readonly property int    symbolColSpacing:     2
-    readonly property int    symbolNameFontSize:   15
-    readonly property int    symbolTickerFontSize: 13
+    // DMS defaults: medium 14px, small 12px. Deltas preserve compact labels.
+    readonly property int    symbolNameFontSizeDelta:   1
+    readonly property int    symbolTickerFontSizeDelta: 1
     readonly property int    actionButtonSize:     22
     readonly property int    actionButtonRadius:   11
     readonly property int    actionIconSize:       14
     readonly property int    actionCloseIconSize:  12
     readonly property int    actionButtonSpacing:  4
     readonly property real   actionButtonBgOpacity: 0.85
-    readonly property int    smallFontSize:        10   // px for change/delta text
+    readonly property int    smallFontSizeDelta:   -2
     readonly property int    agoTickMs:            15000 // "X sec ago" refresh
 
     // ── PriceChart rendering ──────────────────────────────────────────────────
@@ -72,10 +71,9 @@ QtObject {
     readonly property real   chartFillOpacity:     0.25
     readonly property int    chartLabelLeftMargin: 4
     readonly property int    chartLabelTopMargin:  2
-    readonly property int    chartLabelFontSize:   9
+    readonly property int    chartLabelFontSizeDelta: -3
     readonly property real   chartLabelOpacity:    0.8
-    readonly property color  chartLabelColor:      "#888888"
-    readonly property int    chartStatusFontSize:  10
+    readonly property int    chartStatusFontSizeDelta: -2
     readonly property int    chartLoadingAnimMs:   600
 
     // ── ConfiguredSymbol / settings list rows ─────────────────────────────────

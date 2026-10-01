@@ -86,40 +86,6 @@ PluginSettings {
         wrapMode: Text.WordWrap
     }
 
-    Item {
-        width: githubRow.width
-        height: githubRow.height
-
-        Row {
-            id: githubRow
-            spacing: Theme.spacingXS
-
-            DankIcon {
-                name: "code"
-                size: Theme.fontSizeSmall
-                color: Theme.primary
-                anchors.verticalCenter: parent.verticalCenter
-                opacity: githubMouseArea.containsMouse ? 1.0 : c.linkIdleOpacity
-            }
-
-            StyledText {
-                text: "Source on GitHub"
-                font.pixelSize: Theme.fontSizeSmall
-                color: Theme.primary
-                opacity: githubMouseArea.containsMouse ? 1.0 : c.linkIdleOpacity
-                anchors.verticalCenter: parent.verticalCenter
-            }
-        }
-
-        MouseArea {
-            id: githubMouseArea
-            anchors.fill: parent
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-            onClicked: Qt.openUrlExternally(c.sourceUrl)
-        }
-    }
-
     // ═══════════════════════════════════════════════════════════════════════
     //  CHART COLORS
     // ═══════════════════════════════════════════════════════════════════════

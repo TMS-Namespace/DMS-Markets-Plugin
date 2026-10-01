@@ -5,6 +5,8 @@
 // QML/Helpers/ChartDataProcessor.qml; this file contains only rendering code.
 
 import QtQuick
+import qs.Common
+import qs.Widgets
 import "../Helpers"
 
 Canvas {
@@ -72,7 +74,7 @@ Canvas {
     }
 
     // ── Chart range label (top-left corner) ───────────────────────────────────
-    Text {
+    StyledText {
         visible: chart.showRangeLabel && chart.graphInterval !== ""
                  && processor.closes.length >= 2
         anchors.left:       parent.left
@@ -80,32 +82,33 @@ Canvas {
         anchors.leftMargin: c.chartLabelLeftMargin
         anchors.topMargin:  c.chartLabelTopMargin
         text:           chart.graphInterval
-        font.pixelSize: c.chartLabelFontSize
-        color:          c.chartLabelColor
+        font.pixelSize: Theme.fontSizeSmall + c.chartLabelFontSizeDelta
+        color:          Theme.surfaceVariantText
         opacity:        c.chartLabelOpacity
     }
 
     // ── Status labels ─────────────────────────────────────────────────────────
-    Text {
+    StyledText {
+        id: loadingLabel
         visible: processor.closes.length < 2 && chart.isLoading
         anchors.centerIn: parent
         text:           "Loading…"
-        font.pixelSize: c.chartStatusFontSize
-        color:          c.chartLabelColor
+        font.pixelSize: Theme.fontSizeSmall + c.chartStatusFontSizeDelta
+        color:          Theme.surfaceVariantText
 
         SequentialAnimation on opacity {
-            running: true
+            running: loadingLabel.visible
             loops:   Animation.Infinite
             NumberAnimation { to: 0.3; duration: c.chartLoadingAnimMs }
             NumberAnimation { to: 1.0; duration: c.chartLoadingAnimMs }
         }
     }
 
-    Text {
+    StyledText {
         visible: processor.closes.length < 2 && !chart.isLoading
         anchors.centerIn: parent
         text:           "No chart data"
-        font.pixelSize: c.chartStatusFontSize
-        color:          c.chartLabelColor
+        font.pixelSize: Theme.fontSizeSmall + c.chartStatusFontSizeDelta
+        color:          Theme.surfaceVariantText
     }
 }

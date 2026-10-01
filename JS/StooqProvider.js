@@ -40,7 +40,7 @@ function _buildVerifiedFetchCommand(url, tailLines) {
     cmd += "hdr=\"$(mktemp)\"\n";
     cmd += "cleanup() { rm -f \"$tmp\" \"$hdr\"; }\n";
     cmd += "trap cleanup EXIT\n";
-    cmd += "url='" + url + "'\n";
+    cmd += 'url="$1"\n';
     cmd += "fetch() {\n";
     cmd += "  curl -fsSL --connect-timeout " + Constants.CURL_CONNECT_TIMEOUT_SECONDS;
     cmd += " --max-time " + Constants.CURL_MAX_TIME_SECONDS;

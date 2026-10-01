@@ -2,6 +2,8 @@ const assert = require("assert");
 const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
+const os = require("os");
+const { spawnSync } = require("child_process");
 
 const repoRoot = path.resolve(__dirname, "..");
 
@@ -125,6 +127,49 @@ function sampleChartResponse() {
     });
 }
 
+function verifyFetchArguments(providers) {
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "markets-fetch-test-"));
+    try {
+        const capture = path.join(tempDir, "curl-arguments");
+        const marker = path.join(tempDir, "injected");
+        const bashEnv = path.join(tempDir, "mock-curl.bash");
+        fs.writeFileSync(bashEnv, `
+ionice() { :; }
+renice() { :; }
+curl() {
+    printf '%s\\n' "$@" > "$MARKETS_TEST_CAPTURE"
+    while (( $# )); do
+        if [[ "$1" == -o ]]; then
+            printf 'fixture data\\n' > "$2"
+            shift
+        fi
+        shift
+    done
+}
+`);
+        const url = "https://example.test/quote'" + ';touch ' + marker
+            + ';#$(touch ' + marker + ')`touch ' + marker + '`';
+        for (const providerId of ["yahoo", "stooq"]) {
+            const command = providers._buildRequestCommand(providers.getProvider(providerId), url, 0);
+            assert.strictEqual(command[0], "bash");
+            assert.strictEqual(command[6], url, "URL must be passed as a separate argument");
+            const result = spawnSync(command[0], Array.from(command.slice(1)), {
+                encoding: "utf8",
+                timeout: 5000,
+                env: { ...process.env, BASH_ENV: bashEnv, XDG_CACHE_HOME: tempDir,
+                       MARKETS_TEST_CAPTURE: capture }
+            });
+            assert.strictEqual(result.status, 0, result.stderr);
+            assert.strictEqual(result.stdout, "fixture data\n");
+            assert(fs.readFileSync(capture, "utf8").split("\n").includes(url),
+                   "curl must receive the original URL as literal data");
+            assert(!fs.existsSync(marker), "URL must never execute as shell code");
+        }
+    } finally {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+}
+
 function run() {
     const bootstrap = loadProviderBootstrap();
     assert.strictEqual(bootstrap.ensureProvidersRegistered(), 2,
@@ -159,8 +204,10 @@ function run() {
     assert(historyRequest.url.includes("interval=1d"), "Yahoo daily history URL should use daily candles");
     assert(historyRequest.url.includes("range=6mo"), "Yahoo 65-point daily history URL should use a wider range");
     assert.strictEqual(historyRequest.tailLines, 0, "Yahoo JSON responses must not be tailed");
-    assert(historyRequest.command[4].includes("query1.finance.yahoo.com"),
-           "Yahoo command should fetch the provider URL");
+    assert.strictEqual(historyRequest.command[6], historyRequest.url,
+                       "Yahoo command should pass the provider URL separately");
+
+    verifyFetchArguments(providers);
 
     const stooqRequest = providers.getHistoryRequest("eurusd", "stooq", "1d", 30);
     assert(stooqRequest.command[4].includes("dms-markets-stooq.cookies"),

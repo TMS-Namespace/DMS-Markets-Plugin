@@ -86,7 +86,7 @@ Item {
 
         StyledText {
             text:           symbolData.name || symbolData.id || "—"
-            font.pixelSize: c.symbolNameFontSize
+            font.pixelSize: Theme.fontSizeMedium + c.symbolNameFontSizeDelta
             font.weight:    Font.Bold
             color:          Theme.surfaceText
             elide: Text.ElideRight
@@ -97,7 +97,7 @@ Item {
         StyledText {
             visible:        symbolRow.showTicker
             text:           (symbolData.id || "") + " • " + (symbolData.priceInterval || "1d")
-            font.pixelSize: c.symbolTickerFontSize
+            font.pixelSize: Theme.fontSizeSmall + c.symbolTickerFontSizeDelta
             color:          Theme.surfaceVariantText
             elide:          Text.ElideRight
             wrapMode:       Text.NoWrap
@@ -107,7 +107,7 @@ Item {
         StyledText {
             visible:        symbolRow.showRefreshedSince && (lastFetchTime > 0 || isLoading)
             text:           { void _agoTick; return isLoading ? "refreshing…" : _timeAgo(lastFetchTime) }
-            font.pixelSize: c.smallFontSize
+            font.pixelSize: Theme.fontSizeSmall + c.smallFontSizeDelta
             color:          isLoading ? Theme.primary : Theme.surfaceVariantText
         }
     }
@@ -131,14 +131,14 @@ Item {
         StyledText {
             visible:        hasData && symbolRow.showPriceRange
             text:           (isPositive ? "+" : "") + formatNumber(change)
-            font.pixelSize: c.smallFontSize
+            font.pixelSize: Theme.fontSizeSmall + c.smallFontSizeDelta
             color:          changeColor
         }
 
         StyledText {
             visible:        hasData && symbolRow.showPriceRange
             text:           "(" + (isPositive ? "+" : "") + changePct.toFixed(2) + "%)"
-            font.pixelSize: c.smallFontSize
+            font.pixelSize: Theme.fontSizeSmall + c.smallFontSizeDelta
             color:          changeColor
         }
     }

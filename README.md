@@ -25,6 +25,8 @@ A [DankMaterialShell](https://github.com/dankmaterial/DMS) widget plugin that di
 
 - `DMS` ≥ 1.2.0
 - `curl` installed and available in `$PATH`
+- `bash` installed and available in `$PATH`
+- `Node.js` only when `Stooq` provider is used (currently disabled).
 - Internet access
 
 ## Data Providers
@@ -38,17 +40,24 @@ Currently supported providers:
 
 ## Privacy
 
+- URLs are passed as separate process arguments.
+- `Yahoo Finance` provider quires `query1.finance.yahoo.com`, clicking a chart or symbol search opens `finance.yahoo.com` in your browse.
+- Responses are written to `mktemp` temporary files and cleaned up when the fetch script exits.
+- Stooq contacts `stooq.com`, and stores a cookie jar at `~/.cache/dms-markets-stooq.cookies`, and uses `Node.js` for a browser verification proof-of-work challenge.
 - No endpoints are contacted other than the one related to the configured provider.
-- Provider credentials, if any, are obfuscated and stored locally on your disk.
+- Provider credentials (currently only `Stooq`) are stored locally in plugin settings, with simple and reversible XOR obfuscation.
 - `Stooq` is operated from `Poland` and is presumably `GDPR`-compliant. See their [Privacy & Cookie Policy](https://stooq.com/privacy/) and [Terms of Service](https://stooq.com/terms.html).
 - `Yahoo's` [Privacy Policy](https://legal.yahoo.com/us/en/yahoo/privacy/index.html), [Yahoo Finance privacy practices](https://legal.yahoo.com/us/en/yahoo/privacy/products/mediaservices/index.html#yahoo-finance), and [Terms of Service](https://legal.yahoo.com/us/en/yahoo/terms/otos/index.html).
 
 ## Version History
 
+- v1.0.4 :
+  - A maintenance release with small fixes, to comply with `DMS` comments [published here](https://github.com/AvengeMedia/dms-plugin-registry/issues/555#issuecomment-5899885512).
+  - Enforce all command execution via `bash` to not break when user's default shell is not `bash`.
 - v1.0.3 :
   - `Stooq` changed their `API` yet again, and broken data fetching.
   - Added `Yahoo Finance` provider as a, probably less privacy respecting, but working alternative for `Stooq`.
-  - Disabled `Stooq` in till they stabilize their `API`.
+  - Disabled `Stooq` till they stabilize their `API`.
   - If you previously configured `Stooq` symbols, delete them and re-add the same markets using another provider. Provider symbols can differ, so use the symbol search link in settings to find the correct Yahoo Finance symbol.
 - v1.0.2 :
   - Now `Stooq` requires `API` key to provide historic data, updated backend and widget settings to support `API` key.
