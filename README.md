@@ -52,7 +52,7 @@ Currently supported providers:
 ## Version History
 
 - v1.0.4 :
-  - A maintenance release with small fixes, to comply with `DMS` comments [published here](https://github.com/AvengeMedia/dms-plugin-registry/issues/555#issuecomment-5899885512).
+  - A maintenance release with small fixes, to comply with `DMS` comments [published here](https://github.com/AvengeMedia/dms-plugin-registry/issues/555#issuecomment-5899885512) and [here](https://github.com/AvengeMedia/dms-plugin-registry/pull/990#issuecomment-5947902007).
   - Enforce all command execution via `bash` to not break when user's default shell is not `bash`.
 - v1.0.3 :
   - `Stooq` changed their `API` yet again, and broken data fetching.

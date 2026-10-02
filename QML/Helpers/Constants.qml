@@ -11,7 +11,7 @@ import QtQuick
 QtObject {
 
     // ── Developer / debug mode ────────────────────────────────────────────────
-    readonly property bool devMode: true   // set false to silence all plugin logs
+    readonly property bool devMode: false   // enable for verbose plugin diagnostics
 
     // ── Default chart colors ──────────────────────────────────────────────────
     readonly property color defaultUpColor:   "#4CAF50"
@@ -90,12 +90,6 @@ QtObject {
     readonly property int    symbolSearchButtonPadding: 14
     readonly property int    compactRowHeight:      44   // add/edit rows
     readonly property int    providerSettingsWidth: 360
-
-    // ── Slider (settings popout-row slider) ───────────────────────────────────
-    readonly property int    sliderContainerHeight: 48
-    readonly property int    sliderAreaHeight:      24
-    readonly property int    sliderTrackHeight:     4
-    readonly property int    sliderHandleSize:      18
 
     // ── Button hover / background alphas ─────────────────────────────────────
     readonly property real   buttonHoverAlpha:      0.15  // hover highlight tint

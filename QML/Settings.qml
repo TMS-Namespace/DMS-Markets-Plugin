@@ -167,110 +167,12 @@ PluginSettings {
         topPadding: Theme.spacingM
     }
 
-    StringSetting {
-        id: popoutRowsInput
+    SliderSetting {
         settingKey: "popoutRows"
         label: "Visible Symbol Rows"
-        description: ""
-        placeholder: c.defaultPopoutRows
+        minimum: c.minPopoutRows
+        maximum: c.maxPopoutRows
         defaultValue: c.defaultPopoutRows
-        visible: false
-    }
-
-    Item {
-        width: parent.width
-        height: c.sliderContainerHeight
-
-        Column {
-            anchors.fill: parent
-            spacing: 4
-
-            Row {
-                width: parent.width
-
-                StyledText {
-                    text: "Visible Symbol Rows"
-                    font.pixelSize: Theme.fontSizeLarge
-                    color: Theme.surfaceText
-                }
-
-                Item { width: Theme.spacingS; height: 1 }
-
-                StyledText {
-                    text: popoutSlider.value.toFixed(0)
-                    font.pixelSize: Theme.fontSizeLarge
-                    font.weight: Font.Bold
-                    color: Theme.primary
-                }
-            }
-
-            Item {
-                width: parent.width
-                height: c.sliderAreaHeight
-
-                Rectangle {
-                    id: sliderTrack
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.verticalCenter: parent.verticalCenter
-                    height: c.sliderTrackHeight
-                    radius: c.sliderTrackHeight / 2
-                    color: Theme.surfaceContainerHighest
-
-                    Rectangle {
-                        width: (popoutSlider.value - c.minPopoutRows)
-                               / (c.maxPopoutRows - c.minPopoutRows) * parent.width
-                        height: parent.height
-                        radius: parent.radius
-                        color: Theme.primary
-                    }
-                }
-
-                Rectangle {
-                    id: sliderHandle
-                    width: c.sliderHandleSize; height: c.sliderHandleSize; radius: c.sliderHandleSize / 2
-                    color: sliderMouse.pressed ? Theme.primary : Theme.surfaceContainerHighest
-                    border.color: Theme.primary; border.width: 2
-                    x: (popoutSlider.value - c.minPopoutRows)
-                       / (c.maxPopoutRows - c.minPopoutRows) * (parent.width - width)
-                    anchors.verticalCenter: parent.verticalCenter
-
-                    property real value: {
-                        var rowCount = parseInt(popoutRowsInput.value || c.defaultPopoutRows)
-                        return (isNaN(rowCount) || rowCount < c.minPopoutRows)
-                               ? c.defaultPopoutRows
-                               : Math.min(rowCount, c.maxPopoutRows)
-                    }
-                }
-
-                QtObject {
-                    id: popoutSlider
-                    property real value: sliderHandle.value
-                }
-
-                MouseArea {
-                    id: sliderMouse
-                    anchors.fill: parent
-                    anchors.topMargin: -8
-                    anchors.bottomMargin: -8
-                    cursorShape: Qt.PointingHandCursor
-
-                    function updateValue(mouseX) {
-                        var ratio       = Math.max(0, Math.min(1, mouseX / width))
-                        var sliderValue = Math.round(c.minPopoutRows
-                                                     + ratio * (c.maxPopoutRows - c.minPopoutRows))
-                        popoutSlider.value = sliderValue
-                    }
-
-                    onPressed: function(mouse) { updateValue(mouse.x) }
-                    onPositionChanged: function(mouse) { if (pressed) updateValue(mouse.x) }
-                    onReleased: {
-                        root.saveValue("popoutRows", popoutSlider.value.toFixed(0))
-                        Qt.callLater(function() { root.refreshSymbolsList() })
-                    }
-                }
-            }
-        }
     }
 
     StyledText {
