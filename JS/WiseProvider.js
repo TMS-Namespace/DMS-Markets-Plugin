@@ -153,6 +153,14 @@ PI.registerProvider(Constants.WISE_PROVIDER_ID, {
         return _url(Constants.WISE_HISTORY_LIVE_URL, pair, _historyParams(interval, maxPoints))
     },
 
+    historyPointLimit: function(chartRange, maxPoints) {
+        if (chartRange === "3M" || chartRange === "6M" || chartRange === "1Y") {
+            // Convert weekday points to calendar days and include both range endpoints.
+            return Math.ceil(maxPoints * 7 / 5) + 2
+        }
+        return maxPoints
+    },
+
     // `context.interval` is the chart candle interval ("1d"|"1w"|"1M").
     parseHistoryResponse: function(responseText, context) {
         var points = _parseRaw(responseText)

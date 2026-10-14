@@ -294,6 +294,14 @@ function getHistoryConfig(chartRange) {
     return Constants.CHART_RANGES[range];
 }
 
+function getHistoryPointLimit(providerId, chartRange) {
+    var range = normalizeChartRange(chartRange);
+    var config = Constants.CHART_RANGES[range];
+    var provider = _providers[providerId];
+    if (!provider || !provider.historyPointLimit) return config.maxPoints;
+    return provider.historyPointLimit(range, config.maxPoints);
+}
+
 function getChartRangeLabel(range) {
     return Constants.CHART_RANGE_LABELS[normalizeChartRange(range)] || range;
 }

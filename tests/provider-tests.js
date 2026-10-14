@@ -285,6 +285,29 @@ function run() {
     assert(wiseHistory.url.includes("unit=day"),
            "Wise 30-point daily history URL should stay within the day-unit cap");
 
+    const wiseChartRanges = [
+        ["1W", 7], ["1M", 30], ["3M", 93], ["6M", 184], ["1Y", 366],
+        ["2Y", 104], ["5Y", 260], ["10Y", 120]
+    ];
+    for (const [range, expectedLimit] of wiseChartRanges) {
+        assert.strictEqual(providers.getHistoryPointLimit("wise", range), expectedLimit,
+                           `Wise ${range} chart should retain enough points for its calendar span`);
+    }
+    assert.strictEqual(providers.getHistoryPointLimit("yahoo", "3M"), 65,
+                       "Yahoo history point limits should remain unchanged");
+    assert.strictEqual(providers.getHistoryPointLimit("stooq", "3M"), 65,
+                       "Stooq history point limits should remain unchanged");
+    for (const [range, expectedMonths] of [["3M", 4], ["6M", 7], ["1Y", 13]]) {
+        const pointLimit = providers.getHistoryPointLimit("wise", range);
+        const request = providers.getHistoryRequest("BRLPLN", "wise", "1d", pointLimit);
+        assert(request.url.includes(`length=${expectedMonths}&resolution=daily&unit=month`),
+               `Wise ${range} history request should fetch enough calendar days before trimming`);
+    }
+    const wiseTenYearHistory = providers.getHistoryRequest(
+        "BRLPLN", "wise", "1M", providers.getHistoryPointLimit("wise", "10Y"));
+    assert(wiseTenYearHistory.url.includes("length=60&resolution=daily&unit=month"),
+           "Wise 10Y range should retain its documented five-year API cap");
+
     const wiseLiveParsed = providers.parsePriceResponse("wise",
         JSON.stringify({ source: "BRL", target: "PLN", value: 0.75, time: 1767312000000 }));
     assert.strictEqual(wiseLiveParsed.length, 1,
