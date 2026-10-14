@@ -172,3 +172,28 @@ var YAHOO_WEEKLY_SHORT_POINTS = 104
 var YAHOO_DAILY_ONE_MONTH_POINTS = 30
 var YAHOO_DAILY_SIX_MONTH_POINTS = 65
 var YAHOO_DAILY_ONE_YEAR_POINTS = 130
+
+// ── Wise provider constants ─────────────────────────────────────────────────
+var WISE_PROVIDER_ID = "wise"
+var WISE_NAME = "Wise"
+var WISE_HISTORY_LIVE_URL = "https://wise.com/rates/history+live"
+var WISE_CONVERTER_BASE_URL = "https://wise.com/gb/currency-converter/"
+var WISE_SYMBOL_SEARCH_URL = "https://wise.com/gb/currency-converter/"
+var WISE_SYMBOL_HELP_TEXT = "6-letter currency pair (source then target), e.g. BRLPLN, EURUSD, CNYJPY. Wise covers most world currencies."
+var WISE_SYMBOL_PLACEHOLDER = "BRLPLN"
+var WISE_SETTINGS_TEXT = "No credential required. Enter a 6-letter currency pair such as BRLPLN (Brazilian Real → Polish Złoty)."
+// Wise only publishes hourly and daily rates, so sub-hour intervals are
+// deliberately absent: the settings UI will not offer them for this provider.
+var WISE_INTERVAL_MAP = {
+    "1h":  "hourly",
+    "1d":  "daily",
+    "1w":  "daily",
+    "1M":  "daily"
+}
+// The live/history endpoints only offer hourly and daily resolution, and
+// reject spans wider than ~5 years. Charts longer than that are clamped.
+var WISE_DEFAULT_HISTORY_POINTS = 30
+var WISE_MAX_HISTORY_DAYS = 1825
+var WISE_DAILY_UNIT_MAX_LENGTH = 30
+var WISE_MONTH_UNIT_MAX_LENGTH = 60
+var WISE_MS_PER_DAY = 86400000

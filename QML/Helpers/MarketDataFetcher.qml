@@ -351,7 +351,9 @@ Item {
             fetchTimesUpdated(times)
 
         } else {
-            var history = Providers.parseHistoryResponse(providerName, csvText)
+            var history = Providers.parseHistoryResponse(providerName, csvText, {
+                interval: Providers.getHistoryConfig(chartRange).interval
+            })
             if (history.length === 0) {
                 if (c.devMode) console.warn("[Markets/Fetcher]", symbolId, "history returned no data — chart unavailable")
                 return
