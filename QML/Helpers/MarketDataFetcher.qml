@@ -201,7 +201,8 @@ Item {
             request = Providers.getPriceRequest(symbol.id, providerId, priceInterval)
         } else {
             var histConfig = Providers.getHistoryConfig(symbol.graphInterval)
-            request = Providers.getHistoryRequest(symbol.id, providerId, histConfig.interval, histConfig.maxPoints)
+            var pointLimit = Providers.getHistoryPointLimit(providerId, symbol.graphInterval)
+            request = Providers.getHistoryRequest(symbol.id, providerId, histConfig.interval, pointLimit)
         }
 
         var url = request.url || ""
@@ -372,9 +373,10 @@ Item {
             }
 
             var histConfig = Providers.getHistoryConfig(chartRange)
+            var pointLimit = Providers.getHistoryPointLimit(providerName, chartRange)
             var newGraph   = {}
             for (var gk in graphData) newGraph[gk] = graphData[gk]
-            newGraph[symbolId] = history.slice(-histConfig.maxPoints)
+            newGraph[symbolId] = history.slice(-pointLimit)
             graphDataReady(newGraph)
 
             var fullFetch = {}
