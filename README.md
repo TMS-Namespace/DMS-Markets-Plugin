@@ -35,6 +35,9 @@ Currently supported providers:
 
 - [Yahoo Finance](https://finance.yahoo.com) — The current default. No credentials required. Example symbols: `EURUSD=X`, `BZ=F`, `HG=F`, `DX-Y.NYB`, `^GSPC`.
 - [Stooq](https://stooq.com) — Currently disabled, due to unstable `API`. Publishes `CSV` quotes for a wide range of instruments.
+- [Wise](https://wise.com) — No credentials required. Anonymous currency-exchange rates for most world currencies, including exotic pairs Yahoo Finance does not cover (e.g. `BRLPLN`). Symbols are 6-letter pairs (source then target).
+
+  > **Limitation:** Wise publishes hourly and daily rates only, so `1 Minute`, `5 Minutes`, and `15 Minutes` price ranges are not offered for this provider. Charts wider than ~5 years are clamped to the maximum span Wise allows.
 
   > **Limitation:** Some Stooq symbols (usually futures that has symbols of `*.f` format) shown on the website do not return CSV data through the public API. If a symbol stays empty in the widget, open Stooq in your browser and try the cash/index variant shown there (i.e. symbols of `*.i` or `*.c` format).
 
@@ -42,15 +45,20 @@ Currently supported providers:
 
 - URLs are passed as separate process arguments.
 - `Yahoo Finance` provider quires `query1.finance.yahoo.com`, clicking a chart or symbol search opens `finance.yahoo.com` in your browse.
+- `Wise` contacts `wise.com`, clicking a chart or symbol search opens `wise.com` in your browser.
 - Responses are written to `mktemp` temporary files and cleaned up when the fetch script exits.
 - Stooq contacts `stooq.com`, and stores a cookie jar at `~/.cache/dms-markets-stooq.cookies`, and uses `Node.js` for a browser verification proof-of-work challenge.
 - No endpoints are contacted other than the one related to the configured provider.
 - Provider credentials (currently only `Stooq`) are stored locally in plugin settings, with simple and reversible XOR obfuscation.
 - `Stooq` is operated from `Poland` and is presumably `GDPR`-compliant. See their [Privacy & Cookie Policy](https://stooq.com/privacy/) and [Terms of Service](https://stooq.com/terms.html).
 - `Yahoo's` [Privacy Policy](https://legal.yahoo.com/us/en/yahoo/privacy/index.html), [Yahoo Finance privacy practices](https://legal.yahoo.com/us/en/yahoo/privacy/products/mediaservices/index.html#yahoo-finance), and [Terms of Service](https://legal.yahoo.com/us/en/yahoo/terms/otos/index.html).
+- `Wise's` [Privacy Policy](https://wise.com/privacypolicy/) and [Terms of Use](https://wise.com/terms-and-conditions).
 
 ## Version History
 
+- v1.0.5 :
+  - Added `Wise` provider for anonymous currency-exchange rates, covering exotic pairs `Yahoo Finance` does not offer. No credentials required.
+  - Price-range options are now limited to the intervals the selected provider supports (e.g. `Wise` hides sub-hour ranges).
 - v1.0.4 :
   - A maintenance release with small fixes, to comply with `DMS` comments [published here](https://github.com/AvengeMedia/dms-plugin-registry/issues/555#issuecomment-5899885512) and [here](https://github.com/AvengeMedia/dms-plugin-registry/pull/990#issuecomment-5947902007).
   - Enforce all command execution via `bash` to not break when user's default shell is not `bash`.

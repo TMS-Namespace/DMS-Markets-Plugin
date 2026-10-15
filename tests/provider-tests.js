@@ -80,6 +80,25 @@ function loadStooqProvider(providerInterface) {
     vm.runInNewContext(source, context, { filename: "StooqProvider.js" });
 }
 
+function loadWiseProvider(providerInterface) {
+    const constants = loadConstants();
+    const context = {
+        console,
+        ProviderInterface: providerInterface,
+        ConstantsModule: constants,
+        Object,
+        JSON,
+        Math,
+        Date,
+        parseInt,
+        parseFloat,
+        isNaN,
+        encodeURIComponent
+    };
+    const source = stripQmlJs(fs.readFileSync(path.join(repoRoot, "JS", "WiseProvider.js"), "utf8"));
+    vm.runInNewContext(source, context, { filename: "WiseProvider.js" });
+}
+
 function loadProviderBootstrap() {
     const constants = loadConstants();
     const providers = loadProviderInterface();
@@ -101,7 +120,9 @@ function loadProviderBootstrap() {
         .replace(/^\s*\.import\s+"StooqProvider\.js"\s+as\s+StooqProvider\s*$/gm,
                  stripQmlJs(fs.readFileSync(path.join(repoRoot, "JS", "StooqProvider.js"), "utf8")))
         .replace(/^\s*\.import\s+"YahooProvider\.js"\s+as\s+YahooProvider\s*$/gm,
-                 stripQmlJs(fs.readFileSync(path.join(repoRoot, "JS", "YahooProvider.js"), "utf8")));
+                 stripQmlJs(fs.readFileSync(path.join(repoRoot, "JS", "YahooProvider.js"), "utf8")))
+        .replace(/^\s*\.import\s+"WiseProvider\.js"\s+as\s+WiseProvider\s*$/gm,
+                 stripQmlJs(fs.readFileSync(path.join(repoRoot, "JS", "WiseProvider.js"), "utf8")));
     vm.runInNewContext(source, context, { filename: "ProviderBootstrap.js" });
     return context;
 }
@@ -149,7 +170,7 @@ curl() {
 `);
         const url = "https://example.test/quote'" + ';touch ' + marker
             + ';#$(touch ' + marker + ')`touch ' + marker + '`';
-        for (const providerId of ["yahoo", "stooq"]) {
+        for (const providerId of ["yahoo", "stooq", "wise"]) {
             const command = providers._buildRequestCommand(providers.getProvider(providerId), url, 0);
             assert.strictEqual(command[0], "bash");
             assert.strictEqual(command[6], url, "URL must be passed as a separate argument");
@@ -172,7 +193,7 @@ curl() {
 
 function run() {
     const bootstrap = loadProviderBootstrap();
-    assert.strictEqual(bootstrap.ensureProvidersRegistered(), 2,
+    assert.strictEqual(bootstrap.ensureProvidersRegistered(), 3,
                        "Provider bootstrap should explicitly register bundled providers");
     assert.strictEqual(bootstrap.ProviderInterface.getDefaultProviderId(), "yahoo",
                        "Yahoo should be the default provider for new symbols");
@@ -180,6 +201,7 @@ function run() {
     const providers = loadProviderInterface();
     loadStooqProvider(providers);
     loadYahooProvider(providers);
+    loadWiseProvider(providers);
 
     assert(providers.getProviderIds().includes("yahoo"), "Yahoo provider should register itself");
     assert.strictEqual(providers.providerIsDisabled("stooq"), true,
@@ -188,6 +210,14 @@ function run() {
                        "Disabled Stooq provider should not be considered fetchable");
     assert.strictEqual(providers.providerRequiresCredential("yahoo"), false,
                        "Yahoo should not require stored credentials");
+    assert(providers.getProviderIds().includes("wise"), "Wise provider should register itself");
+    assert.strictEqual(providers.providerRequiresCredential("wise"), false,
+                       "Wise should not require stored credentials");
+    assert.strictEqual(providers.providerIsDisabled("wise"), false,
+                       "Wise should be enabled by default");
+    assert.strictEqual(JSON.stringify(providers.getSupportedIntervals("wise")),
+                       JSON.stringify(["1h", "1d", "1w", "1M"]),
+                       "Wise should expose only hourly and above (no sub-hour data exists)");
 
     const priceRequest = providers.getPriceRequest("EURUSD=X", "yahoo", "1h");
     assert(priceRequest.url.includes("/v8/finance/chart/EURUSD%3DX"),
@@ -236,6 +266,68 @@ function run() {
     }));
     assert.strictEqual(providers.parsePriceResponse("yahoo", sampleChartResponse()).at(-1).close, 1.12,
                        "Yahoo price parser should return the latest complete candle");
+
+    const wisePrice = providers.getPriceRequest("BRLPLN", "wise", "1h");
+    assert(wisePrice.url.includes("wise.com/rates/history+live"),
+           "Wise price URL should use the history+live endpoint");
+    assert(wisePrice.url.includes("source=BRL&target=PLN"),
+           "Wise price URL should split the pair into source/target");
+    assert(wisePrice.url.includes("resolution=hourly"),
+           "Wise hourly price URL should use hourly resolution");
+    assert.strictEqual(wisePrice.command[6], wisePrice.url,
+                       "Wise command should pass the provider URL separately");
+
+    const wiseHistory = providers.getHistoryRequest("BRL-PLN", "wise", "1d", 30);
+    assert(wiseHistory.url.includes("source=BRL&target=PLN"),
+           "Wise history URL should accept dashed pairs");
+    assert(wiseHistory.url.includes("resolution=daily"),
+           "Wise daily history URL should use daily resolution");
+    assert(wiseHistory.url.includes("unit=day"),
+           "Wise 30-point daily history URL should stay within the day-unit cap");
+
+    const wiseChartRanges = [
+        ["1W", 7], ["1M", 30], ["3M", 93], ["6M", 184], ["1Y", 366],
+        ["2Y", 104], ["5Y", 260], ["10Y", 120]
+    ];
+    for (const [range, expectedLimit] of wiseChartRanges) {
+        assert.strictEqual(providers.getHistoryPointLimit("wise", range), expectedLimit,
+                           `Wise ${range} chart should retain enough points for its calendar span`);
+    }
+    assert.strictEqual(providers.getHistoryPointLimit("yahoo", "3M"), 65,
+                       "Yahoo history point limits should remain unchanged");
+    assert.strictEqual(providers.getHistoryPointLimit("stooq", "3M"), 65,
+                       "Stooq history point limits should remain unchanged");
+    for (const [range, expectedMonths] of [["3M", 4], ["6M", 7], ["1Y", 13]]) {
+        const pointLimit = providers.getHistoryPointLimit("wise", range);
+        const request = providers.getHistoryRequest("BRLPLN", "wise", "1d", pointLimit);
+        assert(request.url.includes(`length=${expectedMonths}&resolution=daily&unit=month`),
+               `Wise ${range} history request should fetch enough calendar days before trimming`);
+    }
+    const wiseTenYearHistory = providers.getHistoryRequest(
+        "BRLPLN", "wise", "1M", providers.getHistoryPointLimit("wise", "10Y"));
+    assert(wiseTenYearHistory.url.includes("length=60&resolution=daily&unit=month"),
+           "Wise 10Y range should retain its documented five-year API cap");
+
+    const wiseLiveParsed = providers.parsePriceResponse("wise",
+        JSON.stringify({ source: "BRL", target: "PLN", value: 0.75, time: 1767312000000 }));
+    assert.strictEqual(wiseLiveParsed.length, 1,
+                       "Wise live parser should turn the single object into one candle");
+    assert.strictEqual(wiseLiveParsed[0].close, 0.75, "Wise live close should be the quoted rate");
+
+    const wiseHistoryJson = JSON.stringify([
+        { value: 1.0, time: Date.UTC(2026, 0, 1) },
+        { value: 1.1, time: Date.UTC(2026, 0, 2) },
+        { value: 1.2, time: Date.UTC(2026, 0, 8) },
+        { value: 1.3, time: Date.UTC(2026, 0, 9) }
+    ]);
+    assert.strictEqual(providers.parseHistoryResponse("wise", wiseHistoryJson, { interval: "1d" }).length, 4,
+                       "Wise daily history should keep every point");
+    const wiseWeekly = providers.parseHistoryResponse("wise", wiseHistoryJson, { interval: "1w" });
+    assert.strictEqual(wiseWeekly.length, 2, "Wise weekly history should downsample to one point per 7-day bucket");
+    assert.strictEqual(wiseWeekly[0].close, 1.1, "Wise weekly bucket should keep the latest value");
+    assert.strictEqual(wiseWeekly[1].close, 1.3, "Wise weekly bucket should keep the latest value");
+    assert.strictEqual(providers.parseHistoryResponse("wise", wiseHistoryJson).length, 4,
+                       "Wise history should default to daily when no context is supplied");
 }
 
 run();

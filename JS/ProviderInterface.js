@@ -253,10 +253,13 @@ function getHistoryRequest(symbol, providerId, interval, maxPoints) {
     }
 }
 
-function parseHistoryResponse(providerId, responseText) {
+// `context` carries the requested chart interval ({ interval: "1d"|"1w"|"1M" })
+// so providers that serve a finer resolution than the chart need can
+// downsample. Providers that ignore it remain compatible.
+function parseHistoryResponse(providerId, responseText, context) {
     var provider = _providers[providerId];
     if (!provider) return [];
-    return provider.parseHistoryResponse(responseText);
+    return provider.parseHistoryResponse(responseText, context);
 }
 
 // ─── Navigation ──────────────────────────────────────────────────────────────
@@ -289,6 +292,14 @@ function normalizeChartRange(value) {
 function getHistoryConfig(chartRange) {
     var range = normalizeChartRange(chartRange);
     return Constants.CHART_RANGES[range];
+}
+
+function getHistoryPointLimit(providerId, chartRange) {
+    var range = normalizeChartRange(chartRange);
+    var config = Constants.CHART_RANGES[range];
+    var provider = _providers[providerId];
+    if (!provider || !provider.historyPointLimit) return config.maxPoints;
+    return provider.historyPointLimit(range, config.maxPoints);
 }
 
 function getChartRangeLabel(range) {

@@ -30,6 +30,15 @@ PluginSettings {
     property var  providerCredentials: ({})
     readonly property string selectedProviderId: providerSelect.value || Providers.getDefaultProviderId()
     readonly property bool selectedProviderDisabled: Providers.providerIsDisabled(selectedProviderId)
+    readonly property var priceIntervalOptions: [
+        { label: "1 Minute",   value: "1m"  },
+        { label: "5 Minutes",  value: "5m"  },
+        { label: "15 Minutes", value: "15m" },
+        { label: "1 Hour",     value: "1h"  },
+        { label: "1 Day",      value: "1d"  },
+        { label: "1 Week",     value: "1w"  },
+        { label: "1 Month",    value: "1M"  }
+    ]
 
     // ── Persistence helpers ──────────────────────────────────────────────────
     function saveValue(key, value) {
@@ -47,6 +56,22 @@ PluginSettings {
         var raw = loadValue("symbols", "[]")
         try { symbolsList = JSON.parse(raw) }
         catch (e) { symbolsList = [] }
+    }
+
+    // Only offer price intervals the selected provider can actually serve
+    // (e.g. Wise has no sub-hour data, so 1m/5m/15m are hidden for it).
+    function supportedPriceIntervals() {
+        var supported = Providers.getSupportedIntervals(selectedProviderId)
+        if (supported.length === 0) return priceIntervalOptions
+        return priceIntervalOptions.filter(function(option) {
+            return supported.indexOf(option.value) !== -1
+        })
+    }
+
+    function clampPriceInterval(providerId, interval) {
+        var supported = Providers.getSupportedIntervals(providerId)
+        if (supported.length === 0 || supported.indexOf(interval) !== -1) return interval
+        return supported[0]
     }
 
     function setProviderCredential(providerId, credential) {
@@ -387,15 +412,7 @@ PluginSettings {
         label: "Price Range"
         description: "Candle period for price display and change calculation"
         visible: !root.selectedProviderDisabled
-        options: [
-            { label: "1 Minute",   value: "1m"  },
-            { label: "5 Minutes",  value: "5m"  },
-            { label: "15 Minutes", value: "15m" },
-            { label: "1 Hour",     value: "1h"  },
-            { label: "1 Day",      value: "1d"  },
-            { label: "1 Week",     value: "1w"  },
-            { label: "1 Month",    value: "1M"  }
-        ]
+        options: root.supportedPriceIntervals()
         defaultValue: "1h"
     }
 
@@ -580,7 +597,7 @@ PluginSettings {
 
     function doSaveSymbol(ticker, name) {
         var provider   = providerSelect.value || Providers.getDefaultProviderId()
-        var priceRange = priceRangeSelect.value || "1h"
+        var priceRange = clampPriceInterval(provider, priceRangeSelect.value || "1h")
         var chartRange = chartRangeSelect.value || "1M"
         var showChange = Helpers.boolValue(showChangeToggle.value, false)
         var invert     = Helpers.boolValue(invertToggle.value, false)
