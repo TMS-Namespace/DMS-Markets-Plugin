@@ -15,6 +15,6 @@
     "requires_dms": ">=1.2.0",
     "distro": ["any"],
     "compositors": ["any"],
-    "dependencies": ["curl", "bash"],
+    "dependencies": ["curl", "bash", "coreutils"],
     "screenshot": "https://github.com/TMS-Namespace/DMS-Markets-Plugin/raw/main/images/Dark-Popup.png"
 }

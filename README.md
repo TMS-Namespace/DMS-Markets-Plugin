@@ -22,11 +22,15 @@ A [DankMaterialShell](https://github.com/dankmaterial/DMS) widget plugin that di
 
 ## Requirements
 
-- `DMS` ≥ 1.2.0
+- `DMS` ≥ 1.2.0, running on `Qt` ≥ 6.7 (the chart's rounded corners use Quickshell's `ClippingRectangle`).
 - `curl` installed and available in `$PATH`
 - `bash` installed and available in `$PATH`
+- `GNU coreutils` (or compatible: `sh`, `ls`, `mkdir`, `rm`, `mktemp`, `cat`, `tail`) in `$PATH`, used to fetch data and manage cache.
 - `Node.js` only when `Stooq` provider is used (currently disabled).
-- Internet access
+- Internet access.
+- Optional:
+  * `ionice` and `renice` (`util-linux`), used to run the fetches at low priority when present.
+  * Writable cache directory (`$XDG_CACHE_HOME` or `~/.cache`), caching will not work without.
 
 ## Data Providers
 
