@@ -10,3 +10,5 @@ Thumbs.db
 # Old root-level files (removed during refactor)
 # MarketsWidget.qml
 # MarketsSettings.qml
+.codex
+.agents
