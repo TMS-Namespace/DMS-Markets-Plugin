@@ -1,0 +1,98 @@
+// The settings page the way DMS loads it: a Loader creates the page FIRST, and only afterwards sets its pluginService
+// (onLoaded). The real DMS controls save on every value change, even before the service exists, and the plugin data
+// can change later (the widget migrates the saved symbols). Nothing of that may produce an error toast, and the list of
+// configured symbols must fill in once the service arrives and follow later data changes.
+import QtQuick
+import qs.Services
+import "../../Helpers"
+import "../../../src/QML/Services"
+
+TestSuite {
+    id: suite
+
+    // Like DMS's PluginService: saving changes the data and announces it.
+    property Component serviceType: Component {
+        QtObject {
+            id: service
+            property var data: ({})
+            signal pluginDataChanged(string pluginId)
+            property var availablePlugins: ({})
+            function loadPluginData(id, key, fallback) { return key in data ? data[key] : fallback }
+            function savePluginData(id, key, value) { var copy = Object.assign({}, data); copy[key] = value; data = copy; pluginDataChanged(id) }
+            function getPluginVariants(id) { return [] }
+        }
+    }
+    property Component loaderType: Component {
+        Loader {
+            width: 600; height: 800
+            asynchronous: false
+            property var service: null
+            onLoaded: { item.pluginService = service }      // after loading, as DMS does
+        }
+    }
+    property var loader: null
+    property var service: null
+    property var pollCondition: null
+    property var pollDone: null
+    property int pollsLeft: 0
+    property Timer poller: Timer {
+        interval: 50; repeat: true
+        onTriggered: {
+            if (suite.pollCondition()) { stop(); suite.pollDone("") }
+            else if (--suite.pollsLeft <= 0) { stop(); suite.pollDone("timed out: list " + (suite.loader.item ? suite.loader.item.symbolsList.length : -1) + ", toasts " + JSON.stringify(ToastService.errors)) }
+        }
+    }
+    function waitFor(condition, done) { pollCondition = condition; pollDone = done; pollsLeft = 60; poller.start() }
+
+    function setup() {
+        if (loader) { loader.destroy(); loader = null }
+        ToastService.errors = []; ToastService.infos = []
+        ErrorHandler.reset(); Logger.configure({ devMode: false })
+        ProvidersManager.reload(ProvidersManager.sources)
+    }
+    function open(data) {
+        service = serviceType.createObject(null, { data: data })
+        loader = loaderType.createObject(null, { service: service, source: "file://" + repoRoot + "/src/QML/Settings.qml" })
+        check(loader.status === Loader.Ready, "the page loads: " + loader.status)
+        return loader.item
+    }
+    readonly property var older: [{ id: "EURUSD=X", name: "EUR", provider: "yahoo", priceInterval: "1h", graphInterval: "1M", showChangeWhenPinned: false, invert: false, pinned: false },
+                                  { id: "DX-Y.NYB", name: "USDX", provider: "yahoo", priceInterval: "1h", graphInterval: "1M", showChangeWhenPinned: false, invert: false, pinned: true },
+                                  { id: "BRLPLN", name: "BRL/PLN", provider: "wise", priceInterval: "1h", graphInterval: "1M", showChangeWhenPinned: false, invert: false, pinned: false }]
+    readonly property var current: [{ uid: "11111111-1111-4111-8111-111111111111", ticker: "EURUSD=X", name: "EUR", provider: "yahoo", priceResolution: "1h", chartResolution: "1d", chartRange: "1M", showChangeWhenPinned: false, invert: false, pinned: false }]
+
+    function async_symbols_saved_by_an_older_version_are_listed_once_the_service_arrives(done) {
+        var page = open({ symbols: JSON.stringify(older) })
+        waitFor(function() { return page.symbolsList.length === 3 }, function(problem) {
+            if (problem) { done(problem); return }
+            try {
+                check(page.symbolsList.every(function(symbol) { return symbol.uid && symbol.ticker }), "migrated")
+                equal(ToastService.errors, [], "no error toast")
+                done("")
+            } catch (e) { done(e.message) }
+        })
+    }
+    function async_symbols_in_the_current_format_are_listed(done) {
+        var page = open({ symbols: JSON.stringify(current) })
+        waitFor(function() { return page.symbolsList.length === 1 }, function(problem) {
+            try { if (problem) { done(problem); return } equal(ToastService.errors, [], "no error toast"); done("") } catch (e) { done(e.message) }
+        })
+    }
+    function async_the_list_follows_plugin_data_that_changes_later(done) {
+        var page = open({})
+        service.data = { symbols: JSON.stringify(current) }      // e.g. the widget saved, or DMS delivered the data late
+        service.pluginDataChanged("markets")
+        waitFor(function() { return page.symbolsList.length === 1 }, function(problem) {
+            try { if (problem) { done(problem); return } equal(ToastService.errors, [], "no error toast"); done("") } catch (e) { done(e.message) }
+        })
+    }
+    function test_nothing_is_reported_while_the_service_is_not_attached_yet() {
+        var component = Qt.createComponent("file://" + repoRoot + "/src/QML/Settings.qml")
+        check(component.status === Component.Ready, component.errorString())
+        var page = component.createObject(null, { pluginId: "markets" })      // no service, like the moment after the Loader created it
+        check(page !== null)
+        same(page.saveValue("_addProvider", "yahoo"), false, "a control saving before the service exists saves nothing...")
+        equal(ToastService.errors, [], "the controls saving their defaults before the service exists is not an error")
+        page.destroy()
+    }
+}

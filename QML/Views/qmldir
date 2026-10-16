@@ -1,7 +1,0 @@
-module Markets.Views
-HorizontalBarPill   1.0 HorizontalBarPill.qml
-VerticalBarPill     1.0 VerticalBarPill.qml
-PopoutPanel         1.0 PopoutPanel.qml
-SymbolRow           1.0 SymbolRow.qml
-PriceChart          1.0 PriceChart.qml
-ConfiguredSymbol    1.0 ConfiguredSymbol.qml

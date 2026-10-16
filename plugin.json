@@ -9,12 +9,12 @@
     "author": "TMS-Namespace",
     "icon": "show_chart",
     "type": "widget",
-    "component": "./QML/Widget.qml",
-    "settings": "./QML/Settings.qml",
+    "component": "./src/QML/Widget.qml",
+    "settings": "./src/QML/Settings.qml",
     "permissions": ["settings_read", "settings_write", "process", "network"],
     "requires_dms": ">=1.2.0",
     "distro": ["any"],
     "compositors": ["any"],
     "dependencies": ["curl", "bash"],
-    "screenshot": "https://github.com/TMS-Namespace/DMS-Markets-Plugin/raw/main/Images/Dark-Popup.png"
+    "screenshot": "https://github.com/TMS-Namespace/DMS-Markets-Plugin/raw/main/images/Dark-Popup.png"
 }

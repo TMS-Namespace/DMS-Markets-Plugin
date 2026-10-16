@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# A stand-in for curl in tests: answers the provider requests with canned data instead of using the network.
+#   yahoo (…/v8/finance/chart/…)  a chart answer with 40 daily candles ending now
+#   wise  (…/rates/history…)      40 hourly rate points ending now
+# It honours the flags the plugin uses: -o <file> (body), -w '%{http_code}' (status), the URL as the last argument.
+body_file=""; write_out=""; url=""
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -o) body_file="$2"; shift 2 ;;
+        -w) write_out="$2"; shift 2 ;;
+        --connect-timeout|--max-time|-H) shift 2 ;;
+        -*) shift ;;
+        *) url="$1"; shift ;;
+    esac
+done
+now=$(date +%s)
+case "$url" in
+    *chart/NOPE*)
+        # A symbol Yahoo does not know: its error answer (the plugin must keep showing what it already has)
+        body='{"chart":{"result":null,"error":{"code":"Not Found","description":"No data found, symbol may be delisted"}}}' ;;
+    *finance/chart*)
+        # Like Yahoo: each candle opens 0.5 below where it closes, and the answer ENDS WITH A "live" row stamped now whose
+        # open, high, low and close are all the current price (so its own change is 0).
+        stamps=""; opens=""; highs=""; lows=""; closes=""
+        for i in $(seq 39 -1 1); do
+            k=$((39 - i)); stamps="$stamps$((now - i * 86400)),"
+            opens="$opens$((100 + k)),"; highs="$highs$((100 + k)).75,"; lows="$lows$((100 + k - 1)).75,"; closes="$closes$((100 + k)).5,"
+        done
+        stamps="[$stamps$now]"; opens="[${opens}138.5]"; highs="[${highs}138.5]"; lows="[${lows}138.5]"; closes="[${closes}138.5]"
+        body="{\"chart\":{\"result\":[{\"timestamp\":$stamps,\"indicators\":{\"quote\":[{\"open\":$opens,\"high\":$highs,\"low\":$lows,\"close\":$closes,\"volume\":[]}]}}],\"error\":null}}" ;;
+    *rates/history*)
+        rows=""
+        for i in $(seq 39 -1 0); do rows="$rows{\"value\":$((1 + 39 - i)).25,\"time\":$(( (now - i * 3600) * 1000 ))},"; done
+        body="[${rows%,}]" ;;
+    *) body="{}" ;;
+esac
+[ -n "$body_file" ] && printf '%s' "$body" > "$body_file"
+printf '%s' "${write_out//%\{http_code\}/200}"

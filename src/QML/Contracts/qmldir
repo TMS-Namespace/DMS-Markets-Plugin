@@ -1,0 +1,15 @@
+module Markets.Contracts
+PriceInfo          1.0 PriceInfo.qml
+SavedSymbol        1.0 SavedSymbol.qml
+ChartStatus        1.0 ChartStatus.qml
+ProviderRequest    1.0 ProviderRequest.qml
+ProviderResponse   1.0 ProviderResponse.qml
+FetchContext       1.0 FetchContext.qml
+FetchCall          1.0 FetchCall.qml
+ErrorRecord        1.0 ErrorRecord.qml
+GuardResult        1.0 GuardResult.qml
+ProviderLoadError  1.0 ProviderLoadError.qml
+DataPoint          1.0 DataPoint.qml
+Selection          1.0 Selection.qml
+ProviderProperties 1.0 ProviderProperties.qml
+ProviderType       1.0 ProviderType.qml
