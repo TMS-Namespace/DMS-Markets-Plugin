@@ -43,6 +43,16 @@ PluginSettings {
     readonly property var tickerValidation:        selectedHandler ? selectedHandler.validateSymbol(tickerText) : ({ valid: false, message: "No data provider is available." })
     // The display name: at most a few characters from a fixed set (see SymbolRules.validateName).
     readonly property int    popoutRowsValue:      popoutRowsSetting.value      // the popup-height slider's value
+    // Every field of the "add / edit a symbol" form as it is shown now (what tests and the save read).
+    readonly property var formState: ({
+        ticker: tickerInput.value, name: nameInput.value, provider: providerSelect.value,
+        priceResolution: priceResolutionSelect.value, changeResolution: changeResolutionSelect.value,
+        chartResolution: chartResolutionSelect.value, chartRange: chartRangeSelect.value,
+        showChange: showChangeToggle.value, invert: invertToggle.value
+    })
+    // The symbol's own settings (resolutions, range, toggles) can be changed once the ticker and the name are valid; a
+    // symbol picked from the list has both. The provider stays choosable: the ticker is validated against it.
+    readonly property bool formUnlocked: tickerValidation.valid && nameValidation.valid
     readonly property string nameText:             (nameInput.value || "").trim()
     readonly property var nameValidation:          SymbolRules.validateName(nameText)
     // Candle-count validation of the chosen resolution vs chart range (non-blocking notes).
@@ -278,7 +288,7 @@ PluginSettings {
         topPadding: Theme.spacingM
     }
 
-    SelectionSetting {
+    SelectionRow {
         id: providerSelect
         settingKey: JsConstants.DRAFT_KEYS.provider
         label: "Data Provider"
@@ -465,8 +475,10 @@ PluginSettings {
         }
     }
 
-    SelectionSetting {
+    SelectionRow {
         id: priceResolutionSelect
+        enabled: root.formUnlocked
+        opacity: enabled ? 1.0 : 0.5
         settingKey: JsConstants.DRAFT_KEYS.priceResolution
         label: "Price Resolution"
         description: "Candle size for the live price, also sets how often it is refreshed"
@@ -475,8 +487,10 @@ PluginSettings {
         defaultValue: JsConstants.DEFAULT_PRICE_RESOLUTION
     }
 
-    SelectionSetting {
+    SelectionRow {
         id: changeResolutionSelect
+        enabled: root.formUnlocked
+        opacity: enabled ? 1.0 : 0.5
         settingKey: JsConstants.DRAFT_KEYS.changeResolution
         label: "Price Change Resolution"
         description: "The price change is calculated against the close of the previous period of this size"
@@ -485,8 +499,10 @@ PluginSettings {
         defaultValue: JsConstants.DEFAULT_CHANGE_RESOLUTION
     }
 
-    SelectionSetting {
+    SelectionRow {
         id: chartResolutionSelect
+        enabled: root.formUnlocked
+        opacity: enabled ? 1.0 : 0.5
         settingKey: JsConstants.DRAFT_KEYS.chartResolution
         label: "Chart Resolution"
         description: "Candle size of the charts"
@@ -497,7 +513,7 @@ PluginSettings {
         onValueChanged: Qt.callLater(root.syncSelections)
     }
 
-    SelectionSetting {
+    SelectionRow {
         id: chartRangeSelect
         settingKey: JsConstants.DRAFT_KEYS.chartRange
         label: "Chart Range"
@@ -505,7 +521,7 @@ PluginSettings {
                      ? "How much historical data to show in the charts"
                      : "Choose a chart resolution first"
         visible: !root.selectedProviderDisabled
-        enabled: root.chartRangeAvailable
+        enabled: root.formUnlocked && root.chartRangeAvailable
         opacity: enabled ? 1.0 : 0.5
         options: root.chartRangeOptions
         defaultValue: JsConstants.DEFAULT_CHART_SPAN
@@ -525,6 +541,8 @@ PluginSettings {
 
     ToggleSetting {
         id: showChangeToggle
+        enabled: root.formUnlocked
+        opacity: enabled ? 1.0 : 0.5
         settingKey: JsConstants.DRAFT_KEYS.showChange
         label: "Show Price Change When Pinned"
         description: "Display price change in the bar when this symbol is pinned"
@@ -538,6 +556,8 @@ PluginSettings {
 
     ToggleSetting {
         id: invertToggle
+        enabled: root.formUnlocked
+        opacity: enabled ? 1.0 : 0.5
         settingKey: JsConstants.DRAFT_KEYS.invert
         label: "Invert Prices (1/x)"
         description: "Show the reciprocal of the price and chart (e.g., USD/EUR instead of EUR/USD)"

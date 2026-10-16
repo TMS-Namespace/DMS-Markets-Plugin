@@ -131,4 +131,68 @@ TestSuite {
             })
         })
     }
+
+    // ── Picking a configured symbol fills EVERY field of the form from it ────
+    readonly property var twoSymbols: [
+        { uid: "11111111-1111-4111-8111-111111111111", ticker: "EURUSD=X", name: "EUR", provider: "yahoo", priceResolution: "5m", changeResolution: "1w", chartResolution: "1h", chartRange: "1W", showChangeWhenPinned: true, invert: true, pinned: false },
+        { uid: "22222222-2222-4222-8222-222222222222", ticker: "BRLPLN", name: "BRL/PLN", provider: "wise", priceResolution: "1d", changeResolution: "1h", chartResolution: "1d", chartRange: "3M", showChangeWhenPinned: false, invert: false, pinned: true }]
+    function fieldsOf(symbol) {
+        return { ticker: symbol.ticker, name: symbol.name, provider: symbol.provider, priceResolution: symbol.priceResolution, changeResolution: symbol.changeResolution,
+                 chartResolution: symbol.chartResolution, chartRange: symbol.chartRange, showChange: symbol.showChangeWhenPinned, invert: symbol.invert }
+    }
+    function settled(page, done, action) {
+        // The controls load their values from the saved draft when plugin data changes: let everything settle, then look.
+        waitFor(function() { return false }, function() { try { action(); done("") } catch (e) { done(e.message) } })
+    }
+    function async_picking_a_configured_symbol_sets_every_field_even_after_the_form_was_changed(done) {
+        var page = open({ symbols: JSON.stringify(twoSymbols) })
+        waitFor(function() { return page.symbolsList.length === 2 && page._formReset }, function(problem) {
+            if (problem) { done(problem); return }
+            settled(page, done, function() {
+                // The user plays with the form (what the controls do: save their draft key)…
+                service.savePluginData("markets", "_addChartRange", "1M"); service.savePluginData("markets", "_addPriceResolution", "1h")
+                service.savePluginData("markets", "_addInvert", true)
+                // …then picks the first symbol, then the second, then the first again.
+                page.editSymbol(0); equal(page.formState, fieldsOf(twoSymbols[0]), "first symbol")
+                page.editSymbol(1); equal(page.formState, fieldsOf(twoSymbols[1]), "second symbol")
+                page.editSymbol(0); equal(page.formState, fieldsOf(twoSymbols[0]), "first symbol again")
+            })
+        })
+    }
+    function async_every_field_is_set_from_the_symbol_after_changing_each_dropdown_in_turn(done) {
+        var page = open({ symbols: JSON.stringify(twoSymbols) })
+        waitFor(function() { return page.symbolsList.length === 2 && page._formReset }, function(problem) {
+            if (problem) { done(problem); return }
+            settled(page, done, function() {
+                ;["_addProvider", "_addPriceResolution", "_addChangeResolution", "_addChartResolution", "_addChartRange", "_addShowChange", "_addInvert"].forEach(function(key) {
+                    service.savePluginData("markets", key, key === "_addProvider" ? "wise" : (key === "_addShowChange" || key === "_addInvert" ? true : "1d"))
+                    page.editSymbol(0)
+                    equal(page.formState, fieldsOf(twoSymbols[0]), "after changing " + key)
+                    page.cancelEdit()
+                })
+            })
+        })
+    }
+
+    // ── The symbol's own settings are locked until there is a valid ticker and name ──
+    function async_the_symbol_settings_unlock_with_a_valid_ticker_and_name_and_for_a_picked_symbol(done) {
+        var page = open({ symbols: JSON.stringify(twoSymbols) })
+        waitFor(function() { return page.symbolsList.length === 2 && page._formReset }, function(problem) {
+            if (problem) { done(problem); return }
+            settled(page, done, function() {
+                same(page.formUnlocked, false, "an empty form is locked")
+                var base = { provider: "yahoo", priceResolution: "1h", changeResolution: "1d", chartResolution: "1d", chartRange: "1M", showChange: false, invert: false }
+                page.setDraft(Object.assign({ ticker: "EURUSD=X", name: "" }, base));  same(page.formUnlocked, false, "a ticker without a name stays locked")
+                page.setDraft(Object.assign({ ticker: "", name: "EUR" }, base));        same(page.formUnlocked, false, "a name without a ticker stays locked")
+                page.setDraft(Object.assign({ ticker: "NOT A TICKER", name: "EUR" }, base)); same(page.formUnlocked, false, "an invalid ticker stays locked")
+                page.setDraft(Object.assign({ ticker: "EURUSD=X", name: "a;b" }, base)); same(page.formUnlocked, false, "an invalid name stays locked")
+                page.setDraft(Object.assign({ ticker: "EURUSD=X", name: "EUR USD" }, base)); same(page.formUnlocked, true, "a valid ticker and name unlock it")
+                page.clearForm();                                                       same(page.formUnlocked, false, "clearing locks it again")
+                page.editSymbol(1);                                                     same(page.formUnlocked, true, "a picked symbol has both: unlocked")
+                page.cancelEdit();                                                      same(page.formUnlocked, false, "deselecting locks it again")
+                // The ticker is validated against the provider, so the provider stays choosable while locked.
+                page.setDraft(Object.assign({ ticker: "BRLPLN", name: "BRL" }, base, { provider: "wise" })); same(page.formUnlocked, true)
+            })
+        })
+    }
 }

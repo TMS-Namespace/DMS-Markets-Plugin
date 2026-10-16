@@ -22,7 +22,7 @@ A [DankMaterialShell](https://github.com/dankmaterial/DMS) widget plugin that di
 
 ## Requirements
 
-- `DMS` ≥ 1.2.0, running on `Qt` ≥ 6.7 (the chart's rounded corners use Quickshell's `ClippingRectangle`).
+- `DMS` ≥ 1.2.0, running on `Qt` ≥ 6.7.
 - `curl` installed and available in `$PATH`
 - `bash` installed and available in `$PATH`
 - `GNU coreutils` (or compatible: `sh`, `ls`, `mkdir`, `rm`, `mktemp`, `cat`, `tail`) in `$PATH`, used to fetch data and manage cache.
@@ -40,7 +40,7 @@ Currently supported providers:
 - [Stooq](https://stooq.com) (Disabled, due to unstable `API`). Publishes quotes for a wide range of instruments.
 - [Wise](https://wise.com) No credentials required. Provides rates for most world currencies, including exotic pairs.
 
-  > **Limitation:** Wise publishes hourly and daily rates only (no sub-hour, weekly or monthly data). Price resolutions are `1 Hour` and `1 Day`; the API serves up to 1 month of hourly and 5 years of daily data, but the settings only offer chart ranges that give a readable number of candles (see below).
+  > **Limitation:** Wise publishes hourly and daily rates only (no sub-hour, weekly or monthly data). Price resolutions are `1 Hour` and `1 Day`; the API serves up to 1 month of hourly and 5 years of daily data, however available chart ranges will be caped due to the chart drawing size limits.
 
   > **Limitation:** Some Stooq symbols (usually futures that has symbols of `*.f` format) shown on the website do not return CSV data through the public API. If a symbol stays empty in the widget, open Stooq in your browser and try the cash/index variant shown there (i.e. symbols of `*.i` or `*.c` format).
 

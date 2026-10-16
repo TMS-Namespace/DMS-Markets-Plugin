@@ -14,7 +14,7 @@ assert(source.includes("selectedHandler ? selectedHandler.chartSpanOptions(chart
 assert(!/value:\s*"(1m|5m|15m|1h|1d|1w|1M|1W|3M|6M|1Y|2Y|5Y|10Y)"/.test(source), "no hard-coded range option lists");
 
 // ── Cascade wiring ───────────────────────────────────────────────────────────
-assert(/chartRangeSelect[\s\S]*?enabled:\s*root\.chartRangeAvailable/.test(source), "chart range is disabled until it has options");
+assert(/chartRangeSelect[\s\S]*?enabled:\s*root\.formUnlocked && root\.chartRangeAvailable/.test(source), "chart range is disabled until it has options");
 assert(source.includes("readonly property bool chartRangeAvailable:    chartRangeOptions.length > 0"));
 assert(/onSelectedProviderIdChanged:\s*Qt\.callLater\(syncSelections\)/.test(source), "provider change re-clamps selections");
 assert(/chartResolutionSelect[\s\S]*?onValueChanged:\s*Qt\.callLater\(root\.syncSelections\)/.test(source), "resolution change re-filters the chart range");
@@ -115,5 +115,14 @@ const sliderRow = require("fs").readFileSync(require("path").join(__dirname, "..
 assert(/DankSlider \{[\s\S]*?width: sliderRow\.width - root\.valueWidth - sliderRow\.spacing/.test(sliderRow) && /text: root\.value/.test(sliderRow), "the value sits to the right of the slider");
 assert(/DankSlider \{[\s\S]*?anchors\.verticalCenter: parent\.verticalCenter[\s\S]*?StyledText \{[\s\S]*?anchors\.verticalCenter: parent\.verticalCenter/.test(sliderRow), "slider and value are centred on the same line");
 assert(/valueWidth: Math\.round\(Theme\.fontSizeMedium/.test(sliderRow), "sized from the theme font");
+
+// ── Locked until a valid ticker and name; every dropdown keeps showing what it is set to ──
+assert(/formUnlocked:\s+tickerValidation\.valid && nameValidation\.valid/.test(source), "unlocked by a valid ticker and a valid name");
+for (const id of ["priceResolutionSelect", "changeResolutionSelect", "chartResolutionSelect", "showChangeToggle", "invertToggle"])
+    assert(new RegExp(`id: ${id}\\s*\\n\\s*enabled: root\\.formUnlocked`).test(source), `${id} is locked until then`);
+assert(!/id: providerSelect\s*\n\s*enabled:/.test(source), "the provider stays choosable (the ticker is validated against it)");
+assert(!/\bSelectionSetting \{/.test(source) && /SelectionRow \{[\s\S]*?id: providerSelect/.test(source), "dropdowns are SelectionRow, not DMS's SelectionSetting (whose dropdown stops following its value after a user choice)");
+assert((source.match(/SelectionRow \{/g) || []).length === 5, "all five dropdowns");
+assert(/Binding \{[\s\S]*?property: "currentValue"/.test(readSource("QML/Views/SelectionRow.qml")), "a Binding keeps the shown text following the value");
 
 console.log("Settings static tests passed");

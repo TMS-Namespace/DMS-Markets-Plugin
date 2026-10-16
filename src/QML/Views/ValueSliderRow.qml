@@ -29,6 +29,7 @@ Column {
     readonly property real valueWidth: Math.round(Theme.fontSizeMedium * 2.5)
 
     // Find the nearest host settings page that owns this control.
+    // The page this row sits in (the nearest parent that can save and load values), or null.
     function _settings() {
         var item = root.parent
         while (item) {

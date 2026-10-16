@@ -56,7 +56,7 @@ function validateName(name) {
     if (name.length > Constants.DISPLAY_NAME_MAX_LENGTH)
         return { valid: false, message: "The display name can have at most " + Constants.DISPLAY_NAME_MAX_LENGTH + " characters." }
     if (!new RegExp(Constants.DISPLAY_NAME_PATTERN).test(name))
-        return { valid: false, message: "The display name can only have letters, digits, spaces and - + * / \\ . ~ % $ ^ _ ? ! # ( ) [ ] =" }
+        return { valid: false, message: "The display name can only have letters, digits, spaces and & - + * / \\ . ~ % $ ^ _ ? ! # ( ) [ ] =" }
     if (name.trim() === "")
         return { valid: false, message: "Enter a display name." }
     return { valid: true, message: "" }

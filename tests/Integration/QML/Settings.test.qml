@@ -124,7 +124,7 @@ TestSuite {
     }
 
     function test_the_display_name_is_validated_before_anything_is_saved() {
-        ;["12345678901", "A very long name", "Name;rm", "N&N", "é"].forEach(function(bad) {
+        ;["12345678901", "A very long name", "Name;rm", "N|N", "é"].forEach(function(bad) {
             var pluginService = service(), scope = scopeFor(pluginService), before = errors.length
             scope.tickerInput.value = "BRLPLN"; scope.nameInput.value = bad; scope.providerSelect.value = "wise"
             settingsFunction("addOrUpdateSymbol", scope)()
