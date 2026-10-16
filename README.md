@@ -115,4 +115,5 @@ support/setup-symlink.sh
 ## Contributions
 
 Feel free to submit your PR, try to follow [Code Requirements](docs/code_requirements.md).
-The plugin has `DevMode` in `src/QML/Helpers/Constants.qml`, that when tru, logging will be enabled, useful for debugging.
+
+The plugin has `DevMode` in `src/QML/Helpers/Constants.qml`, that when true, logging will be enabled, useful for debugging.
