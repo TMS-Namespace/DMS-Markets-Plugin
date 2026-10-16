@@ -8,16 +8,13 @@ A [DankMaterialShell](https://github.com/dankmaterial/DMS) widget plugin that di
 
 ## Features
 
-- **Pin to bar** — display live prices for selected symbols directly in `DankBar`.
-- **Popup panel** — list showing name, price, change percentage, and `sparkline` charts.
-- **Manual symbol entry** — open the selected provider in your browser, then add the provider symbol manually.
-- **Per-symbol configuration** — independent data provider, price resolution, chart resolution, chart range, change display, and price inversion. Each dropdown only offers what the selected provider can actually serve.
-- **Provider name on charts** — optionally show the data provider's name in the lower-left corner of each chart (on by default).
-- **Chart range validation** — the settings warn when the chart resolution gives very few (< 10) or very many (> 100) candles for the chart range, and don't allow fewer than 3 or more than 200.
-- **Custom colors** — configurable up/down color indicators.
-- **Reorder & edit** — rearrange symbol order, click to edit, hover to pin or delete.
-- **Adjustable popup height** — set the number of visible rows.
-- **Intelligent fetching** — staggered data requests with retry logic to avoid rate limiting.
+- **Pin to bar** - display live prices for selected symbols directly in `DankBar`.
+- **Popup panel** - list showing name, price, change percentage, and charts.
+- **Manual symbol entry** - open the selected provider in your browser, then add the provider symbol manually.
+- **Per-symbol configuration** - independent data provider, price resolution, chart resolution, chart range, change display, and price inversion. Each dropdown only offers what the selected provider can actually serve.
+- **Custom colors** - configurable up/down color indicators.
+- **Reorder & edit** - rearrange symbol order, click to edit, hover to pin or delete.
+- **Adjustable popup height** - set the number of visible rows.
 
 | Settings (1) | Settings (2) |
 |:---:|:---:|
@@ -35,9 +32,9 @@ A [DankMaterialShell](https://github.com/dankmaterial/DMS) widget plugin that di
 
 Currently supported providers:
 
-- [Yahoo Finance](https://finance.yahoo.com) — The current default. No credentials required. Example symbols: `EURUSD=X`, `BZ=F`, `HG=F`, `DX-Y.NYB`, `^GSPC`.
-- [Stooq](https://stooq.com) — Currently disabled, due to unstable `API`. Publishes `CSV` quotes for a wide range of instruments.
-- [Wise](https://wise.com) — No credentials required. Anonymous currency-exchange rates for most world currencies, including exotic pairs Yahoo Finance does not cover (e.g. `BRLPLN`). Symbols are 6-letter pairs (source then target).
+- [Yahoo Finance](https://finance.yahoo.com) No credentials required, provides data for stock, exchange rates, commodities, crypto.
+- [Stooq](https://stooq.com) (Disabled, due to unstable `API`). Publishes quotes for a wide range of instruments.
+- [Wise](https://wise.com) No credentials required. Provides rates for most world currencies, including exotic pairs.
 
   > **Limitation:** Wise publishes hourly and daily rates only (no sub-hour, weekly or monthly data). Price resolutions are `1 Hour` and `1 Day`; the API serves up to 1 month of hourly and 5 years of daily data, but the settings only offer chart ranges that give a readable number of candles (see below).
 
@@ -45,29 +42,28 @@ Currently supported providers:
 
 ## Privacy
 
+  > Currently the available providers can reveal your `IP` address when the request is sent to them. It is recommended to use `VPN` to anonymize it. No other private data can be inferred by the providers currently.
+
 - URLs are passed as separate process arguments.
-- `Yahoo Finance` provider quires `query1.finance.yahoo.com`, clicking a chart or symbol search opens `finance.yahoo.com` in your browse.
-- `Wise` contacts `wise.com`, clicking a chart or symbol search opens `wise.com` in your browser.
-- The last prices and charts of your symbols are saved as small JSON files in `~/.cache/dms-markets-plugin/` (or `$XDG_CACHE_HOME/dms-markets-plugin/`); delete the folder any time.
+- Providers' privacy:
+    * `Yahoo Finance` provider quires `query1.finance.yahoo.com`, clicking a chart or symbol search opens `finance.yahoo.com` in your browse. See [Privacy Policy](https://legal.yahoo.com/us/en/yahoo/privacy/index.html), [Yahoo Finance privacy practices](https://legal.yahoo.com/us/en/yahoo/privacy/products/mediaservices/index.html#yahoo-finance), and [Terms of Service](https://legal.yahoo.com/us/en/yahoo/terms/otos/index.html)
+    * `Wise` contacts `wise.com`, clicking a chart or symbol search opens `wise.com` in your browser. See [Privacy Policy](https://wise.com/privacypolicy/) and [Terms of Use](https://wise.com/terms-and-conditions)
+    * (Disabled) `Stooq` contacts `stooq.com`, and stores a cookie jar at `~/.cache/dms-markets-stooq.cookies`, and uses `Node.js` for a browser verification proof-of-work challenge. It is operated from `Poland` and is presumably `GDPR`-compliant. See their [Privacy & Cookie Policy](https://stooq.com/privacy/) and [Terms of Service](https://stooq.com/terms.html).
+- Configured symbols and the fetched candles are cached on disk in `~/.cache/dms-markets-plugin/` (or `$XDG_CACHE_HOME/dms-markets-plugin/`).
 - Responses are written to `mktemp` temporary files and cleaned up when the fetch script exits.
-- Stooq contacts `stooq.com`, and stores a cookie jar at `~/.cache/dms-markets-stooq.cookies`, and uses `Node.js` for a browser verification proof-of-work challenge.
-- No endpoints are contacted other than the one related to the configured provider.
+- No endpoints are contacted other than the above mentioned.
 - Provider credentials (currently only `Stooq`) are stored locally in plugin settings, with simple and reversible XOR obfuscation.
-- `Stooq` is operated from `Poland` and is presumably `GDPR`-compliant. See their [Privacy & Cookie Policy](https://stooq.com/privacy/) and [Terms of Service](https://stooq.com/terms.html).
-- `Yahoo's` [Privacy Policy](https://legal.yahoo.com/us/en/yahoo/privacy/index.html), [Yahoo Finance privacy practices](https://legal.yahoo.com/us/en/yahoo/privacy/products/mediaservices/index.html#yahoo-finance), and [Terms of Service](https://legal.yahoo.com/us/en/yahoo/terms/otos/index.html).
-- `Wise's` [Privacy Policy](https://wise.com/privacypolicy/) and [Terms of Use](https://wise.com/terms-and-conditions).
 
 ## Version History
 
 - v1.0.5 :
-  - The last prices and charts of every symbol are now kept on disk (one file per symbol in `~/.cache/dms-markets-plugin/`, only the latest update is kept), shown immediately after a start, and refreshed in the background. A failed refresh no longer hides what was already loaded, and "refreshed x ago" tells when the data was really fetched.
-  - Saving settings is retried before it is reported as failed. Damaged saved symbols cannot be overwritten until their backup succeeds.
-  - Responses and cached data from an earlier symbol configuration are ignored after an edit; displayed errors remain readable when the diagnostic history fills up.
-  - New per-symbol `Change Resolution` setting (default `1 Day`, options depend on the provider): the change is measured against the close of the previous period, so it matches the provider's quote page. Saved symbols are migrated to the default.
-  - New `Wise` provider, covering exotic pairs `Yahoo Finance` does not offer. No credentials required, thx for [brunofin](https://github.com/brunofin).
+  - New data provider: `Wise`, covering exotic pairs `Yahoo Finance` does not offer. No credentials required, thx for [brunofin](https://github.com/brunofin).
+  - New per-symbol `Change Resolution` setting, to adjust the shown change is in what range.
   - New `Chart Resolution` that can be set per symbol (before chart resolution was same as price resolution).
-  - New `Show Provider Name` setting.
+  - New `Show Provider Alias` setting (three-letter provider codes on the charts, short chart ranges like `1M`).
   - Full refactoring for first citizen support of self-declarative multiprovider setup. Note: the saved symbols will be migrated to new formats on first load.
+  - Fetched data is cached on disk (in `~/.cache/dms-markets-plugin/`), so prices and data will stay visible even without internet connection.
+  - Symbol change is now calculated correctly against the close of the previous period.
 - v1.0.4 :
   - A maintenance release with small fixes, to comply with `DMS` comments [published here](https://github.com/AvengeMedia/dms-plugin-registry/issues/555#issuecomment-5899885512) and [here](https://github.com/AvengeMedia/dms-plugin-registry/pull/990#issuecomment-5947902007).
   - Enforce all command execution via `bash` to not break when user's default shell is not `bash`.

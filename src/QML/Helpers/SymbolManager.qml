@@ -1,4 +1,4 @@
-// SymbolManager.qml — Symbol list management and bar-text logic
+// SymbolManager.qml - Symbol list management and bar-text logic
 //
 // Names the symbol actions (pin, remove) for the widget and computes the bar display
 // text from pinned symbols + live price data. Saving is DataStorage's job.

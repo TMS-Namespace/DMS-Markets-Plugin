@@ -10,7 +10,7 @@ assert.strictEqual(error.name, "PluginError");
 assert.strictEqual(error.code, "network");
 assert.strictEqual(error.userMessage, "Can't reach Wise.");
 assert.strictEqual(error.details, "curl exit 6");
-assert.strictEqual(error.message, "Can't reach Wise. — curl exit 6", "message = what a developer reads in the log");
+assert.strictEqual(error.message, "Can't reach Wise. - curl exit 6", "message = what a developer reads in the log");
 assert.strictEqual(error.retryable, true);
 assert.strictEqual(error.status, 0);
 assert.strictEqual(typeof error.stack, "string");
@@ -26,7 +26,7 @@ assert.strictEqual(bare.retryable, false, "not retryable unless stated");
 assert.strictEqual(bare.status, 0);
 assert.strictEqual(new PluginError("x", "m", "", { status: 404 }).status, 404);
 assert.strictEqual(new PluginError("x", "m", "", { retryable: "yes" }).retryable, false, "only a real true counts");
-assert.strictEqual(new PluginError("x", "m", "d").message, "m — d");
+assert.strictEqual(new PluginError("x", "m", "d").message, "m - d");
 assert.strictEqual(new PluginError("x", "m").message, "m");
 
 // ── Codes ────────────────────────────────────────────────────────────────────

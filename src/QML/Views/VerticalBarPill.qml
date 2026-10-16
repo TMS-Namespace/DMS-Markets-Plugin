@@ -1,4 +1,4 @@
-// VerticalBarPill.qml — Vertical bar-pill content for the Markets widget
+// VerticalBarPill.qml - Vertical bar-pill content for the Markets widget
 //
 // Displays a chart icon above a short label (first pinned symbol or "MKT").
 // Intended to be returned from the PluginComponent.verticalBarPill property.

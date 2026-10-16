@@ -1,4 +1,4 @@
-// ConfiguredSymbol.qml — Row for a configured symbol in the settings list
+// ConfiguredSymbol.qml - Row for a configured symbol in the settings list
 //
 // Shows symbol name, metadata, pin indicator, and move/delete action buttons.
 // All sizes come from Constants so the layout has no magic numbers.
@@ -70,30 +70,20 @@ Item {
                        - (constants.configActionSize * 3 + constants.configButtonSpacing * 2)
                        - Theme.spacingS * 3
 
-                StyledText {
-                    text:           symbolData.name || symbolData.ticker || ""
-                    font.pixelSize: Theme.fontSizeMedium
-                    font.weight:    Font.Medium
-                    color:          Theme.surfaceText
-                    elide:          Text.ElideRight
-                    width:          parent.width
-                }
-
+                // One line: name | ticker | provider alias | price resolution | chart resolution / range
                 StyledText {
                     text: {
-                        var parts = (symbolData.ticker || "") + "  |  "
-                                    + ProvidersManager.nameOf(symbolData.provider || ProvidersManager.defaultId) + "  |  price "
-                                    + Resolution.label(symbolData.priceResolution) + "  |  change "
-                                    + Resolution.label(symbolData.changeResolution) + "  |  chart "
-                                    + Resolution.label(symbolData.chartResolution) + " over "
-                                    + ChartSpan.label(symbolData.chartRange)
-                        if (Helpers.boolValue(symbolData.invert, false))              parts += "  |  1/x"
-                        if (Helpers.boolValue(symbolData.showChangeWhenPinned, false)) parts += "  |  Δ on bar"
-                        return parts
+                        return (symbolData.name || symbolData.ticker || "") + "  |  "
+                               + (symbolData.ticker || "") + "  |  "
+                               + ProvidersManager.aliasOf(symbolData.provider || ProvidersManager.defaultId) + "  |  "
+                               + Resolution.shortLabel(symbolData.priceResolution) + "  |  "
+                               + Resolution.shortLabel(symbolData.chartResolution) + " / "
+                               + ChartSpan.shortLabel(symbolData.chartRange)
                     }
-                    font.pixelSize: Theme.fontSizeSmall
-                    color:          Theme.surfaceVariantText
+                    font.pixelSize: Theme.fontSizeSmall + constants.configTextFontSizeDelta
+                    color:          Theme.surfaceText
                     elide:          Text.ElideRight
+                    wrapMode:       Text.NoWrap
                     width:          parent.width
                 }
             }

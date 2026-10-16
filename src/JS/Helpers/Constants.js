@@ -1,4 +1,4 @@
-// Constants.js — JS-side constants for the Markets plugin
+// Constants.js - JS-side constants for the Markets plugin
 //
 // Only values shared by all providers live here (fetching, parsing, timing);
 // provider-specific constants live next to each provider in JS/Providers/<Name>/.
@@ -37,6 +37,10 @@ var STDERR_MAX_CHARS         = 2000            // process stderr kept per fetch
 var RETRY_QUEUE_MAX          = 50              // hard cap on queued retries
 
 // ── Storage keys (plugin data) ───────────────────────────────────────────────
+// The display name of a symbol (what the bar and popup show): short, and only these characters
+// (letters, digits, spaces and - + * / \ . ~ % $ ^ _ ? ! # ( ) [ ] =).
+var DISPLAY_NAME_MAX_LENGTH    = 10
+var DISPLAY_NAME_PATTERN       = "^[A-Za-z0-9 \\-+*/\\\\.~%$^_?!#()\\[\\]=]+$"
 var STORAGE_SAVE_ATTEMPTS     = 3               // tries of one write to the plugin data
 // Saved market data (MarketCache): one file per symbol, named by the symbol's uid, in the user's cache directory.
 var CACHE_DIR_NAME             = "dms-markets-plugin"

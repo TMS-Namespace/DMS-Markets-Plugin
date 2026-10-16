@@ -6,6 +6,7 @@ import "../../../src/QML/Helpers"
 import "../../../src/QML/Services"
 import "../../../src/JS/Helpers/Helpers.js" as Helpers
 import "../../../src/JS/Helpers/SymbolDraft.js" as SymbolDraft
+import "../../../src/JS/Helpers/SymbolRules.js" as SymbolRules
 
 TestSuite {
     id: suite
@@ -33,7 +34,7 @@ TestSuite {
     function service(initial, failWith) { return serviceType.createObject(null, { data: initial || ({}), failWith: failWith || null }) }
     function scopeFor(pluginService) {
         var scope = {
-            ProvidersManager: ProvidersManager, SymbolDraft: SymbolDraft, ErrorHandler: ErrorHandler, Logger: Logger, Helpers: Helpers, selectedProviderId: "yahoo",
+            ProvidersManager: ProvidersManager, SymbolDraft: SymbolDraft, SymbolRules: SymbolRules, ErrorHandler: ErrorHandler, Logger: Logger, Helpers: Helpers, selectedProviderId: "yahoo",
             storage: pluginService ? storageType.createObject(null, { pluginId: "markets", pluginService: pluginService }) : null,
             priceResolutionSelect: control("1m"), changeResolutionSelect: control("1d"), chartResolutionSelect: control("1m"), chartRangeSelect: control("1D"),
             providerSelect: control("yahoo"), tickerInput: control(""), nameInput: control(""),
@@ -120,6 +121,17 @@ TestSuite {
         equal(add("  BRLPLN  ", "wise"), [["BRLPLN", "Name"]], "surrounding whitespace is trimmed, not rejected")
         same(add("BRLPLN", "wise", [{ ticker: "BRLPLN", uid: "x" }]).length, 0, "duplicates are refused"); check(/already added/.test(errors[errors.length - 1]))
         same(add("BRLPLN", "wise", [{ ticker: "BRLPLN", uid: "x" }], 0).length, 1, "...except the symbol being edited")
+    }
+
+    function test_the_display_name_is_validated_before_anything_is_saved() {
+        ;["12345678901", "A very long name", "Name;rm", "N&N", "é"].forEach(function(bad) {
+            var pluginService = service(), scope = scopeFor(pluginService), before = errors.length
+            scope.tickerInput.value = "BRLPLN"; scope.nameInput.value = bad; scope.providerSelect.value = "wise"
+            settingsFunction("addOrUpdateSymbol", scope)()
+            same(pluginService.writes === undefined ? 0 : pluginService.writes.length, 0, "nothing saved for " + JSON.stringify(bad))
+            same(errors.length, before + 1, "the user is told why: " + JSON.stringify(bad))
+        })
+        equal(add("BRLPLN", "wise"), [["BRLPLN", "Name"]], "a valid name is saved")
     }
 
     // ── doSaveSymbol ─────────────────────────────────────────────────────────

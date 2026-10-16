@@ -1,4 +1,4 @@
-// StooqConstants.js — constants used only by the Stooq provider
+// StooqConstants.js - constants used only by the Stooq provider
 //
 // Usage in StooqProperties.js and StooqApi.js:  .import "StooqConstants.js" as K
 
@@ -6,6 +6,7 @@
 .import "../../Contracts/Resolution.js" as Resolution
 // ── Stooq provider constants ────────────────────────────────────────────────
 var STOOQ_PROVIDER_ID = "stooq"
+var STOOQ_ALIAS = "STK"      // three capital letters: what charts show instead of the long name
 var STOOQ_NAME = "Stooq"
 var STOOQ_BASE_URL = "https://stooq.com"
 var STOOQ_DESCRIPTION = "Polish market-data site publishing free CSV quotes for forex, indices, commodities, crypto and equities. Currently disabled because its API is unstable."
@@ -24,9 +25,6 @@ var STOOQ_SYMBOL_PATTERN = "^[A-Za-z0-9^][A-Za-z0-9._^-]{0,19}$"
 var STOOQ_SYMBOL_MIN_LENGTH = 1
 var STOOQ_SYMBOL_MAX_LENGTH = 20
 var STOOQ_SYMBOL_FORMAT_MESSAGE = "Use a Stooq symbol: letters, digits and . _ ^ - only, e.g. eurusd, ^spx, cl.f."
-var STOOQ_DISPLAY_NAME_PLACEHOLDER = "EUR/USD"
-var STOOQ_DISPLAY_NAME_HELP_TEXT = "Short label shown in the bar and popup (e.g., EUR/USD, S&P 500)"
-var STOOQ_SETTINGS_TEXT = "Required only for symbols that use the Stooq provider."
 var STOOQ_AUTH_ERROR_MESSAGE = "Stooq API key missing or invalid"
 var STOOQ_CREDENTIAL_ERROR_SENTINEL = "get your apikey"
 var STOOQ_DATA_URL = "https://stooq.com/q/d/l/"

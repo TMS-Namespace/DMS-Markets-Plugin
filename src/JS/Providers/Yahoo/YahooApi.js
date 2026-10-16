@@ -1,4 +1,4 @@
-// YahooApi.js — Yahoo Finance chart API market data provider
+// YahooApi.js - Yahoo Finance chart API market data provider
 //
 // Yahoo symbols are provider-specific and usually differ from Stooq symbols:
 //   EURUSD=X   EUR/USD                  BTC-USD  Bitcoin/USD

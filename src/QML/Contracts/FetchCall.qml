@@ -1,4 +1,4 @@
-// FetchCall.qml — contract: one call handed to ProviderHandler.
+// FetchCall.qml - contract: one call handed to ProviderHandler.
 //
 //   key          identifies this exact call; a call whose key is already in flight is refused
 //   group        what the "refreshing…" state is counted for (the symbol's uid)

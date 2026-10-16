@@ -1,4 +1,4 @@
-// ErrorRecord.qml — contract: one handled error, as ErrorHandler records it and the UI shows it.
+// ErrorRecord.qml - contract: one handled error, as ErrorHandler records it and the UI shows it.
 //
 //   scope        where it happened ("fetcher", "storage", …)    code   PluginError.Code
 //   userMessage  short and friendly: the only text users see     details   technical detail for the log

@@ -1,4 +1,4 @@
-// Constants.qml — QML-side constants for the Markets plugin
+// Constants.qml - QML-side constants for the Markets plugin
 //
 // Instantiate in each consumer with:   Constants { id: constants }
 // Then reference as:                   constants.defaultUpColor
@@ -52,9 +52,11 @@ QtObject {
     readonly property int    symbolNameColumnW:    90
     readonly property int    symbolPriceColumnW:   86
     readonly property int    symbolColSpacing:     2
+    readonly property int    symbolPriceColumnShift: 5   // the price column sits this many px further right
     // DMS defaults: medium 14px, small 12px. Deltas preserve compact labels.
     readonly property int    symbolNameFontSizeDelta:   1
-    readonly property int    symbolTickerFontSizeDelta: 1
+    // The ticker line is smaller than the name but stays bigger than the "refreshed ago" line (smallFontSizeDelta): one step above it.
+    readonly property int    symbolTickerFontSizeDelta: smallFontSizeDelta + 1
     readonly property int    actionButtonSize:     22
     readonly property int    actionButtonRadius:   11
     readonly property int    actionIconSize:       14
@@ -65,7 +67,8 @@ QtObject {
     readonly property int    agoTickMs:            15000 // "X sec ago" refresh
 
     // ── PriceChart rendering ──────────────────────────────────────────────────
-    readonly property int    chartPadding:         2
+    readonly property int    chartPadding:         3   // inside the chart: between the drawing and its edge
+    readonly property int    chartAreaMargin:      3   // around the chart on every side (one constant for all four)
     readonly property real   chartLineWidth:       1.5
     readonly property real   chartFillOpacity:     0.25
     readonly property int    chartLabelLeftMargin: 4
@@ -78,6 +81,7 @@ QtObject {
 
     // ── ConfiguredSymbol / settings list rows ─────────────────────────────────
     readonly property int    configRowHeight:       56
+    readonly property int    configTextFontSizeDelta: -1   // the one-line summary of a configured symbol, a little below "small"
     readonly property int    configIconSize:        18   // pin icon + delete icon
     readonly property int    configActionSize:      24   // clickable area for move/delete
     readonly property int    configArrowIconSize:   16

@@ -1,4 +1,4 @@
-// TimeUnits.js — calendar time units in milliseconds, defined once.
+// TimeUnits.js - calendar time units in milliseconds, defined once.
 //
 // Everything that measures time (resolutions, chart spans, polling, retry delays, "x ago")
 // builds on these, so no number is spelled out twice.

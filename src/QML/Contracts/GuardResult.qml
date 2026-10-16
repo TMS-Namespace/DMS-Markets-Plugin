@@ -1,4 +1,4 @@
-// GuardResult.qml — contract: the outcome of running something under ErrorHandler.guard.
+// GuardResult.qml - contract: the outcome of running something under ErrorHandler.guard.
 //
 //   ok      boolean       value   what the function returned (undefined on failure)
 //   error   null on success, otherwise the ErrorRecord of the failure

@@ -1,4 +1,4 @@
-// ErrorPolicy.js — logic: what to do with an error. ErrorHandler.qml (the QML service) keeps the state
+// ErrorPolicy.js - logic: what to do with an error. ErrorHandler.qml (the QML service) keeps the state
 // (dev mode, recent errors, last notification times) and calls these pure functions.
 //
 //   recordOf(scope, error, context, now)     → plain ErrorRecord fields; users only ever see `userMessage`

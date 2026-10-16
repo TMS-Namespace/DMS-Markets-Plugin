@@ -1,4 +1,4 @@
-// MarketDataFetcher.qml — decides WHEN to pull data and what to do with the answers.
+// MarketDataFetcher.qml - decides WHEN to pull data and what to do with the answers.
 //
 // It does not run requests, retry them, or understand any provider's data format:
 //   • ProviderHandler  runs a request, retries transient failures, and returns the final ProviderResponse
@@ -7,7 +7,7 @@
 // What remains here is scheduling (the live price, the change reference and the chart history are
 // independent pulls, each refreshed as often as its own resolution), post-processing that is the same for
 // every provider (inversion, the price candle), and
-// publishing the results — or the symbol's error — to the widget.
+// publishing the results - or the symbol's error - to the widget.
 //
 // Symbols are keyed everywhere by their internal `uid`; the `ticker` is only used to build requests.
 // Failures never get lost: the final outcome of every pull, success or error, is published per

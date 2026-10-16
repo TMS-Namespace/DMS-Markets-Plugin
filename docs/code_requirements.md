@@ -3,6 +3,20 @@
 Generic rules for QML/JavaScript plugins in this style. They describe how code is divided, named, tested and
 failed, not what any one plugin does.
 
+## 0. Naming and style
+
+- Always add comments to all classes, entities, functions, and complex logic.
+- Use easily readable language for comments and documents, do not be very abstract.
+- Always prefer to use OOP-like programming, and following SOLID principles and clean code.
+- Do not use em-dashes `—`.
+- Use clear, descriptive names. No abbreviations (`c`, `s`, `k`, `sel`, `ctx`, `fn`, `btn`, `tmp`), including in
+  lambdas, loops over keys, shell variables and QML ids. `i` (and `j` when nested) is fine for a running index.
+- Name a variable for what it **is**: `selection`, `pluginService`, `pendingGroup`, not its type or a shortening.
+- Do not shadow or reuse a name for a different meaning in the same scope.
+- Every file starts with a short header stating its role and its rules.
+- Match the surrounding code: comment density, naming, idiom.
+- One concept, one place: no duplicated approaches (for example, one clamp function, not two variants).
+
 ## 1. Division of labour (QML vs JavaScript)
 
 - **QML defines what exists, how things are connected, and how they react to change.** UI, observable state,
@@ -103,17 +117,7 @@ failed, not what any one plugin does.
 - No hard-coded user-visible defaults scattered in code: defaults and limits live in constants or in the
   declaration that owns them.
 
-## 10. Naming and style
-
-- Use clear, descriptive names. No abbreviations (`c`, `s`, `k`, `sel`, `ctx`, `fn`, `btn`, `tmp`), including in
-  lambdas, loops over keys, shell variables and QML ids. `i` (and `j` when nested) is fine for a running index.
-- Name a variable for what it **is**: `selection`, `pluginService`, `pendingGroup`, not its type or a shortening.
-- Do not shadow or reuse a name for a different meaning in the same scope.
-- Comments say why, not what; every file starts with a short header stating its role and its rules.
-- Match the surrounding code: comment density, naming, idiom.
-- One concept, one place: no duplicated approaches (for example, one clamp function, not two variants).
-
-## 11. Testing
+## 10. Testing
 
 - Test on the real runtime where behaviour depends on it. Run QML headless and instantiate real contracts, services
   and singletons; text-matching a source file is not a behaviour test.

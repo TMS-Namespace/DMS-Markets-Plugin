@@ -1,4 +1,4 @@
-// FetchContext.qml — contract: what a pull remembers about itself while a provider call is running.
+// FetchContext.qml - contract: what a pull remembers about itself while a provider call is running.
 // It travels with the call (ProviderHandler returns it untouched with the final response).
 //
 //   uid, ticker, providerId   the symbol the request is for

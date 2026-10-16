@@ -1,7 +1,7 @@
-// Logger.qml — the single place anything is written to the log (QML singleton).
+// Logger.qml - the single place anything is written to the log (QML singleton).
 //
 // Callers just log: `Logger.debug("scope", "what happened")`. Whether anything is written is decided here,
-// once, by dev mode — nothing else checks it. With dev mode off every call returns immediately, so
+// once, by dev mode - nothing else checks it. With dev mode off every call returns immediately, so
 // messages cost nothing and nothing is printed.
 //   • debug(scope, text)   a decision or an outcome worth seeing while developing
 //   • error(scope, text)   something went wrong (ErrorHandler logs every handled error here)

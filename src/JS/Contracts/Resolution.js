@@ -1,4 +1,4 @@
-// Resolution.js — value domain: the size of one candle.
+// Resolution.js - value domain: the size of one candle.
 //
 // Used for the live price (price resolution) and for the chart (chart resolution). A
 // provider declares which resolutions it can serve (see the provider properties (JS/Providers/<Name>/<Name>Properties.js)); data is

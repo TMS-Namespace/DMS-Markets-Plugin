@@ -1,4 +1,4 @@
-// ChartSpan.js — value domain: how much history a chart shows ("chart range").
+// ChartSpan.js - value domain: how much history a chart shows ("chart range").
 //
 // The full ladder of ranges. A provider does not list its ranges: it declares the longest
 // history it can serve per chart resolution, and the available ranges are every span on this
@@ -6,6 +6,7 @@
 // its resolution, not its range.
 //
 //   ChartSpan.Values.M1       "1M"             ChartSpan.label("1M")       "1 Month"
+//   ChartSpan.shortLabel("1M")  "1M"  (the compact form: "1 Month" → "1M", "10 Years" → "10Y")
 //   ChartSpan.days("1M")      30               ChartSpan.isValid("1M")     true
 //   ChartSpan.ORDER           shortest → longest
 //   ChartSpan.pointLimit("1d", "1M")  → most candles a chart of that resolution and range holds
@@ -55,6 +56,11 @@ var INFO = Object.freeze({
 })
 
 function isValid(span) { return INFO.hasOwnProperty(span) }
+
+// The compact form for tight places (chart corner): "1 Month" → "1M", "10 Years" → "10Y".
+var SHORT = Object.freeze({ "1H": "1H", "3H": "3H", "6H": "6H", "12H": "12H", "1D": "1D", "1W": "1W", "1M": "1M", "3M": "3M", "6M": "6M",
+                            "1Y": "1Y", "2Y": "2Y", "5Y": "5Y", "10Y": "10Y" })
+function shortLabel(span) { return SHORT.hasOwnProperty(span) ? SHORT[span] : (span ? String(span) : "") }
 
 function label(span) { return isValid(span) ? INFO[span].label : (span ? String(span) : "") }
 function days(span)  { return isValid(span) ? INFO[span].days : 0 }

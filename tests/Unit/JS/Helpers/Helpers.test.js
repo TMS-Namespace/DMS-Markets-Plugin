@@ -22,7 +22,7 @@ assert.strictEqual(helpers.pluginDataBool("false"), false);
 // formatNumber
 assert.strictEqual(helpers.formatNumber(1234567.891), "1,234,567.89");
 assert.strictEqual(helpers.formatNumber(0.5, 4), "0.5000");
-assert.strictEqual(helpers.formatNumber(NaN), "—");
+assert.strictEqual(helpers.formatNumber(NaN), "-");
 
 // inv (1/x), including degenerate input
 assert.strictEqual(helpers.inv(4), 0.25);

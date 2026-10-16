@@ -1,4 +1,4 @@
-// TestSuite.qml — base type of every QML test: assertion helpers. Define test_* functions in the root.
+// TestSuite.qml - base type of every QML test: assertion helpers. Define test_* functions in the root.
 import QtQml
 import Quickshell
 import Quickshell.Io
@@ -32,7 +32,7 @@ QtObject {
     function throws(action, fragment, message) {
         var caught = null
         try { action() } catch (error) { caught = error }
-        if (!caught) _fail((message || "expected an error") + " — nothing was thrown")
+        if (!caught) _fail((message || "expected an error") + " - nothing was thrown")
         if (fragment && String(caught.message).indexOf(fragment) === -1)
             _fail((message || "unexpected error") + "\n  expected to contain: " + fragment + "\n  got: " + caught.message)
         return caught

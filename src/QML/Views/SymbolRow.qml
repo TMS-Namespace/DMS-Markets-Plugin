@@ -1,4 +1,4 @@
-// SymbolRow.qml — Single symbol card for the popout list
+// SymbolRow.qml - Single symbol card for the popout list
 //
 // Layout:
 // ┌──────────────────────────────────────────────────────┐
@@ -65,12 +65,12 @@ Item {
     readonly property string errorMessage:  priceFailed ? SymbolErrors.message(symbolError) : (chartFailed ? SymbolErrors.message({ graph: symbolError.graph }) : "")
     readonly property string errorDetails:  SymbolErrors.details(symbolError)
 
-    // Configurable colors — Widget.qml always supplies these via PopoutPanel
+    // Configurable colors - Widget.qml always supplies these via PopoutPanel
     property color upColor
     property color downColor
     property color changeColor: isPositive ? upColor : downColor
 
-    // Display toggles — Widget.qml always supplies these via PopoutPanel
+    // Display toggles - Widget.qml always supplies these via PopoutPanel
     property bool showTicker:         true
     property bool showPriceChange:     true
     property bool showChartRange:     true
@@ -102,7 +102,7 @@ Item {
         spacing: constants.symbolColSpacing
 
         StyledText {
-            text:           symbolData.name || symbolData.ticker || "—"
+            text:           symbolData.name || symbolData.ticker || "-"
             font.pixelSize: Theme.fontSizeMedium + constants.symbolNameFontSizeDelta
             font.weight:    Font.Bold
             color:          Theme.surfaceText
@@ -134,13 +134,13 @@ Item {
         id: priceColumn
         width:   constants.symbolPriceColumnW
         anchors.left:           nameColumn.right
-        anchors.leftMargin:     Theme.spacingS
+        anchors.leftMargin:     Theme.spacingS + constants.symbolPriceColumnShift
         anchors.verticalCenter: parent.verticalCenter
         spacing: 1
         visible: !symbolRow.priceFailed
 
         StyledText {
-            text:           hasData ? formatNumber(price) : (isLoading ? "Loading…" : "—")
+            text:           hasData ? formatNumber(price) : (isLoading ? "Loading…" : "-")
             font.pixelSize: Theme.fontSizeMedium
             font.weight:    Font.Medium
             color:          symbolRow.stale ? Theme.surfaceVariantText : Theme.surfaceText
@@ -165,23 +165,25 @@ Item {
     Item {
         id: chartArea
         anchors.left:        symbolRow.priceFailed ? nameColumn.right : priceColumn.right
-        anchors.leftMargin:  Theme.spacingS
+        anchors.leftMargin:  constants.chartAreaMargin
         anchors.right:       parent.right
-        anchors.rightMargin: Theme.spacingS
+        anchors.rightMargin: constants.chartAreaMargin
         anchors.top:         parent.top
-        anchors.topMargin:   Theme.spacingS
+        anchors.topMargin:   constants.chartAreaMargin
         anchors.bottom:      parent.bottom
-        anchors.bottomMargin: Theme.spacingS
+        anchors.bottomMargin: constants.chartAreaMargin
 
         PriceChart {
             anchors.fill:   parent
             visible:        !symbolRow.priceFailed && !symbolRow.chartFailed
             dataPoints:     symbolRow.chartData
             isLoading:      symbolRow.isLoading
+            // Concentric with the card: the theme's corner radius less the gap between card and chart.
+            cornerRadius:   Math.max(0, Theme.cornerRadius - constants.chartAreaMargin)
             chartRange:     symbolData.chartRange || ""
             showRangeLabel: symbolRow.showChartRange
             showProviderName: symbolRow.showProviderName
-            providerName:   ProvidersManager.nameOf(symbolData.provider || ProvidersManager.defaultId)
+            providerAlias:  ProvidersManager.aliasOf(symbolData.provider || ProvidersManager.defaultId)
             positiveColor:  symbolRow.upColor
             negativeColor:  symbolRow.downColor
         }

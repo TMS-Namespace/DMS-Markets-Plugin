@@ -1,4 +1,4 @@
-// DataStorage.qml — everything that reads or writes the plugin's saved data.
+// DataStorage.qml - everything that reads or writes the plugin's saved data.
 //
 // One place owns the storage rules, so no other item touches `pluginService` directly:
 //   • every write reports whether it really happened; a failure is shown to the user (toast via
@@ -7,7 +7,7 @@
 //     text is kept in `symbolsBackup` before anything can overwrite it
 //   • saved symbols are migrated here (SymbolMigration: legacy field names, uids, supported ranges)
 //   • list edits (pin, remove, move, add/update, flag changes) are pure transformations of the
-//     list you pass in, followed by one checked save — callers keep their own list state
+//     list you pass in, followed by one checked save - callers keep their own list state
 //   • credentials are read from plugin data and de-obfuscated here
 //
 // Both the widget and the settings create one (pluginId + pluginService); DMS's PluginSettings

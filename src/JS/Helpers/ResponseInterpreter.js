@@ -1,4 +1,4 @@
-// ResponseInterpreter.js — logic: turns what a fetch process printed into an outcome.
+// ResponseInterpreter.js - logic: turns what a fetch process printed into an outcome.
 //
 // The default fetch script prints one envelope line before the body:
 //   MARKETS-RESPONSE <curl exit code> <HTTP status>

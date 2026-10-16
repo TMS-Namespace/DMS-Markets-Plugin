@@ -1,4 +1,4 @@
-// SymbolErrorMap.js — logic: the latest failure of each pull, per symbol.
+// SymbolErrorMap.js - logic: the latest failure of each pull, per symbol.
 //
 // A plain errorMap { uid: { price: ErrorRecord, graph: ErrorRecord } } owned by the widget and read by
 // the symbol cards. It is never edited in place: `set` returns a new errorMap (so QML bindings notice)

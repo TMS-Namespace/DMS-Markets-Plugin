@@ -17,7 +17,8 @@ assert(/symbolPageUrl\(symbolData\.ticker \|\| ""\)/.test(row), "the browser URL
 assert(/chartRange:\s+symbolData\.chartRange \|\| ""/.test(row), "no hard-coded chart range fallback");
 
 // The chart label shows the range as a label.
-assert(/ChartSpan\.label\(chart\.chartRange\)/.test(chart), "range label, e.g. 1 Month");
+assert(/ChartSpan\.shortLabel\(chart\.chartRange\)/.test(chart), "range label in its compact form, e.g. 1M");
+assert(!/ChartSpan\.label\(/.test(chart), "the long form (1 Month) does not fit the chart corner");
 assert(chart.includes('import "../../JS/Contracts/ChartSpan.js" as ChartSpan'));
 assert(!/text:\s+chart\.chartRange\b/.test(chart), "raw range ids are not displayed");
 
@@ -102,5 +103,17 @@ assert(!/StyledText \{[^}]*text:\s+symbolRow\.errorDetails/.test(row), "technica
 
 // Clicking an unusable symbol is reported, not thrown.
 assert(/ErrorHandler\.guard\("symbol-row", function\(\) \{[\s\S]*?requireFromId\(symbolData\.provider \|\| ProvidersManager\.defaultId\)\s*\.symbolPageUrl[\s\S]*?\}, \{ context: symbolData\.ticker \}\)/.test(row));
+
+// ── Layout constants: one margin around every chart; ticker text sits between the name and the "ago" text ──
+const constants = readSource("QML/Helpers/Constants.qml");
+const delta = (name) => { const match = new RegExp(`${name}:\\s*([^\\n/]+)`).exec(constants); assert(match, name); return match[1].trim(); };
+assert(/chartAreaMargin:\s+\d+/.test(constants), "one constant for the margin around the chart");
+const area = /id: chartArea([\s\S]*?)PriceChart \{/.exec(row)[1];
+for (const side of ["left", "right", "top", "bottom"]) assert(new RegExp(`anchors\\.${side}Margin:\\s+constants\\.chartAreaMargin`).test(area), `${side} margin is the constant`);
+assert(!/Theme\.spacing/.test(area), "no theme spacing around the chart: it is the same on every side by constant");
+assert(/symbolTickerFontSizeDelta:\s+smallFontSizeDelta \+ 1/.test(constants), "the ticker is one step above the 'ago' text, relative to it");
+assert(/Theme\.fontSizeSmall \+ constants\.symbolTickerFontSizeDelta/.test(row) && /Theme\.fontSizeSmall \+ constants\.smallFontSizeDelta/.test(row), "both sized from the same base");
+assert(/symbolNameFontSizeDelta:\s+1\b/.test(constants), "the symbol NAME size is unchanged");
+assert(/anchors\.leftMargin:\s+Theme\.spacingS \+ constants\.symbolPriceColumnShift/.test(row) && /symbolPriceColumnShift:\s+5\b/.test(constants), "the price column is shifted 5px to the right");
 
 console.log("SymbolRow tests passed");

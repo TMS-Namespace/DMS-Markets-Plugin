@@ -1,4 +1,4 @@
-// ProviderRules.js — logic: checks that depend on a provider's declared properties and are not
+// ProviderRules.js - logic: checks that depend on a provider's declared properties and are not
 // about symbols or selections (those live in SymbolRules.js and SelectionPolicy.js).
 
 .pragma library
@@ -39,6 +39,7 @@ function assertDeclaration(id, declared, api) {
     ;["name", "baseUrl", "symbolFormatMessage"].forEach(function(key) {
         if (typeof declared[key] !== "string" || declared[key] === "") _fail(id, "'" + key + "' must be a non-empty string")
     })
+    if (!/^[A-Z]{3}$/.test(declared.alias)) _fail(id, "'alias' must be exactly three capital letters, e.g. YHF")
     var problem = SymbolRules.patternProblem(declared.symbolPattern)
     if (problem) _fail(id, problem)
     if (!(declared.symbolMinLength >= 1) || !(declared.symbolMaxLength >= declared.symbolMinLength))

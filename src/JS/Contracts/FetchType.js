@@ -1,4 +1,4 @@
-// FetchType.js — value domain: the kinds of pull the plugin makes for a symbol.
+// FetchType.js - value domain: the kinds of pull the plugin makes for a symbol.
 //
 //   FetchType.Values.PRICE   "price"   the live price and its change (refreshed every price resolution)
 //   FetchType.Values.GRAPH   "graph"   the chart history (refreshed every chart resolution)

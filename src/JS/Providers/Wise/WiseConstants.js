@@ -1,4 +1,4 @@
-// WiseConstants.js — constants used only by the Wise provider
+// WiseConstants.js - constants used only by the Wise provider
 //
 // Usage in WiseProperties.js and WiseApi.js:  .import "WiseConstants.js" as K
 
@@ -6,21 +6,19 @@
 .import "../../Contracts/Resolution.js" as Resolution
 // ── Wise provider constants ─────────────────────────────────────────────────
 var WISE_PROVIDER_ID = "wise"
+var WISE_ALIAS = "WIS"      // three capital letters: what charts show instead of the long name
 var WISE_NAME = "Wise"
 var WISE_BASE_URL = "https://wise.com"
-var WISE_DESCRIPTION = "Anonymous currency-exchange rates for most world currencies, including exotic pairs other providers lack. Hourly and daily data only. No credential required."
+var WISE_DESCRIPTION = "Various currency-exchange rates for most world currencies, including exotic pairs. Hourly and daily historical data only. No credential required."
 var WISE_HISTORY_LIVE_URL = "https://wise.com/rates/history+live"
 var WISE_CONVERTER_BASE_URL = "https://wise.com/gb/currency-converter/"
 var WISE_SYMBOL_SEARCH_URL = "https://wise.com/gb/currency-converter/"
-var WISE_SYMBOL_HELP_TEXT = "6-letter currency pair (source then target), e.g. BRLPLN, EURUSD, CNYJPY. Wise covers most world currencies."
+var WISE_SYMBOL_HELP_TEXT = "6-letter currency pair (source then target), e.g. BRLPLN, EURUSD, CNYJPY."
 var WISE_SYMBOL_PLACEHOLDER = "BRLPLN"
 var WISE_SYMBOL_PATTERN = "^[A-Za-z]{3}-?[A-Za-z]{3}$"
 var WISE_SYMBOL_MIN_LENGTH = 6
 var WISE_SYMBOL_MAX_LENGTH = 7
 var WISE_SYMBOL_FORMAT_MESSAGE = "Use two 3-letter currency codes, source then target, e.g. BRLPLN or BRL-PLN."
-var WISE_DISPLAY_NAME_PLACEHOLDER = "BRL/PLN"
-var WISE_DISPLAY_NAME_HELP_TEXT = "Short label shown in the bar and popup (e.g., BRL/PLN, Euro to Dollar)"
-var WISE_SETTINGS_TEXT = "No credential required. Enter a 6-letter currency pair such as BRLPLN (Brazilian Real → Polish Złoty)."
 // Wise only serves hourly and daily candles (no weekly/monthly), so providers
 // declare only those. `unit=day` accepts length 1-31 (hourly: 1-30); `unit=month`
 // accepts 1-60 (daily only); anything wider returns HTTP 400.

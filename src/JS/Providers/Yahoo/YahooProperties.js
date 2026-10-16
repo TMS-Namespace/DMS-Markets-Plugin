@@ -1,4 +1,4 @@
-// YahooProperties.js — Yahoo Finance: what it declares (see below).
+// YahooProperties.js - Yahoo Finance: what it declares (see below).
 //
 // Limits measured against the live chart API: 1m ≤ 7 days, 5m/15m ≤ 60 days, 1h ≤ 730 days,
 // daily/weekly/monthly unlimited.
@@ -18,9 +18,9 @@ function create() {
     return {
         providerId: K.YAHOO_PROVIDER_ID,
         name: K.YAHOO_NAME,
+        alias: K.YAHOO_ALIAS,
         description: K.YAHOO_DESCRIPTION,
         baseUrl: K.YAHOO_BASE_URL,
-        settingsText: K.YAHOO_SETTINGS_TEXT,
         symbolSearchUrl: K.YAHOO_LOOKUP_URL,
         symbolHelpText: K.YAHOO_SYMBOL_HELP_TEXT,
         symbolPlaceholder: K.YAHOO_SYMBOL_PLACEHOLDER,
@@ -28,8 +28,6 @@ function create() {
         symbolMinLength: K.YAHOO_SYMBOL_MIN_LENGTH,
         symbolMaxLength: K.YAHOO_SYMBOL_MAX_LENGTH,
         symbolFormatMessage: K.YAHOO_SYMBOL_FORMAT_MESSAGE,
-        displayNamePlaceholder: K.YAHOO_DISPLAY_NAME_PLACEHOLDER,
-        displayNameHelpText: K.YAHOO_DISPLAY_NAME_HELP_TEXT,
         minPullResolution: ResolutionValues.M1,
         changeResolutions: [ResolutionValues.H1, ResolutionValues.D1, ResolutionValues.W1, ResolutionValues.MO1],
         priceResolutions: [ResolutionValues.M1, ResolutionValues.M5, ResolutionValues.M15, ResolutionValues.H1,

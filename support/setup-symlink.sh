@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# setup-symlink.sh — Link this plugin into the DMS plugins directory
+# setup-symlink.sh - Link this plugin into the DMS plugins directory
 #
 # Run once after cloning:
 #   chmod +x support/setup-symlink.sh && support/setup-symlink.sh

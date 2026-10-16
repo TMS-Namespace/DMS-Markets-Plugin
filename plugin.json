@@ -4,7 +4,7 @@
     "capabilities": ["dankbar-widget"],
     "category": "finance",
     "repo": "https://github.com/TMS-Namespace/DMS-Markets-Plugin",
-    "description": "Near-live market prices for currencies, stocks, and commodities with charts through configurable data providers.",
+    "description": "Near-live market prices for currencies, stocks, and commodities with charts, without any credentials.",
     "version": "1.0.5",
     "author": "TMS-Namespace",
     "icon": "show_chart",

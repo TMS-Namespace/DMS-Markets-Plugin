@@ -1,4 +1,4 @@
-// Settings.qml — Plugin settings page
+// Settings.qml - Plugin settings page
 //
 // Provides the configuration interface for the Markets plugin:
 // - Chart colors (up/down)
@@ -14,6 +14,7 @@ import qs.Widgets
 import "../JS/Helpers/Helpers.js" as Helpers
 import "../JS/Helpers/Constants.js" as JsK
 import "../JS/Helpers/SymbolDraft.js" as SymbolDraft
+import "../JS/Helpers/SymbolRules.js" as SymbolRules
 import "./Helpers"
 import "./Services"
 import "./Views"
@@ -40,6 +41,9 @@ PluginSettings {
     // The ticker is checked against the selected provider's declared format and length.
     readonly property string tickerText:           (tickerInput.value || "").trim()
     readonly property var tickerValidation:        selectedHandler ? selectedHandler.validateSymbol(tickerText) : ({ valid: false, message: "No data provider is available." })
+    // The display name: at most a few characters from a fixed set (see SymbolRules.validateName).
+    readonly property string nameText:             (nameInput.value || "").trim()
+    readonly property var nameValidation:          SymbolRules.validateName(nameText)
     // Candle-count validation of the chosen resolution vs chart range (non-blocking notes).
     readonly property var chartRangeStatus:        selectedHandler ? selectedHandler.chartRangeStatus(chartResolutionSelect.value, chartRangeSelect.value) : ({ level: "ok", message: "" })
 
@@ -173,7 +177,7 @@ PluginSettings {
 
     StyledText {
         width: parent.width
-        text: "Popup Layout"
+        text: "Popup Height"
         font.pixelSize: Theme.fontSizeLarge
         font.weight: Font.Bold
         color: Theme.surfaceText
@@ -182,7 +186,7 @@ PluginSettings {
 
     SliderSetting {
         settingKey: "popoutRows"
-        label: "Visible Symbol Rows"
+        label: "Visible Symbol Rows without scrolling"
         minimum: constants.minPopoutRows
         maximum: constants.maxPopoutRows
         defaultValue: constants.defaultPopoutRows
@@ -190,7 +194,7 @@ PluginSettings {
 
     StyledText {
         width: parent.width
-        text: "Symbol Row Display"
+        text: "Global symbol settings"
         font.pixelSize: Theme.fontSizeLarge
         font.weight: Font.Bold
         color: Theme.surfaceText
@@ -199,7 +203,7 @@ PluginSettings {
 
     StyledText {
         width: parent.width
-        text: "Choose which details to show for each symbol in the popup"
+        text: "Choose which details to show for all of the configured symbols"
         font.pixelSize: Theme.fontSizeSmall
         color: Theme.surfaceVariantText
         wrapMode: Text.WordWrap
@@ -221,15 +225,15 @@ PluginSettings {
 
     ToggleSetting {
         settingKey: "showChartRange"
-        label: "Show Chart Time Range"
-        description: "Show the time range label on the sparkline chart"
+        label: "Show Chart Range"
+        description: "Show the time range on the chart"
         defaultValue: true
     }
 
     ToggleSetting {
         settingKey: "showProviderName"
-        label: "Show Provider Name"
-        description: "Show the data provider's name in the lower-left corner of the sparkline chart"
+        label: "Show Provider Alias"
+        description: "Show the data provider's three-letter alias on the chart"
         defaultValue: true
     }
 
@@ -278,26 +282,6 @@ PluginSettings {
             font.pixelSize: Theme.fontSizeSmall
             color: Theme.surfaceVariantText
             wrapMode: Text.WordWrap
-        }
-
-        StyledText {
-            width: parent.width
-            text: root.selectedProvider.baseUrl || ""
-            font.pixelSize: Theme.fontSizeSmall
-            font.underline: baseUrlMouseArea.containsMouse
-            color: Theme.primary
-            elide: Text.ElideRight
-
-            MouseArea {
-                id: baseUrlMouseArea
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: {
-                    if (root.selectedProvider.baseUrl)
-                        Qt.openUrlExternally(root.selectedProvider.baseUrl)
-                }
-            }
         }
     }
 
@@ -444,7 +428,7 @@ PluginSettings {
         }
 
         StyledText {
-            text: root.selectedProvider.displayNameHelpText || "Short label shown in the bar and popup"
+            text: "Short label shown for the symbol (max " + JsK.DISPLAY_NAME_MAX_LENGTH + " char.)"
             font.pixelSize: Theme.fontSizeSmall
             color: Theme.surfaceVariantText
             width: parent.width
@@ -454,8 +438,18 @@ PluginSettings {
         DankTextField {
             id: nameField
             width: parent.width
-            placeholderText: root.selectedProvider.displayNamePlaceholder || ""
+            placeholderText: "Gold"
+            maximumLength: JsK.DISPLAY_NAME_MAX_LENGTH
             onEditingFinished: storage.saveDraftField("name", text.trim())
+        }
+
+        StyledText {
+            visible: root.nameText !== "" && !root.nameValidation.valid
+            text: root.nameValidation.message
+            font.pixelSize: Theme.fontSizeSmall
+            color: Theme.error
+            width: parent.width
+            wrapMode: Text.WordWrap
         }
     }
 
@@ -463,7 +457,7 @@ PluginSettings {
         id: priceResolutionSelect
         settingKey: JsK.DRAFT_KEYS.priceResolution
         label: "Price Resolution"
-        description: "Candle size for the live price and change calculation (also how often it is refreshed)"
+        description: "Candle size for the live price, also sets how often it is refreshed"
         visible: !root.selectedProviderDisabled
         options: root.priceResolutionOptions
         defaultValue: JsK.DEFAULT_PRICE_RESOLUTION
@@ -472,8 +466,8 @@ PluginSettings {
     SelectionSetting {
         id: changeResolutionSelect
         settingKey: JsK.DRAFT_KEYS.changeResolution
-        label: "Change Resolution"
-        description: "The change is measured against the close of the previous period of this size (1 Day matches the quote pages)"
+        label: "Price Change Resolution"
+        description: "The price change is calculated against the close of the previous period of this size"
         visible: !root.selectedProviderDisabled
         options: root.changeResolutionOptions
         defaultValue: JsK.DEFAULT_CHANGE_RESOLUTION
@@ -483,7 +477,7 @@ PluginSettings {
         id: chartResolutionSelect
         settingKey: JsK.DRAFT_KEYS.chartResolution
         label: "Chart Resolution"
-        description: "Candle size of the popup sparkline"
+        description: "Candle size of the charts"
         visible: !root.selectedProviderDisabled
         options: root.chartResolutionOptions
         defaultValue: JsK.DEFAULT_CHART_RESOLUTION
@@ -496,7 +490,7 @@ PluginSettings {
         settingKey: JsK.DRAFT_KEYS.chartRange
         label: "Chart Range"
         description: root.chartRangeAvailable
-                     ? "How much historical data to show in the popup sparkline"
+                     ? "How much historical data to show in the charts"
                      : "Choose a chart resolution first"
         visible: !root.selectedProviderDisabled
         enabled: root.chartRangeAvailable
@@ -520,7 +514,7 @@ PluginSettings {
     ToggleSetting {
         id: showChangeToggle
         settingKey: JsK.DRAFT_KEYS.showChange
-        label: "Show Change When Pinned"
+        label: "Show Price Change When Pinned"
         description: "Display price change in the bar when this symbol is pinned"
         defaultValue: false
         visible: !root.selectedProviderDisabled
@@ -533,8 +527,8 @@ PluginSettings {
     ToggleSetting {
         id: invertToggle
         settingKey: JsK.DRAFT_KEYS.invert
-        label: "Invert Value (1/x)"
-        description: "Show and chart the reciprocal of the price (e.g., USD/EUR instead of EUR/USD)"
+        label: "Invert Prices (1/x)"
+        description: "Show the reciprocal of the price and chart (e.g., USD/EUR instead of EUR/USD)"
         defaultValue: false
         visible: !root.selectedProviderDisabled
         onValueChanged: {
@@ -561,8 +555,7 @@ PluginSettings {
 
                 property bool canAdd: {
                     var ticker      = (tickerInput.value || "").trim()
-                    var displayName = (nameInput.value || "").trim()
-                    return root.tickerValidation.valid && displayName !== "" && !root.selectedProviderDisabled
+                    return root.tickerValidation.valid && root.nameValidation.valid && !root.selectedProviderDisabled
                 }
 
                 color: canAdd
@@ -663,6 +656,13 @@ PluginSettings {
         var ticker = (tickerInput.value || "").trim()
         var name   = (nameInput.value || "").trim()
         if (!ticker || !name) return
+
+        // Blocking: the display name must be short and made of allowed characters.
+        var nameVerdict = SymbolRules.validateName(name)
+        if (!nameVerdict.valid) {
+            ToastService.showError("Markets", nameVerdict.message)
+            return
+        }
 
         // Blocking: the symbol must match the provider's declared format and length.
         var validation = ProvidersManager.requireFromId(providerSelect.value || ProvidersManager.defaultId).validateSymbol(ticker)

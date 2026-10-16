@@ -1,4 +1,4 @@
-// MarketCache.qml — the last market data of every symbol, kept on disk so the popup has something to
+// MarketCache.qml - the last market data of every symbol, kept on disk so the popup has something to
 // show right after a start while the providers are still being asked.
 //
 // One file per symbol, `<uid>.json` in `directory`; only the latest update stays: every write replaces the

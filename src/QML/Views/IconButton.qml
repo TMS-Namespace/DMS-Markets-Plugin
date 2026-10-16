@@ -1,4 +1,4 @@
-// IconButton.qml — a small round button with an icon: translucent background, optional hover tint,
+// IconButton.qml - a small round button with an icon: translucent background, optional hover tint,
 // optional spinning icon (used while something is loading). One component for every such button.
 //
 //   iconName, iconSize, iconColor, iconRotation   the icon

@@ -1,4 +1,4 @@
-// YahooConstants.js — constants used only by the Yahoo provider
+// YahooConstants.js - constants used only by the Yahoo provider
 //
 // Usage in YahooProperties.js and YahooApi.js:  .import "YahooConstants.js" as K
 
@@ -6,21 +6,19 @@
 .import "../../Contracts/Resolution.js" as Resolution
 // ── Yahoo provider constants ────────────────────────────────────────────────
 var YAHOO_PROVIDER_ID = "yahoo"
+var YAHOO_ALIAS = "YHF"      // three capital letters: what charts show instead of the long name
 var YAHOO_NAME = "Yahoo Finance"
 var YAHOO_BASE_URL = "https://finance.yahoo.com"
 var YAHOO_DESCRIPTION = "Stocks, indices, commodities, crypto and major currency pairs from Yahoo Finance. No credential required."
 var YAHOO_CHART_BASE_URL = "https://query1.finance.yahoo.com/v8/finance/chart/"
 var YAHOO_LOOKUP_URL = "https://finance.yahoo.com/lookup"
 var YAHOO_QUOTE_BASE_URL = "https://finance.yahoo.com/quote/"
-var YAHOO_SYMBOL_HELP_TEXT = "Provider-specific Yahoo Finance symbol, e.g. EURUSD=X, BZ=F, HG=F, DX-Y.NYB, ^GSPC"
+var YAHOO_SYMBOL_HELP_TEXT = "Provider-specific Yahoo Finance symbol, e.g. EURUSD=X, BZ=F, DX-Y.NYB, ^GSPC"
 var YAHOO_SYMBOL_PLACEHOLDER = "EURUSD=X"
 var YAHOO_SYMBOL_PATTERN = "^[A-Za-z0-9^][A-Za-z0-9.=^_&-]{0,23}$"
 var YAHOO_SYMBOL_MIN_LENGTH = 1
 var YAHOO_SYMBOL_MAX_LENGTH = 24
 var YAHOO_SYMBOL_FORMAT_MESSAGE = "Use a Yahoo Finance symbol: letters, digits and . = ^ _ & - only, e.g. EURUSD=X, BZ=F, ^GSPC."
-var YAHOO_DISPLAY_NAME_PLACEHOLDER = "EUR/USD"
-var YAHOO_DISPLAY_NAME_HELP_TEXT = "Short label shown in the bar and popup (e.g., EUR/USD, Gold, S&P 500)"
-var YAHOO_SETTINGS_TEXT = "No credential is required. Use Yahoo Finance symbols such as EURUSD=X, BZ=F, HG=F, DX-Y.NYB, or ^GSPC."
 var YAHOO_EVENTS_PARAM = "history"
 var YAHOO_INCLUDE_PRE_POST = "false"
 var YAHOO_RESOLUTION_MAP = Resolution.mapOf([

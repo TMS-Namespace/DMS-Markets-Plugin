@@ -1,4 +1,4 @@
-// WiseApi.js — Wise currency-exchange-rate provider
+// WiseApi.js - Wise currency-exchange-rate provider
 //
 // Wise (https://wise.com) publishes anonymous FX rates, so arbitrary pairs
 // such as BRL→PLN work without requiring an API key.
@@ -12,7 +12,7 @@
 //                  → [ { source, target, value, time(ms) }, ... ] ascending
 //   history+live:  same, with the current live rate appended as the last point
 //
-// Verified limits (live API): `resolution` is only hourly|daily — there is no
+// Verified limits (live API): `resolution` is only hourly|daily - there is no
 // weekly/monthly. `unit`/`length` only set the WINDOW (e.g. daily + 1 month = 31
 // daily points), not the candle size. Daily: unit=day 1-31, month ≤60, year ≤5.
 // Hourly: unit=day ≤30 only (month/year → HTTP 400). Wider → HTTP 400.

@@ -1,4 +1,4 @@
-// PopoutPanel.qml — Popout content area for the Markets plugin
+// PopoutPanel.qml - Popout content area for the Markets plugin
 //
 // Contains the symbol list, header hover buttons (refresh all + close),
 // custom scroll indicator, and empty-state placeholder.

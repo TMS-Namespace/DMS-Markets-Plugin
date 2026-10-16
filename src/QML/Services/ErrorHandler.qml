@@ -1,4 +1,4 @@
-// ErrorHandler.qml — the single place where errors are caught, logged and shown (QML singleton).
+// ErrorHandler.qml - the single place where errors are caught, logged and shown (QML singleton).
 //
 // JS modules throw PluginError and never touch the UI. QML layers catch and hand the error to
 // `handle`, which

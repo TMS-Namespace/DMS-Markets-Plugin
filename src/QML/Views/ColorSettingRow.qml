@@ -1,4 +1,4 @@
-// ColorSettingRow.qml — a hex-colour text setting with a swatch showing the colour (or the default while empty).
+// ColorSettingRow.qml - a hex-colour text setting with a swatch showing the colour (or the default while empty).
 //
 //   settingKey, label, description, defaultColor   as for DMS's StringSetting
 //   value (read-only)                              the text typed

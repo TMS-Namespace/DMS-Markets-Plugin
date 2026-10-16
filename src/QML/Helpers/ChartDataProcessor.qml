@@ -1,4 +1,4 @@
-// ChartDataProcessor.qml — Pure data processing for sparkline charts
+// ChartDataProcessor.qml - Pure data processing for sparkline charts
 //
 // Consumes a raw dataPoints array from a market data provider and exposes
 // all derived values needed to paint the chart: cleaned close prices,

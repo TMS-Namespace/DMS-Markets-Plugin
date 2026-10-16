@@ -1,4 +1,4 @@
-// Helpers.js — Pure utility functions shared across QML components
+// Helpers.js - Pure utility functions shared across QML components
 //
 // Usage:  import "../JS/Helpers/Helpers.js" as Helpers
 //         Helpers.formatNumber(1234.5)
@@ -8,7 +8,7 @@
 .import "../Contracts/Resolution.js" as Resolution
 // ── Number formatting with thousands separator ──────────────────────────────
 function formatNumber(number, decimals) {
-    if (isNaN(number)) return "—"
+    if (isNaN(number)) return "-"
     var fixed = number.toFixed(decimals !== undefined ? decimals : 2)
     var parts = fixed.split(".")
     parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",")
@@ -113,7 +113,7 @@ function symbolFetchSignature(symbol, defaultProvider) {
 }
 
 // ── Provider credential obfuscation (XOR + hex) ─────────────────────────────
-// Not cryptographic — just prevents credentials from sitting as plain text on disk.
+// Not cryptographic - just prevents credentials from sitting as plain text on disk.
 // Uses hex instead of base64 to avoid btoa/atob (browser-only Web APIs).
 function obfuscate(text) {
     if (!text) return ""

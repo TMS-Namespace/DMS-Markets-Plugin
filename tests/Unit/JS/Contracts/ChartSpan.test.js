@@ -25,6 +25,14 @@ assert.strictEqual(ChartSpan.days("1H"), 1 / 24);
 assert.strictEqual(ChartSpan.days("12H"), 0.5);
 assert.strictEqual(ChartSpan.days("1M"), 30);
 assert.strictEqual(ChartSpan.days("zzz"), 0);
+// The compact form for the chart corner.
+const compact = { "1H": "1H", "3H": "3H", "6H": "6H", "12H": "12H", "1D": "1D", "1W": "1W", "1M": "1M", "3M": "3M", "6M": "6M", "1Y": "1Y", "2Y": "2Y", "5Y": "5Y", "10Y": "10Y" };
+for (const span of ChartSpan.ORDER) {
+    assert.strictEqual(ChartSpan.shortLabel(span), compact[span], span);
+    assert(/^\d+[HDWMY]$/.test(ChartSpan.shortLabel(span)), `${span} is a number and one letter`);
+    assert(ChartSpan.shortLabel(span).length <= 3 && ChartSpan.shortLabel(span).length < ChartSpan.label(span).length, `${span} is shorter than its label`);
+}
+assert.strictEqual(ChartSpan.shortLabel(undefined), ""); assert.strictEqual(ChartSpan.shortLabel("zzz"), "zzz");
 assert.strictEqual(ChartSpan.label(undefined), "");
 assert.strictEqual(ChartSpan.label("zzz"), "zzz");
 assert.strictEqual(ChartSpan.refreshMs, undefined, "refresh follows the resolution, not the range");

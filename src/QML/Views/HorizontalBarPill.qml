@@ -1,4 +1,4 @@
-// HorizontalBarPill.qml — Horizontal bar-pill content for the Markets widget
+// HorizontalBarPill.qml - Horizontal bar-pill content for the Markets widget
 //
 // Displays a chart icon followed by the current bar label text.
 // Intended to be returned from the PluginComponent.horizontalBarPill property.

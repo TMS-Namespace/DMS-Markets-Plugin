@@ -1,4 +1,4 @@
-// ProviderResponse.qml — contract: the unified result of calling a provider's web API.
+// ProviderResponse.qml - contract: the unified result of calling a provider's web API.
 //
 //   providerId   provider that was called       ok      true when `body` holds the answer
 //   status       HTTP status when known, else 0  body    response text ("" when there was none)

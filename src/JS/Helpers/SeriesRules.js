@@ -1,4 +1,4 @@
-// SeriesRules.js — logic: building and checking candles.
+// SeriesRules.js - logic: building and checking candles.
 //
 // Every provider turns its wire format (Yahoo JSON, Wise JSON, Stooq CSV, …) into candles through
 // `candle`, and the provider handler checks the whole series (`assertSeries`) before anyone else

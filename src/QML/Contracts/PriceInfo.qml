@@ -1,4 +1,4 @@
-// PriceInfo.qml — contract: what the widget shows for a symbol's live price (PriceRules.priceFrom).
+// PriceInfo.qml - contract: what the widget shows for a symbol's live price (PriceRules.priceFrom).
 //
 //   open, high, low, close   numbers          date, time   UTC, as in DataPoint
 //   change                   close - open     changePercent   change / open * 100, 0 when open is 0

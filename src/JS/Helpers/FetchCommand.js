@@ -1,4 +1,4 @@
-// FetchCommand.js — logic: the process command line that fetches one URL.
+// FetchCommand.js - logic: the process command line that fetches one URL.
 //
 // The URL is always passed as a separate argument (never spliced into shell text). The default
 // script prints one envelope line (curl exit code, HTTP status) and then the body, and exits 0

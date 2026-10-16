@@ -1,4 +1,4 @@
-// DataPoint.qml — contract: one candle, as stored for the chart. A data holder: building a consistent
+// DataPoint.qml - contract: one candle, as stored for the chart. A data holder: building a consistent
 // candle from raw numbers is SeriesRules.candle; this type carries the result and answers whether each
 // field is individually well-formed. A chart holds only as many as its range has at its resolution.
 //

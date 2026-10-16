@@ -1,4 +1,4 @@
-// ProviderHandler.qml — one market-data provider, wrapped: the ONLY way the plugin talks to a provider.
+// ProviderHandler.qml - one market-data provider, wrapped: the ONLY way the plugin talks to a provider.
 //
 // ProvidersManager creates one per supported provider (ProviderType) and hands it out; the UI never
 // touches a provider's JS. The handler exposes
@@ -349,7 +349,7 @@ Item {
         return fetchType === FetchType.Values.PRICE ? parsePrice(response, request.candles) : parseChart(response, request.candles)
     }
 
-    // Reports the final result (if anyone still waits for it) and forgets the call —
+    // Reports the final result (if anyone still waits for it) and forgets the call -
     // even when the listener throws.
     function _complete(request, response, series) {
         try {

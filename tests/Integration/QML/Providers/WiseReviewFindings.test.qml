@@ -24,7 +24,7 @@ TestSuite {
         const values = (options) => options.map((option) => option.value);
 
         // ─────────────────────────────────────────────────────────────────────────────
-        // Finding 1 — the 1w / 1M price "change" was really a one-day move
+        // Finding 1 - the 1w / 1M price "change" was really a one-day move
         // Wise only has hourly and daily data, so it no longer offers weekly/monthly price
         // resolutions; the change shown is "live vs the last published point of that size".
         // ─────────────────────────────────────────────────────────────────────────────
@@ -63,7 +63,7 @@ TestSuite {
         same(values(handlerOf("yahoo").priceResolutionOptions()).includes("1w"), true);
 
         // ─────────────────────────────────────────────────────────────────────────────
-        // Finding 2 — a "10 Years" chart silently showed only ~5 years
+        // Finding 2 - a "10 Years" chart silently showed only ~5 years
         // A range is only offered if the provider can really serve it, and the request
         // always covers at least the labelled span.
         // ─────────────────────────────────────────────────────────────────────────────
@@ -89,7 +89,7 @@ TestSuite {
         same(Policy.historyLimitDays(wise, "1d"), 1826, "5 years back is the documented limit");
 
         // ─────────────────────────────────────────────────────────────────────────────
-        // Finding 3 — a stale price selection survived a provider switch, and clamping
+        // Finding 3 - a stale price selection survived a provider switch, and clamping
         // only happened on save
         // ─────────────────────────────────────────────────────────────────────────────
         {
@@ -104,7 +104,7 @@ TestSuite {
         }
 
         // ─────────────────────────────────────────────────────────────────────────────
-        // Findings 4 and 8 — duplicated, hard-coded point limits; request and trimming
+        // Findings 4 and 8 - duplicated, hard-coded point limits; request and trimming
         // could disagree
         // ─────────────────────────────────────────────────────────────────────────────
         {
@@ -118,7 +118,7 @@ TestSuite {
         }
 
         // ─────────────────────────────────────────────────────────────────────────────
-        // Finding 5 — weekly/monthly series were built from epoch-aligned 7/30-day buckets
+        // Finding 5 - weekly/monthly series were built from epoch-aligned 7/30-day buckets
         // Wise serves no such candles any more, so nothing is bucketed.
         // ─────────────────────────────────────────────────────────────────────────────
         throws(() => handlerOf("wise").chartRequest("BRLPLN", "1w", "1Y"), "chart resolution '1w'", "no weekly candles");
@@ -131,7 +131,7 @@ TestSuite {
         }
 
         // ─────────────────────────────────────────────────────────────────────────────
-        // Finding 6 — values and times were not coerced, so strings, "", [] or booleans
+        // Finding 6 - values and times were not coerced, so strings, "", [] or booleans
         // could reach the maths and the sort
         // ─────────────────────────────────────────────────────────────────────────────
         {

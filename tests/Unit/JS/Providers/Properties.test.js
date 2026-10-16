@@ -20,6 +20,18 @@ for (const [id, { properties, api }] of Object.entries(providers)) {
     throwsWith(() => rules.assertDeclaration(id, Object.assign({}, declared, { providerId: "other" }), api), "declares providerId", `${id}: the id must match`);
 }
 
+// Every provider has a three-letter capital alias (what charts show), and no two share one.
+const expectedAliases = { yahoo: "YHF", wise: "WIS", stooq: "STK" };
+const aliases = Object.entries(providers).map(([id, { properties }]) => properties.create().alias);
+for (const [id, { properties, api }] of Object.entries(providers)) {
+    const declared = properties.create();
+    assert.strictEqual(declared.alias, expectedAliases[id], `${id}: alias`);
+    assert(/^[A-Z]{3}$/.test(declared.alias), `${id}: exactly three capital letters`);
+    for (const bad of [undefined, "", "yhf", "YH", "YHFX", "Y1F", "YH ", 5, null])
+        throwsWith(() => rules.assertDeclaration(id, Object.assign({}, declared, { alias: bad }), api), "alias", `${id}: alias ${String(bad)} is refused`);
+}
+assert.strictEqual(new Set(aliases).size, aliases.length, "aliases are unique");
+
 // Yahoo: limits measured against the live chart API; polled as often as every minute.
 const yahoo = providers.yahoo.properties.create();
 same(yahoo.minPullResolution, "1m");

@@ -1,4 +1,4 @@
-// StooqApi.js — Stooq market data provider
+// StooqApi.js - Stooq market data provider
 //
 // Stooq (https://stooq.com) publishes free CSV quotes for a wide range of
 // instruments: forex, indices, commodities, crypto, equities.

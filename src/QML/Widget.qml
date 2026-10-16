@@ -1,4 +1,4 @@
-// Widget.qml — Main DMS bar widget with popout
+// Widget.qml - Main DMS bar widget with popout
 //
 // This file is intentionally thin: it owns the live state (priceData,
 // graphData, …), declares the Settings-driven properties, instantiates

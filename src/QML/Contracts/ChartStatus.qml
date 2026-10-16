@@ -1,4 +1,4 @@
-// ChartStatus.qml — contract: how well a chart resolution fits a chart range (ChartRules.evaluate).
+// ChartStatus.qml - contract: how well a chart resolution fits a chart range (ChartRules.evaluate).
 //
 //   level     "ok" | "warn" | "block"        reason   "" | "tooBig" | "tooSmall"
 //   candles   how many candles fit           message  short user-facing text, "" when level is ok

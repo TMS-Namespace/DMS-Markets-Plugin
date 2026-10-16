@@ -1,4 +1,4 @@
-// WiseProperties.js — Wise anonymous FX rates: what it declares (see below).
+// WiseProperties.js - Wise anonymous FX rates: what it declares (see below).
 //
 // Verified limits (live API): resolution is only hourly|daily; hourly reaches 30 days back, daily
 // 5 years (60 months); there is no weekly/monthly.
@@ -18,9 +18,9 @@ function create() {
     return {
         providerId: K.WISE_PROVIDER_ID,
         name: K.WISE_NAME,
+        alias: K.WISE_ALIAS,
         description: K.WISE_DESCRIPTION,
         baseUrl: K.WISE_BASE_URL,
-        settingsText: K.WISE_SETTINGS_TEXT,
         symbolSearchUrl: K.WISE_SYMBOL_SEARCH_URL,
         symbolHelpText: K.WISE_SYMBOL_HELP_TEXT,
         symbolPlaceholder: K.WISE_SYMBOL_PLACEHOLDER,
@@ -28,8 +28,6 @@ function create() {
         symbolMinLength: K.WISE_SYMBOL_MIN_LENGTH,
         symbolMaxLength: K.WISE_SYMBOL_MAX_LENGTH,
         symbolFormatMessage: K.WISE_SYMBOL_FORMAT_MESSAGE,
-        displayNamePlaceholder: K.WISE_DISPLAY_NAME_PLACEHOLDER,
-        displayNameHelpText: K.WISE_DISPLAY_NAME_HELP_TEXT,
         minPullResolution: ResolutionValues.H1,
         changeResolutions: [ResolutionValues.H1, ResolutionValues.D1],
         priceResolutions: [ResolutionValues.H1, ResolutionValues.D1],

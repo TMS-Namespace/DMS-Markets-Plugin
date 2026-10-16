@@ -1,4 +1,4 @@
-// PriceRules.js — logic: what the widget shows for a symbol's live price.
+// PriceRules.js - logic: what the widget shows for a symbol's live price.
 //
 // Built from the newest candle (already inverted when the symbol asks for 1/x); the change is measured from the
 // candle's open to its close. Returns plain data for the PriceInfo contract.

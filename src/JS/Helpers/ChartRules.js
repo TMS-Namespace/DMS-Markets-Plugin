@@ -1,4 +1,4 @@
-// ChartRules.js — validates a chart resolution (candle size) against a chart
+// ChartRules.js - validates a chart resolution (candle size) against a chart
 // range (time span) by how many candles fit: too few makes the chart a handful
 // of blocky points, too many makes it unreadable in a small sparkline.
 //

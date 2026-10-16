@@ -1,4 +1,4 @@
-// SymbolMigration.js — logic: brings symbols saved by older versions up to the current format.
+// SymbolMigration.js - logic: brings symbols saved by older versions up to the current format.
 //
 // This is the ONLY place that knows how earlier versions stored a symbol. Everything else (the
 // providers, SelectionPolicy, the widget, the settings) only ever sees the current format.

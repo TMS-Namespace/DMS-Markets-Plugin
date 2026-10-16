@@ -1,4 +1,4 @@
-// SavedSymbol.qml — contract: one symbol as saved in the plugin's data (always the current format;
+// SavedSymbol.qml - contract: one symbol as saved in the plugin's data (always the current format;
 // older formats are SymbolMigration's business, and are gone before anything creates one of these).
 //
 //   uid                    unique internal handle (UUID), never shown, the key of all runtime state

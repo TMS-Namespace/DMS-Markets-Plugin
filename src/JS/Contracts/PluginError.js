@@ -1,8 +1,8 @@
-// PluginError.js — the one error type the plugin throws.
+// PluginError.js - the one error type the plugin throws.
 //
 // An error has two audiences, so it carries two messages:
-//   userMessage  short, friendly, free of internals — what the symbol card / toast shows
-//   message      developer detail (and `details`) — what goes to the log in devMode
+//   userMessage  short, friendly, free of internals - what the symbol card / toast shows
+//   message      developer detail (and `details`) - what goes to the log in devMode
 //
 // JS modules throw PluginError and never touch the UI; the QML layers catch, log
 // (devMode) and display it through ErrorHandler.qml. DMS has no plugin error API of its
@@ -42,7 +42,7 @@ function PluginError(code, userMessage, details, fields) {
     this.code        = code || Code.UNKNOWN
     this.userMessage = userMessage || _GENERIC_MESSAGE
     this.details     = details || ""
-    this.message     = this.details ? (this.userMessage + " — " + this.details) : this.userMessage
+    this.message     = this.details ? (this.userMessage + " - " + this.details) : this.userMessage
     this.status      = typeof extra.status === "number" ? extra.status : 0
     this.retryable   = extra.retryable === true
     this.cause       = extra.cause

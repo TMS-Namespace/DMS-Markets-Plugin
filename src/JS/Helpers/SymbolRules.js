@@ -1,8 +1,8 @@
-// SymbolRules.js — logic: is a symbol acceptable for a provider?
+// SymbolRules.js - logic: is a symbol acceptable for a provider?
 //
 // A provider declares its symbol rules as data (ProviderProperties: symbolPattern, symbolMinLength,
 // symbolMaxLength, symbolFormatMessage); this module applies them. Symbols reach a shell command line
-// and a URL, so a pattern may never admit whitespace, quotes or shell/URL metacharacters — that is
+// and a URL, so a pattern may never admit whitespace, quotes or shell/URL metacharacters - that is
 // checked when a provider is declared (`patternProblem`).
 //
 //   SymbolRules.validate(properties, "BRLPLN")      → { valid, message }
@@ -10,6 +10,7 @@
 
 .pragma library
 .import "../Contracts/PluginError.js" as PluginError
+.import "Constants.js" as Constants
 
 var FORBIDDEN_CHARS = Object.freeze([" ", "\t", "\n", "\r", "\0", "'", "\"", "`", "$", ";", "|", "<", ">",
                                      "(", ")", "{", "}", "\\", "#", "?", "%", "/", "*", "!", "~", ","])
@@ -41,6 +42,20 @@ function validate(rules, symbol) {
                  + " characters. " + rules.symbolFormatMessage }
     if (!new RegExp(rules.symbolPattern).test(symbol))
         return { valid: false, message: rules.symbolFormatMessage }
+    return { valid: true, message: "" }
+}
+
+// The display name a user gives a symbol: 1 to DISPLAY_NAME_MAX_LENGTH characters from a fixed set (spaces included, but not only spaces).
+// Returns plain { valid, message } like `validate`.
+function validateName(name) {
+    if (typeof name !== "string" || name === "")
+        return { valid: false, message: "Enter a display name." }
+    if (name.length > Constants.DISPLAY_NAME_MAX_LENGTH)
+        return { valid: false, message: "The display name can have at most " + Constants.DISPLAY_NAME_MAX_LENGTH + " characters." }
+    if (!new RegExp(Constants.DISPLAY_NAME_PATTERN).test(name))
+        return { valid: false, message: "The display name can only have letters, digits, spaces and - + * / \\ . ~ % $ ^ _ ? ! # ( ) [ ] =" }
+    if (name.trim() === "")
+        return { valid: false, message: "Enter a display name." }
     return { valid: true, message: "" }
 }
 

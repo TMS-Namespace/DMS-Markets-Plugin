@@ -1,4 +1,4 @@
-// ProviderProperties.qml — contract: what a provider declares about itself (read by the settings, the
+// ProviderProperties.qml - contract: what a provider declares about itself (read by the settings, the
 // logic modules and the catalog). A data holder: each provider's values are written once, as plain data,
 // in its own folder (JS/Providers/<Name>/<Name>Properties.js), and checked as a whole by
 // ProviderRules.assertDeclaration before this object is created.
@@ -8,9 +8,9 @@ QtObject {
     // ── Identity ─────────────────────────────────────────────────────────────
     property string providerId: ""
     property string name: ""
+    property string alias: ""        // three capital letters, e.g. "YHF": the short form of the name (shown on charts)
     property string description: ""
     property string baseUrl: ""
-    property string settingsText: ""
     property bool disabled: false
     property string disabledMessage: ""
 
@@ -22,8 +22,6 @@ QtObject {
     property int symbolMinLength: 1
     property int symbolMaxLength: 1
     property string symbolFormatMessage: ""
-    property string displayNamePlaceholder: ""
-    property string displayNameHelpText: ""
 
     // ── Credential (when the provider needs one) ─────────────────────────────
     property bool requiresCredential: false

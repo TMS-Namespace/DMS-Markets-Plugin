@@ -1,4 +1,4 @@
-// SymbolDraft.js — logic: the data of the "add / edit symbol" form, built from a saved symbol or for a new one.
+// SymbolDraft.js - logic: the data of the "add / edit symbol" form, built from a saved symbol or for a new one.
 // Only calculates plain data; showing it is the settings page's (QML) job, keeping it is DataStorage's.
 
 .pragma library

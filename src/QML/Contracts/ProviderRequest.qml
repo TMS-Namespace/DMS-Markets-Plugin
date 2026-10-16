@@ -1,4 +1,4 @@
-// ProviderRequest.qml — contract: a ready-to-run provider request.
+// ProviderRequest.qml - contract: a ready-to-run provider request.
 //
 //   url         the https URL (also the last element of `command`)
 //   tailLines   when > 0 only the last N lines of the body are kept

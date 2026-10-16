@@ -1,4 +1,4 @@
-// shell.qml — runs one QML test file on the real Qt6 / Quickshell runtime, headless.
+// shell.qml - runs one QML test file on the real Qt6 / Quickshell runtime, headless.
 //
 //   QT_QPA_PLATFORM=offscreen NO_COLOR=1 TEST_FILE=/abs/path/Thing.test.qml quickshell -p tests/QML/Helpers/Harness
 //

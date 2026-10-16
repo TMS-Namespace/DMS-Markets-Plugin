@@ -23,9 +23,10 @@ assert(/id: changeResolutionSelect[\s\S]*?defaultValue:\s*JsK\.DEFAULT_CHANGE_RE
 const order = ["priceResolutionSelect", "changeResolutionSelect", "chartResolutionSelect", "chartRangeSelect"].map((id) => source.indexOf(`id: ${id}`));
 assert(order[0] > 0 && order[0] < order[1] && order[1] < order[2] && order[2] < order[3], "dropdown order: price, change, chart resolution, chart range");
 
-// ── Provider description and base URL are shown for the selected provider ────
-assert(source.includes("root.selectedProvider.description") && source.includes("root.selectedProvider.baseUrl"));
-assert(/Qt\.openUrlExternally\(root\.selectedProvider\.baseUrl\)/.test(source), "base URL opens in the browser");
+// ── Only the provider's description is shown for the selected provider (its base URL stays a property, not a link) ──
+assert(source.includes("root.selectedProvider.description"));
+assert(!/selectedProvider\.baseUrl/.test(source) && !/baseUrlMouseArea/.test(source), "no provider link in the settings");
+assert(!/settingsText/.test(source), "the unused settings text is gone");
 assert(source.includes("root.selectedProvider.disabledMessage"), "disabled message is still shown");
 assert(!source.includes("ProviderSettings"), "per-provider settings panels were removed");
 
@@ -63,7 +64,8 @@ assert(/doSaveSymbol[\s\S]*?chartRangeStatus\(chartResolutionSelect\.value, char
 
 // ── Show provider name (plugin-wide setting) ─────────────────────────────────
 assert(/ToggleSetting\s*\{[^}]*settingKey:\s*"showProviderName"[^}]*defaultValue:\s*true/.test(source), "toggle exists and defaults to on");
-assert(/"showProviderName"[\s\S]{0,200}Show Provider Name/.test(source));
+assert(/"showProviderName"[\s\S]{0,200}Show Provider Alias/.test(source), "titled with the alias");
+assert(/Show Provider Alias[\s\S]{0,200}three-letter alias/.test(source) && !/Show Provider Name/.test(source), "described with the alias");
 const rowSettings = ["showTicker", "showPriceChange", "showChartRange", "showProviderName", "showRefreshedSince"].map((settingKey) => source.indexOf(`"${settingKey}"`));
 assert(rowSettings.every((position, index) => position > 0 && (index === 0 || position > rowSettings[index - 1])), "grouped with the other symbol row display toggles");
 
@@ -74,13 +76,18 @@ assert(!/priceRange|priceInterval|graphInterval|graphResolution|showPriceRange/.
 assert(/settingKey: "showPriceChange"/.test(source));
 
 // ── Display name hints and symbol validation come from the selected provider ─
-assert(/placeholderText:\s*root\.selectedProvider\.displayNamePlaceholder/.test(source));
-assert(/root\.selectedProvider\.displayNameHelpText/.test(source));
+assert(!/displayName(Placeholder|HelpText)/.test(source), "how a symbol is named is the user's choice: no provider text or limits for it");
+assert(/id: nameField[\s\S]*?placeholderText: "Gold"/.test(source) && /up to " \+ JsK\.DISPLAY_NAME_MAX_LENGTH/.test(source), "one generic hint for every provider");
 assert(/tickerValidation:\s+selectedHandler \? selectedHandler\.validateSymbol\(tickerText\)/.test(source), "validated against the selected provider");
 assert(/tickerText:\s+\(tickerInput\.value \|\| ""\)\.trim\(\)/.test(source), "the typed text is trimmed before validation");
 assert(/visible: root\.tickerText !== "" && !root\.tickerValidation\.valid[\s\S]{0,80}text: root\.tickerValidation\.message/.test(source));
 assert(/color: Theme\.error/.test(source));
-assert(/root\.tickerValidation\.valid && displayName !== ""/.test(source), "the Add button needs a valid symbol");
+assert(/root\.tickerValidation\.valid && root\.nameValidation\.valid/.test(source), "the Add button needs a valid symbol and a valid display name");
+// The display name is validated by SymbolRules.validateName: shown when wrong, blocking on save, and capped while typing.
+assert(/nameValidation:\s+SymbolRules\.validateName\(nameText\)/.test(source));
+assert(/visible: root\.nameText !== "" && !root\.nameValidation\.valid[\s\S]{0,80}text: root\.nameValidation\.message/.test(source), "the reason is shown under the field");
+assert(/id: nameField[\s\S]*?maximumLength: JsK\.DISPLAY_NAME_MAX_LENGTH/.test(source), "typing stops at the maximum length");
+assert(/SymbolRules\.validateName\(name\)[\s\S]{0,120}ToastService\.showError\("Markets", nameVerdict\.message\)/.test(source), "saving a bad name is refused with the reason");
 assert(source.indexOf("tickerValidation.message") > source.indexOf("symbolHelpText"), "message sits under the symbol help text");
 
 // ── Error handling and storage wiring ────────────────────────────────────────

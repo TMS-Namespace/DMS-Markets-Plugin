@@ -1,4 +1,4 @@
-// SelectionPolicy.js — logic: which price/chart choices does a provider allow, and what is the
+// SelectionPolicy.js - logic: which price/chart choices does a provider allow, and what is the
 // closest allowed choice to what someone asked for?
 //
 // Everything here is a pure function of a provider's declared limits (a ProviderProperties:

@@ -1,4 +1,4 @@
-// Selection.qml — contract: the three range choices of a symbol.
+// Selection.qml - contract: the three range choices of a symbol.
 //
 //   priceResolution   how often, and in what candle size, the live price is pulled
 //   changeResolution  the change is measured against the close of the previous period of this size

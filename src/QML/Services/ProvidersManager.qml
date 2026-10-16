@@ -1,4 +1,4 @@
-// ProvidersManager.qml — manages the providers: which ones are supported, starting them, handing them out
+// ProvidersManager.qml - manages the providers: which ones are supported, starting them, handing them out
 // (QML singleton, shared by the widget and the settings).
 //
 // UI needs a provider → asks the manager for it by ProviderType → gets it wrapped in a ProviderHandler,
@@ -103,6 +103,9 @@ QtObject {
 
     // Display name of a provider by its saved text id (the id itself when it is not available).
     function nameOf(id) { var handler = handlerFromId(id); return handler ? handler.properties.name : id }
+
+    // Three-letter alias of a provider by its saved text id (what charts show; the id in capitals when it is not available).
+    function aliasOf(id) { var handler = handlerFromId(id); return handler ? handler.properties.alias : String(id || "").slice(0, 3).toUpperCase() }
 
     // Dropdown entries for DMS's SelectionSetting: { label, value }; the value is the saved text id.
     function options() {
