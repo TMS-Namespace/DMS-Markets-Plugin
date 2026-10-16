@@ -118,7 +118,7 @@ assert(/anchors\.leftMargin:\s+Theme\.spacingS \+ constants\.symbolPriceColumnSh
 
 // ── The chart's corners follow the theme: clipped by DMS's ClippingRectangle, concentric with the card ──
 assert(/import Quickshell\.Widgets/.test(row), "the clipping item");
-assert(/readonly property real chartRadius: Theme\.cornerRadius\b/.test(row), "the theme's own corner radius (no hard-coded value)");
+assert(/readonly property real chartRadius: Math\.max\(0, Theme\.cornerRadius - constants\.chartAreaMargin\)/.test(row), "the theme's radius less the gap between card and chart: concentric with the card (no hard-coded value)");
 assert(/ClippingRectangle \{[\s\S]*?radius:\s+symbolRow\.chartRadius[\s\S]*?color:\s+"transparent"[\s\S]*?PriceChart \{/.test(row), "the chart is inside a ClippingRectangle of that radius");
 assert(/radius:\s+Theme\.cornerRadius/.test(row), "the card itself uses the theme radius");
 assert(!/EXPERIMENT|chartRadius:\s+\d/.test(row), "no experiment left behind");

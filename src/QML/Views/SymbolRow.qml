@@ -85,9 +85,10 @@ Item {
 
     height: constants.symbolRowHeight
 
-    // The chart is rounded with the theme's corner radius, the card's own, by the ClippingRectangle below. See the notes on
-    // rounded corners at the top of PriceChart.qml (the fill must reach the chart's edges, or the clip has nothing to cut).
-    readonly property real chartRadius: Theme.cornerRadius
+    // The chart is rounded concentrically with the card: the theme's corner radius less the gap between card and chart, so the two
+    // curves run parallel with a constant gap (the same radius on a rectangle inset by the gap looks different from the card's).
+    // By the ClippingRectangle below; see the notes on rounded corners at the top of PriceChart.qml.
+    readonly property real chartRadius: Math.max(0, Theme.cornerRadius - constants.chartAreaMargin)
     Component.onCompleted: Logger.debug("view", symbolData.ticker + ": chart corner radius " + chartRadius + " (theme " + Theme.cornerRadius + ")")
 
     // ── Background card ──────────────────────────────────────────────────────

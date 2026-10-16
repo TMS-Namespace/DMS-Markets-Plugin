@@ -6,7 +6,7 @@ A [DankMaterialShell](https://github.com/dankmaterial/DMS) widget plugin that di
 |:---:|:---:|
 | <img src="images/Dark-Popup.png" width="400"/> | <img src="images/Light-Popup.png" width="400"/> |
 
-## Features
+## Main Features
 
 - **Pin to bar** - display live prices for selected symbols directly in `DankBar`.
 - **Popup panel** - list showing name, price, change percentage, and charts.
@@ -57,14 +57,14 @@ Currently supported providers:
 ## Version History
 
 - v1.0.5 :
-  - Removed obsolete helpers, kept symbol contracts as data holders, and moved saved-format compatibility into the storage boundary. Provider request queues and cache shell work are bounded; Stooq browser verification has attempt and time limits.
   - New data provider: `Wise`, covering exotic pairs `Yahoo Finance` does not offer. No credentials required, thx for [brunofin](https://github.com/brunofin).
   - New per-symbol `Change Resolution` setting, to adjust the shown change is in what range.
   - New `Chart Resolution` that can be set per symbol (before chart resolution was same as price resolution).
   - New `Show Provider Alias` setting (three-letter provider codes on the charts, short chart ranges like `1M`).
-  - Full refactoring for first citizen support of self-declarative multiprovider setup. Note: the saved symbols will be migrated to new formats on first load.
-  - Fetched data is cached on disk (in `~/.cache/dms-markets-plugin/`), so prices and data will stay visible even without internet connection.
+  - Full refactoring for first class support of self-declarative multiprovider setup. Note: the saved symbols will be migrated to new formats on first load.
+  - Fetched data is now cached on disk, so prices and data will stay visible even without internet connection.
   - Symbol change is now calculated correctly against the close of the previous period.
+  - Some cosmetic improvements to comply with `DMS` theme.
 - v1.0.4 :
   - A maintenance release with small fixes, to comply with `DMS` comments [published here](https://github.com/AvengeMedia/dms-plugin-registry/issues/555#issuecomment-5899885512) and [here](https://github.com/AvengeMedia/dms-plugin-registry/pull/990#issuecomment-5947902007).
   - Enforce all command execution via `bash` to not break when user's default shell is not `bash`.

@@ -13,7 +13,8 @@
 //   1. The FILL must run out to the canvas edges (left, right, bottom). It used to stop at the padding (3px inside), which
 //      put its corners just inside a radius-10 curve, so the clip had nothing to cut and the corners looked square for
 //      many attempts. Only the LINE is inset by the padding.
-//   2. The radius is the theme's own corner radius, not reduced by the gap between card and chart.
+//   2. The radius is concentric with the card: the theme's corner radius less the gap between card and chart, so the two curves
+//      run parallel. (The same radius on a rectangle inset by the gap looks different from the card's curve.)
 // Earlier attempts (a clip path in the canvas, erasing the corners with the "destination-out" composite mode, drawing the
 // fill in columns limited by the corner arcs, a MultiEffect mask) all looked like failures, but the real cause was the
 // inset fill in point 1, which every one of them shared. They were removed as unnecessary: do not bring them back. The
