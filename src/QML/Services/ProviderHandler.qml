@@ -25,7 +25,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import "../Contracts"
-import "../../JS/Helpers/Constants.js" as JsK
+import "../../JS/Helpers/Constants.js" as JsConstants
 import "../../JS/Helpers/Helpers.js" as Helpers
 import "../../JS/Contracts/FetchType.js" as FetchType
 import "../../JS/Helpers/FetchCommand.js" as FetchCommand
@@ -48,7 +48,8 @@ Item {
     property var  api: null            // the provider's JS API module; used only inside this handler
 
     // ── Configuration ─────────────────────────────────────────────────────────
-    property int  maxRetries: JsK.MAX_RETRIES
+    property int  maxRetries: JsConstants.MAX_RETRIES
+    property var clock: function() { return Date.now() }
 
     // ── Outputs ───────────────────────────────────────────────────────────────
     // Number of calls per `group` (the symbol's uid) that are queued, running, or waiting to be retried.
@@ -60,6 +61,7 @@ Item {
     property int  _activeCount: 0
     property var  _queue:       []     // jobs waiting for a slot
     property var  _keys:        ({})   // keys of calls in flight (queued, running or awaiting retry)
+    property real _retryAfter: 0      // earliest next retry start, for spacing between ready jobs
     property var  _retryQueue:  []     // jobs waiting for their retry delay
 
     Component { id: callType;      FetchCall {} }
@@ -76,18 +78,26 @@ Item {
         return api.pageUrl(symbol)
     }
 
+    // Update the credential held by this provider facade.
     function setCredential(value) { properties.credential = value || "" }
+    // Check a credential against the provider declaration.
     function isValidCredential(value) { return ProviderRules.isValidCredential(properties, value) }
+    // Check whether the current credential permits a request.
     function hasRequiredCredential() { return isValidCredential(properties.credential) }
 
     // Dropdown entries for DMS's SelectionSetting: { label, value }, limited to what the provider serves
     // and ChartRules allows.
     function _options(values, labelOf) { return values.map(function(value) { return { label: labelOf(value), value: value } }) }
+    // Build display options for the supported price resolutions.
     function priceResolutionOptions() { return _options(SelectionPolicy.priceResolutions(properties), Resolution.label) }
+    // Build display options for the supported change resolutions.
     function changeResolutionOptions() { return _options(SelectionPolicy.changeResolutions(properties), Resolution.label) }
+    // Build display options for readable chart resolutions.
     function chartResolutionOptions() { return _options(SelectionPolicy.allowedChartResolutions(properties), Resolution.label) }
+    // Build display options for readable spans at this chart resolution.
     function chartSpanOptions(resolution) { return _options(SelectionPolicy.allowedChartSpans(properties, resolution), ChartSpan.label) }
 
+    // Build the provider default selection from its supported choices.
     function defaultSelection() { return selectionType.createObject(null, SelectionPolicy.defaultSelection(properties)) }
 
     // The closest selection this provider serves that is also readable (see SelectionPolicy.clamp).
@@ -105,8 +115,11 @@ Item {
     // symbol was removed meanwhile). Throws PluginError when the request cannot be made: provider disabled,
     // credential missing, symbol or selection not acceptable for this provider.
 
+    // Validate and submit a price request through the shared queue.
     function fetchPrice(symbol, resolution, context, isCurrent) { return _submit(priceRequest(symbol, resolution), context, isCurrent) }
+    // Validate and submit a chart request through the shared queue.
     function fetchChart(symbol, resolution, span, context, isCurrent) { return _submit(chartRequest(symbol, resolution, span), context, isCurrent) }
+    // Validate and submit a change reference request through the shared queue.
     function fetchChange(symbol, resolution, context, isCurrent) { return _submit(changeRequest(symbol, resolution), context, isCurrent) }
 
     // The request for a price / a chart (a ProviderRequest), after every check; `candles` says how many of
@@ -129,6 +142,7 @@ Item {
         return _request(api.changeUrl(symbol, resolution, properties.credential), 0, 2)
     }
 
+    // Validate the chart selection and bound the number of candles requested.
     function chartRequest(symbol, resolution, span) {
         _assertUsable()
         SymbolRules.assertValid(properties, symbol)
@@ -167,11 +181,13 @@ Item {
                                               properties.providerId + ": unusable previous close '" + reference + "'")
         return reference
     }
+    // Parse and validate the requested chart candles from a successful response.
     function parseChart(response, limit) {
         ResponseInterpreter.assertOk(response)
         return SeriesRules.assertSeries(api.parseHistory(response.body, limit))
     }
 
+    // Refuse disabled providers and missing required credentials.
     function _assertUsable() {
         if (properties.disabled)
             throw new PluginError.PluginError(PluginError.Code.UNSUPPORTED, properties.name + " is currently disabled.",
@@ -181,6 +197,7 @@ Item {
                                               "no valid credential for " + properties.providerId)
     }
 
+    // Build the typed request with its command arguments and candle limit.
     function _request(url, tailLines, candles) {
         return requestType.createObject(null, {
             url: url, tailLines: tailLines, candles: candles,
@@ -190,8 +207,10 @@ Item {
 
     // Development log (dev mode only). Never put a URL or key in it: they can carry the credential.
     function _log(text) { Logger.debug("providers", properties.providerId + ": " + text) }
+    // Describe a queued call without exposing its URL or credential.
     function _label(request) { return request.context.ticker + " " + request.context.fetchType }
 
+    // Reject duplicate or excess work before adding a pending call.
     function _submit(request, context, isCurrent) {
         var call = callType.createObject(null, {
             key: context.uid + "_" + context.fetchType + "_" + request.url + (context.signature ? "|" + context.signature : ""), group: context.uid,
@@ -202,6 +221,9 @@ Item {
             return false
         }
 
+        if (_queue.length >= JsConstants.FETCH_QUEUE_MAX)
+            throw new PluginError.PluginError(PluginError.Code.PROCESS, "Too many market requests are queued. Try again shortly.",
+                                              "provider request queue reached its limit", { retryable: true })
         _keys = Helpers.withEntry(_keys, call.key, true)
 
         _changePending(call.group, 1)
@@ -217,14 +239,15 @@ Item {
         if (!request.isCurrent) return true
         try {
             return request.isCurrent(request.context) !== false
-        } catch (e) {
-            _log("the owner of " + _label(request) + " is gone (" + String(e && e.message) + "): reporting the result anyway")
+        } catch (caughtError) {
+            _log("the owner of " + _label(request) + " is gone (" + String(caughtError && caughtError.message) + "): reporting the result anyway")
             return true
         }
     }
 
     // ── Queue, running, retries ───────────────────────────────────────────────
 
+    // Append a queued job and schedule the next available process slot.
     function _enqueue(job) {
         var queue = _queue.slice()
         queue.push(job)
@@ -235,14 +258,15 @@ Item {
     // ── Running ───────────────────────────────────────────────────────────────
     Timer {
         id: pumpTimer
-        interval: JsK.FETCH_QUEUE_PUMP_MS
+        interval: JsConstants.FETCH_QUEUE_PUMP_MS
         repeat: false
         onTriggered: root._pump()
     }
 
+    // Run the oldest queued job when a process slot is available.
     function _pump() {
         if (_queue.length === 0) return
-        if (_activeCount >= JsK.MAX_CONCURRENT_FETCHES) return
+        if (_activeCount >= JsConstants.MAX_CONCURRENT_FETCHES) return
 
         var queue = _queue.slice()
         var job = queue.shift()
@@ -255,10 +279,10 @@ Item {
             process = processComponent.createObject(root, { job: job })
             process.command = job.request.command
             process.running = true
-        } catch (e) {
+        } catch (caughtError) {
             // The process could not even be started: that is a failed call, not a stalled queue.
-            _log("could not start the process for " + _label(job.request) + ": " + String(e && e.message))
-            _handleFinished(job, -1, "", String(e && e.message))
+            _log("could not start the process for " + _label(job.request) + ": " + String(caughtError && caughtError.message))
+            _handleFinished(job, -1, "", String(caughtError && caughtError.message))
         }
     }
 
@@ -276,7 +300,7 @@ Item {
 
             stderr: SplitParser {
                 onRead: line => {
-                    if (_stderr.length < JsK.STDERR_MAX_CHARS) _stderr += line + "\n"
+                    if (_stderr.length < JsConstants.STDERR_MAX_CHARS) _stderr += line + "\n"
                 }
             }
 
@@ -307,8 +331,8 @@ Item {
                 if (response.ok) {
                     try {
                         series = _parse(request, response)
-                    } catch (e) {
-                        response = _failed(e)   // an unreadable answer is final, never retried
+                    } catch (caughtError) {
+                        response = _failed(caughtError)   // an unreadable answer is final, never retried
                     }
                 }
                 if (!response.ok && ErrorHandler.shouldRetry(response.error, job.attempt, maxRetries)
@@ -323,10 +347,10 @@ Item {
             } else {
                 _log("dropped " + _label(request) + ": nobody waits for it any more")
             }
-        } catch (e) {
+        } catch (caughtError) {
             // Unexpected: still a final, failed ProviderResponse for the caller to show.
-            _log("unexpected failure for " + _label(request) + ": " + String(e && e.message))
-            finalResponse = _failed(e)
+            _log("unexpected failure for " + _label(request) + ": " + String(caughtError && caughtError.message))
+            finalResponse = _failed(caughtError)
         } finally {
             _activeCount = Math.max(0, _activeCount - 1)
             pumpTimer.restart()
@@ -337,6 +361,7 @@ Item {
 
     Component { id: responseComponent; ProviderResponse {} }
 
+    // Turn an exception into a typed failed provider response.
     function _failed(error) {
         var failure = ResponseInterpreter.failure(properties.providerId, error)
         return responseComponent.createObject(null, failure)
@@ -364,32 +389,43 @@ Item {
     // Bounded: only transient errors reach here, never beyond `maxRetries` attempts per call,
     // and the queue itself is capped.
     function _scheduleRetry(job) {
-        if (_retryQueue.length >= JsK.RETRY_QUEUE_MAX) {
+        if (_retryQueue.length >= JsConstants.RETRY_QUEUE_MAX) {
             _log("retry queue is full: not retrying " + _label(job.request))
             return false
         }
         for (var i = 0; i < _retryQueue.length; i++)
             if (_retryQueue[i].request.key === job.request.key) return false
         var queue = _retryQueue.slice()
+        job.readyAt = clock() + JsConstants.RETRY_INTERVAL_MS * job.attempt
         queue.push(job)
+        queue.sort(function(earlier, later) { return earlier.readyAt - later.readyAt })
         _retryQueue = queue
-        retryTimer.interval = JsK.RETRY_INTERVAL_MS * job.attempt   // backoff grows with the attempt
-        retryTimer.restart()
+        _armRetryTimer()
         return true
+    }
+
+    // New failures cannot postpone an older job or bypass another job's growing backoff.
+    function _armRetryTimer() {
+        if (_retryQueue.length === 0) return
+        retryTimer.interval = Math.max(1, Math.max(_retryQueue[0].readyAt, _retryAfter) - clock())
+        retryTimer.restart()
     }
 
     Timer {
         id: retryTimer
-        interval: JsK.RETRY_INTERVAL_MS
+        interval: JsConstants.RETRY_INTERVAL_MS
         repeat: false
         onTriggered: root._processRetryQueue()
     }
 
+    // Requeue the next live retry and release obsolete requests.
     function _processRetryQueue() {
         if (_retryQueue.length === 0) return
+        if (clock() < Math.max(_retryQueue[0].readyAt, _retryAfter)) { _armRetryTimer(); return }
         var queue = _retryQueue.slice()
         var job = queue.shift()
         _retryQueue = queue
+        _retryAfter = clock() + JsConstants.RETRY_SUBSEQUENT_MS
 
         if (!_isCurrent(job.request)) {                              // nobody waits any more
             _log("dropped the retry of " + _label(job.request) + ": nobody waits for it any more")
@@ -398,10 +434,7 @@ Item {
             _enqueue(job)
         }
 
-        if (_retryQueue.length > 0) {
-            retryTimer.interval = JsK.RETRY_SUBSEQUENT_MS
-            retryTimer.restart()
-        }
+        if (_retryQueue.length > 0) _armRetryTimer()
     }
 
     // ── Pending counter (drives the "refreshing…" state) ──────────────────────

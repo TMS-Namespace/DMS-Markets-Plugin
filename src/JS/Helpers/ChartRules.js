@@ -52,6 +52,7 @@ function evaluate(resolution, span) {
     return { level: level, reason: reason, candles: candles, message: message }
 }
 
+// Check whether the chart candle count is within the hard limits.
 function isAllowed(resolution, span) {
     return evaluate(resolution, span).level !== Level.BLOCK
 }

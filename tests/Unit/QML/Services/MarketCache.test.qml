@@ -2,6 +2,7 @@
 // a fallback file name when the symbol's file cannot be written, the newest file (by modification time) is the one
 // read, and nothing that goes wrong with a file is ever an error for the caller.
 import QtQuick
+import "../../../../src/JS/Helpers/Constants.js" as JsConstants
 import "../../../Helpers"
 import "../../../../src/QML/Services"
 
@@ -361,4 +362,21 @@ TestSuite {
             files(function(names) { done(names.length === 0 ? "" : "left behind: " + names) })
         }, 5000)
     }
+    function async_shell_work_is_serial_and_bounded(done) {
+        make()
+        var completed = 0, refused = 0, highestActive = 0
+        cache._processCountChanged.connect(function() { highestActive = Math.max(highestActive, cache._processCount) })
+        for (var i = 0; i < JsConstants.CACHE_PROCESS_QUEUE_MAX + 2; i++) {
+            cache._run(["bash", "-c", "printf ready"], function(code, text) {
+                completed++
+                if (code !== 0) refused++
+            })
+        }
+        same(cache._processCount, 1)
+        same(cache._processQueue.length, JsConstants.CACHE_PROCESS_QUEUE_MAX)
+        waitUntil(function() { return completed === JsConstants.CACHE_PROCESS_QUEUE_MAX + 2 && cache.busy === 0 }, function(problem) {
+            done(problem || (highestActive <= 1 && refused === 1 ? "" : "active=" + highestActive + ", refused=" + refused))
+        }, 10000)
+    }
+
 }

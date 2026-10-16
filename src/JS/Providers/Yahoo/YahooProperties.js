@@ -9,25 +9,26 @@
 // are YahooApi.js.
 
 .pragma library
-.import "YahooConstants.js" as K
+.import "YahooConstants.js" as ProviderConstants
 .import "../../Contracts/Resolution.js" as Resolution
 
 var ResolutionValues = Resolution.Values
 
+// Return this provider's declared settings and supported data ranges.
 function create() {
     return {
-        providerId: K.YAHOO_PROVIDER_ID,
-        name: K.YAHOO_NAME,
-        alias: K.YAHOO_ALIAS,
-        description: K.YAHOO_DESCRIPTION,
-        baseUrl: K.YAHOO_BASE_URL,
-        symbolSearchUrl: K.YAHOO_LOOKUP_URL,
-        symbolHelpText: K.YAHOO_SYMBOL_HELP_TEXT,
-        symbolPlaceholder: K.YAHOO_SYMBOL_PLACEHOLDER,
-        symbolPattern: K.YAHOO_SYMBOL_PATTERN,
-        symbolMinLength: K.YAHOO_SYMBOL_MIN_LENGTH,
-        symbolMaxLength: K.YAHOO_SYMBOL_MAX_LENGTH,
-        symbolFormatMessage: K.YAHOO_SYMBOL_FORMAT_MESSAGE,
+        providerId: ProviderConstants.YAHOO_PROVIDER_ID,
+        name: ProviderConstants.YAHOO_NAME,
+        alias: ProviderConstants.YAHOO_ALIAS,
+        description: ProviderConstants.YAHOO_DESCRIPTION,
+        baseUrl: ProviderConstants.YAHOO_BASE_URL,
+        symbolSearchUrl: ProviderConstants.YAHOO_LOOKUP_URL,
+        symbolHelpText: ProviderConstants.YAHOO_SYMBOL_HELP_TEXT,
+        symbolPlaceholder: ProviderConstants.YAHOO_SYMBOL_PLACEHOLDER,
+        symbolPattern: ProviderConstants.YAHOO_SYMBOL_PATTERN,
+        symbolMinLength: ProviderConstants.YAHOO_SYMBOL_MIN_LENGTH,
+        symbolMaxLength: ProviderConstants.YAHOO_SYMBOL_MAX_LENGTH,
+        symbolFormatMessage: ProviderConstants.YAHOO_SYMBOL_FORMAT_MESSAGE,
         minPullResolution: ResolutionValues.M1,
         changeResolutions: [ResolutionValues.H1, ResolutionValues.D1, ResolutionValues.W1, ResolutionValues.MO1],
         priceResolutions: [ResolutionValues.M1, ResolutionValues.M5, ResolutionValues.M15, ResolutionValues.H1,

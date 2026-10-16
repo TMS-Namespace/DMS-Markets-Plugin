@@ -26,9 +26,12 @@ QtObject {
         if (changes.sink !== undefined)    sink = changes.sink
     }
 
+    // Send a diagnostic message through the configured logging policy.
     function debug(scope, text) { _write("debug", scope, text) }
+    // Send a failure message through the configured logging policy.
     function error(scope, text) { _write("error", scope, text) }
 
+    // Write to the configured destination using this service's failure policy.
     function _write(level, scope, text) {
         if (!devMode || !sink) return
         try { sink(level, scope, text) } catch (failure) { /* logging must never break the caller */ }

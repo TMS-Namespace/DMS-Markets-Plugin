@@ -3,6 +3,21 @@
 // Draws a compact line+fill chart from an array of OHLC data points.
 // All data processing (min/max, coordinate normalisation) is delegated to
 // QML/Helpers/ChartDataProcessor.qml; this file contains only rendering code.
+//
+// ROUNDED CORNERS - how they work, and what did not (read before changing the drawing or the clipping)
+//
+// The chart is a plain rectangle; the card that holds it (SymbolRow) rounds it by putting it inside Quickshell's
+// ClippingRectangle with the theme's corner radius, the item DMS itself uses for its rounded wallpaper, artwork and avatar
+// images. That works with a Canvas child, also a threaded one (checked in a real window on the GPU). Two things are
+// needed for the corners to actually show:
+//   1. The FILL must run out to the canvas edges (left, right, bottom). It used to stop at the padding (3px inside), which
+//      put its corners just inside a radius-10 curve, so the clip had nothing to cut and the corners looked square for
+//      many attempts. Only the LINE is inset by the padding.
+//   2. The radius is the theme's own corner radius, not reduced by the gap between card and chart.
+// Earlier attempts (a clip path in the canvas, erasing the corners with the "destination-out" composite mode, drawing the
+// fill in columns limited by the corner arcs, a MultiEffect mask) all looked like failures, but the real cause was the
+// inset fill in point 1, which every one of them shared. They were removed as unnecessary: do not bring them back. The
+// offscreen test harness cannot render ClippingRectangle, so only a real DMS shows the result.
 
 import QtQuick
 import qs.Common
@@ -21,7 +36,6 @@ Canvas {
     property string providerAlias: ""     // the provider's three-letter alias (e.g. YHF)
     property bool   showProviderName: true
     property bool   isLoading:     false
-    property real   cornerRadius:  0      // the chart is clipped to a rounded rectangle of this radius (SymbolRow passes the theme's)
 
     // Colors - Widget.qml always overrides these; C.* act as safe fallbacks.
     property color positiveColor: constants.defaultUpColor
@@ -45,29 +59,6 @@ Canvas {
     onDataPointsChanged: requestPaint()
     onWidthChanged:      requestPaint()
     onHeightChanged:     requestPaint()
-    onCornerRadiusChanged: requestPaint()
-
-    // Rounded corners: Canvas clip paths and effect masks are not reliable (a threaded canvas ignores a clip), so the drawing
-    // itself stays inside the rounded rectangle: the fill is drawn as one-pixel columns between the line and the bottom, each
-    // limited by the corner arcs, and the line's points are kept inside the arcs.
-    function _cornerInset(x) {
-        var radius = Math.min(cornerRadius, width / 2, height / 2)
-        if (!(radius > 0)) return 0
-        var beyond = x < radius ? radius - x : (x > width - radius ? x - (width - radius) : 0)
-        return radius - Math.sqrt(Math.max(0, radius * radius - beyond * beyond))
-    }
-
-    // The line's height at x (the points are ordered by x).
-    function _lineY(points, x) {
-        if (x <= points[0].x) return points[0].y
-        for (var i = 1; i < points.length; i++) {
-            if (x <= points[i].x) {
-                var span = points[i].x - points[i - 1].x
-                return span > 0 ? points[i - 1].y + (points[i].y - points[i - 1].y) * (x - points[i - 1].x) / span : points[i].y
-            }
-        }
-        return points[points.length - 1].y
-    }
 
     onPaint: {
         var canvasContext = getContext("2d")
@@ -76,33 +67,24 @@ Canvas {
         var points = processor.normalizedPoints(width, height, constants.chartPadding)
         if (points.length < 2) return
 
-        var bottom = height - constants.chartPadding
-
         // ── Filled area ───────────────────────────────────────────────────
+        // The fill runs out to the chart's own edges (the line stays inset by the padding), so the card's rounded clip
+        // (SymbolRow) cuts its corners; a fill inset by the padding would sit just inside the curve and look square.
+        canvasContext.beginPath()
+        canvasContext.moveTo(0, height)
+        canvasContext.lineTo(0, points[0].y)
+        for (var i = 0; i < points.length; i++) canvasContext.lineTo(points[i].x, points[i].y)
+        canvasContext.lineTo(width, points[points.length - 1].y)
+        canvasContext.lineTo(width, height)
+        canvasContext.closePath()
         canvasContext.fillStyle = fillColor.toString()
-        if (cornerRadius > 0) {
-            for (var column = Math.floor(points[0].x); column < Math.ceil(points[points.length - 1].x); column++) {
-                var centre = column + 0.5
-                var top = Math.max(_lineY(points, centre), _cornerInset(centre))
-                var floor = Math.min(bottom, height - _cornerInset(centre))
-                if (floor > top) canvasContext.fillRect(column, top, 1, floor - top)
-            }
-        } else {
-            canvasContext.beginPath()
-            canvasContext.moveTo(points[0].x, bottom)
-            for (var i = 0; i < points.length; i++) canvasContext.lineTo(points[i].x, points[i].y)
-            canvasContext.lineTo(points[points.length - 1].x, bottom)
-            canvasContext.closePath()
-            canvasContext.fill()
-        }
+        canvasContext.fill()
 
         // ── Line ──────────────────────────────────────────────────────────
         canvasContext.beginPath()
         for (var j = 0; j < points.length; j++) {
-            var lineTop = _cornerInset(points[j].x)
-            var lineY = Math.min(Math.max(points[j].y, lineTop), height - lineTop)     // inside the rounded corners
-            if (j === 0) canvasContext.moveTo(points[j].x, lineY)
-            else         canvasContext.lineTo(points[j].x, lineY)
+            if (j === 0) canvasContext.moveTo(points[j].x, points[j].y)
+            else         canvasContext.lineTo(points[j].x, points[j].y)
         }
         canvasContext.strokeStyle = lineColor.toString()
         canvasContext.lineWidth   = constants.chartLineWidth

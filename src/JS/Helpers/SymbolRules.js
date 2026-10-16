@@ -11,6 +11,9 @@
 .pragma library
 .import "../Contracts/PluginError.js" as PluginError
 .import "Constants.js" as Constants
+.import "Helpers.js" as Helpers
+.import "../Contracts/Resolution.js" as Resolution
+.import "../Contracts/ChartSpan.js" as ChartSpan
 
 var FORBIDDEN_CHARS = Object.freeze([" ", "\t", "\n", "\r", "\0", "'", "\"", "`", "$", ";", "|", "<", ">",
                                      "(", ")", "{", "}", "\\", "#", "?", "%", "/", "*", "!", "~", ","])
@@ -20,7 +23,7 @@ function patternProblem(pattern) {
     if (typeof pattern !== "string" || pattern.length < 3 || pattern.charAt(0) !== "^" || pattern.charAt(pattern.length - 1) !== "$")
         return "'symbolPattern' must be an anchored regular expression (^...$)"
     var regex
-    try { regex = new RegExp(pattern) } catch (e) { return "'symbolPattern' is not a valid regular expression" }
+    try { regex = new RegExp(pattern) } catch (caughtError) { return "'symbolPattern' is not a valid regular expression" }
     for (var i = 0; i < FORBIDDEN_CHARS.length; i++) {
         var character = FORBIDDEN_CHARS[i]
         if (regex.test(character) || regex.test("A" + character) || regex.test(character + "A") || regex.test("A" + character + "A"))
@@ -65,4 +68,16 @@ function assertValid(rules, symbol) {
     if (!verdict.valid)
         throw new PluginError.PluginError(PluginError.Code.INVALID_SYMBOL, verdict.message,
             rules.name + ": invalid symbol " + JSON.stringify(String(symbol).slice(0, 40)) + ". " + verdict.message)
+}
+
+// The persisted fields are copied into a typed holder before storage checks their combined validity.
+var SAVED_FIELDS = Object.freeze(["uid", "ticker", "name", "provider", "priceResolution", "changeResolution",
+                                 "chartResolution", "chartRange", "showChangeWhenPinned", "invert", "pinned"])
+
+// Check the complete current-format symbol at the storage boundary, outside the data contract.
+function isValidSavedSymbol(symbol) {
+    return !!symbol && Helpers.isUuid(symbol.uid) && typeof symbol.ticker === "string" && symbol.ticker !== ""
+            && typeof symbol.provider === "string" && symbol.provider !== ""
+            && Resolution.isValid(symbol.priceResolution) && Resolution.isValid(symbol.changeResolution)
+            && Resolution.isValid(symbol.chartResolution) && ChartSpan.isValid(symbol.chartRange)
 }

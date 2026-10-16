@@ -55,14 +55,18 @@ var INFO = Object.freeze({
     "10Y": Object.freeze({ label: "10 Years", days: 3652 })
 })
 
+// Check whether the value belongs to this module's value domain.
 function isValid(span) { return INFO.hasOwnProperty(span) }
 
 // The compact form for tight places (chart corner): "1 Month" → "1M", "10 Years" → "10Y".
 var SHORT = Object.freeze({ "1H": "1H", "3H": "3H", "6H": "6H", "12H": "12H", "1D": "1D", "1W": "1W", "1M": "1M", "3M": "3M", "6M": "6M",
                             "1Y": "1Y", "2Y": "2Y", "5Y": "5Y", "10Y": "10Y" })
+// Return the short display label for this value.
 function shortLabel(span) { return SHORT.hasOwnProperty(span) ? SHORT[span] : (span ? String(span) : "") }
 
+// Return the display label, preserving unknown values as text.
 function label(span) { return isValid(span) ? INFO[span].label : (span ? String(span) : "") }
+// Return the number of days represented by a chart span.
 function days(span)  { return isValid(span) ? INFO[span].days : 0 }
 
 // Upper bound on candles for a (resolution, span) pair, by calendar time.

@@ -50,3 +50,16 @@ const stooq = providers.stooq.properties.create();
 assert(stooq.disabled && stooq.requiresCredential && stooq.credentialSettingKey);
 
 console.log("Provider properties tests passed");
+
+// Enabled declarations must be internally usable before a handler is created.
+{
+    const declared = providers.wise.properties.create();
+    for (const changed of [
+        { priceResolutions: ["1h", "1h"] },
+        { changeResolutions: ["1d", "1d"] },
+        { minPullResolution: "1d" },
+        { chartLimits: [{ resolution: "1h", maxHistoryDays: Infinity }] },
+        { chartLimits: [{ resolution: "1m", maxHistoryDays: 1 }] }
+    ]) assert.throws(() => rules.assertDeclaration("wise", Object.assign({}, declared, changed), providers.wise.api),
+                     (error) => error.code === "providerConfig", JSON.stringify(changed));
+}

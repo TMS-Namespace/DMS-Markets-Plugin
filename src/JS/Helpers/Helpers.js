@@ -34,6 +34,7 @@ function withEntry(map, key, value) {
     return copy
 }
 
+// Return a new map without the requested entry.
 function withoutEntry(map, key) {
     var copy = copyOf(map)
     delete copy[key]
@@ -64,6 +65,7 @@ function uuidFrom(text) {
     return hex.slice(0, 8) + "-" + hex.slice(8, 12) + "-4" + hex.slice(13, 16) + "-" + "89ab"[parseInt(hex.charAt(16), 16) % 4] + hex.slice(17, 20) + "-" + hex.slice(20, 32)
 }
 
+// Check that a handle uses the supported lowercase UUID format.
 function isUuid(value) {
     return typeof value === "string"
            && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(value)
@@ -77,6 +79,7 @@ function boolValue(value, defaultValue) {
     return value === true || value === "true" || value === 1 || value === "1"
 }
 
+// Read a display toggle, defaulting to enabled when it is unset.
 function pluginDataBool(value) {
     return boolValue(value, true)
 }
@@ -100,6 +103,7 @@ function inv(value) {
     return Math.round(Constants.INVERT_ROUNDING_FACTOR / value) / Constants.INVERT_ROUNDING_FACTOR
 }
 
+// Find whether the symbol requests reciprocal prices.
 function isInverted(symbols, uid) {
     for (var symbolIndex = 0; symbolIndex < symbols.length; symbolIndex++)
         if (symbols[symbolIndex].uid === uid) return boolValue(symbols[symbolIndex].invert, false)
@@ -110,32 +114,4 @@ function isInverted(symbols, uid) {
 function symbolFetchSignature(symbol, defaultProvider) {
     return [symbol.provider || defaultProvider, symbol.ticker, symbol.priceResolution, symbol.changeResolution,
             symbol.chartResolution, symbol.chartRange, boolValue(symbol.invert, false)].join("|")
-}
-
-// ── Provider credential obfuscation (XOR + hex) ─────────────────────────────
-// Not cryptographic - just prevents credentials from sitting as plain text on disk.
-// Uses hex instead of base64 to avoid btoa/atob (browser-only Web APIs).
-function obfuscate(text) {
-    if (!text) return ""
-    var key = Constants.CREDENTIAL_OBF_SEED
-    var hex = ""
-    for (var i = 0; i < text.length; i++) {
-        var xored = text.charCodeAt(i) ^ key.charCodeAt(i % key.length)
-        hex += ("0" + xored.toString(16)).slice(-Constants.HEX_BYTE_WIDTH)
-    }
-    return hex
-}
-
-function deobfuscate(encoded) {
-    if (!encoded) return ""
-    // Hex-encoded XOR format: even-length string of hex digits
-    if (/^[0-9a-fA-F]+$/.test(encoded) && encoded.length % 2 === 0) {
-        var key = Constants.CREDENTIAL_OBF_SEED
-        var plain = ""
-        for (var i = 0; i < encoded.length; i += Constants.HEX_BYTE_WIDTH)
-            plain += String.fromCharCode(parseInt(encoded.substring(i, i + Constants.HEX_BYTE_WIDTH), 16) ^ key.charCodeAt((i / Constants.HEX_BYTE_WIDTH) % key.length))
-        return plain
-    }
-    // Fallback: treat as a legacy plain-text value and return as-is
-    return encoded
 }

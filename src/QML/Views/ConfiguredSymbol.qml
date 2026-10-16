@@ -6,7 +6,6 @@
 import QtQuick
 import qs.Common
 import qs.Widgets
-import "../../JS/Helpers/Helpers.js" as Helpers
 import "../Services"
 import "../Helpers"
 import "../../JS/Contracts/Resolution.js" as Resolution

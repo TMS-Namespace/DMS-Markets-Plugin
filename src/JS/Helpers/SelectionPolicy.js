@@ -17,16 +17,19 @@
 .import "../Contracts/ChartSpan.js" as ChartSpan
 .import "ChartRules.js" as ChartRules
 
+// Copy the provider chart limits into a plain JavaScript array.
 function _limits(properties) {
     var declared = properties.chartLimits, limits = []
     for (var i = 0; i < declared.length; i++) limits.push(declared[i])
     return limits
 }
 
+// Order supported choices using the shared value-domain order.
 function _sorted(values, order) {
     return values.slice().sort(function(earlier, later) { return order.indexOf(earlier) - order.indexOf(later) })
 }
 
+// Choose the supported value closest to the requested position.
 function _nearest(candidates, wanted, order) {
     if (candidates.length === 0) return ""
     if (candidates.indexOf(wanted) !== -1) return wanted
@@ -41,6 +44,7 @@ function _nearest(candidates, wanted, order) {
 
 // ── What is declared ─────────────────────────────────────────────────────────
 
+// List the supported price resolutions, finest first.
 function priceResolutions(properties) {
     return _sorted(Array.prototype.slice.call(properties.priceResolutions), Resolution.ORDER)
 }
@@ -86,12 +90,16 @@ function changeRefreshMs(resolution) {
     return Math.min(Resolution.ms(resolution), Resolution.ms(Resolution.Values.H1))
 }
 
+// Check whether the provider declares this price resolution.
 function supportsPrice(properties, resolution) { return priceResolutions(properties).indexOf(resolution) !== -1 }
+// Check whether the provider declares this change resolution.
 function supportsChange(properties, resolution) { return changeResolutions(properties).indexOf(resolution) !== -1 }
+// Check whether both chart choices fit the provider history limits.
 function supportsChart(properties, resolution, span) { return chartSpans(properties, resolution).indexOf(span) !== -1 }
 
 // ── Guards (throw on unsupported requests) ───────────────────────────────────
 
+// Reject price resolutions the provider does not declare.
 function assertPrice(properties, resolution) {
     if (!supportsPrice(properties, resolution))
         throw new PluginError.PluginError(PluginError.Code.UNSUPPORTED,
@@ -99,6 +107,7 @@ function assertPrice(properties, resolution) {
             properties.name + " does not support price resolution '" + resolution + "'. Supported: " + priceResolutions(properties).join(", "))
 }
 
+// Reject unsupported change resolutions or excessive polling.
 function assertChange(properties, resolution) {
     if (!supportsChange(properties, resolution))
         throw new PluginError.PluginError(PluginError.Code.UNSUPPORTED,
@@ -110,13 +119,14 @@ function assertChange(properties, resolution) {
             properties.name + " cannot be polled every " + changeRefreshMs(resolution) + " ms for the change")
 }
 
+// Reject chart resolutions and spans outside the declared limits.
 function assertChart(properties, resolution, span) {
     var spans = chartSpans(properties, resolution)
     if (spans.length === 0)
         throw new PluginError.PluginError(PluginError.Code.UNSUPPORTED,
             properties.name + " doesn't offer " + Resolution.label(resolution) + " chart candles.",
             properties.name + " does not support chart resolution '" + resolution + "'. Supported: " + chartResolutions(properties).join(", "))
-    if (spans.indexOf(span) === -1)
+    if (!supportsChart(properties, resolution, span))
         throw new PluginError.PluginError(PluginError.Code.UNSUPPORTED,
             properties.name + " can't show a " + ChartSpan.label(span) + " chart with " + Resolution.label(resolution) + " candles.",
             properties.name + " does not support a '" + span + "' chart range at '" + resolution + "' resolution. Supported: " + spans.join(", "))
@@ -143,22 +153,27 @@ function _atLeastAnHour(candidates) {
     return sorted[sorted.length - 1]
 }
 
+// Choose the default price resolution from the provider capabilities.
 function defaultPriceResolution(properties) { return _atLeastAnHour(priceResolutions(properties)) }
 
+// Choose the supported change resolution closest to the shared default.
 function defaultChangeResolution(properties) {
     return _nearest(changeResolutions(properties), Constants.DEFAULT_CHANGE_RESOLUTION, Resolution.ORDER)
 }
 
+// Choose a supported chart resolution with a readable range.
 function defaultChartResolution(properties) {
     var allowed = allowedChartResolutions(properties)
     return _nearest(allowed.length > 0 ? allowed : chartResolutions(properties), Constants.DEFAULT_CHART_RESOLUTION, Resolution.ORDER)
 }
 
+// Choose a readable chart range closest to the shared default.
 function defaultChartSpan(properties, resolution) {
     var allowed = allowedChartSpans(properties, resolution)
     return _nearest(allowed.length > 0 ? allowed : chartSpans(properties, resolution), Constants.DEFAULT_CHART_SPAN, ChartSpan.ORDER)
 }
 
+// Build the provider default selection from its supported choices.
 function defaultSelection(properties) {
     var resolution = defaultChartResolution(properties)
     return { priceResolution: defaultPriceResolution(properties), changeResolution: defaultChangeResolution(properties), chartResolution: resolution, chartRange: defaultChartSpan(properties, resolution) }

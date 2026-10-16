@@ -1,6 +1,6 @@
 // YahooConstants.js - constants used only by the Yahoo provider
 //
-// Usage in YahooProperties.js and YahooApi.js:  .import "YahooConstants.js" as K
+// Usage in YahooProperties.js and YahooApi.js:  .import "YahooConstants.js" as ProviderConstants
 
 .pragma library
 .import "../../Contracts/Resolution.js" as Resolution

@@ -6,7 +6,6 @@
 // back through the item's output properties and signals.
 
 import QtQuick
-import qs.Services
 import "../Services"
 import "../../JS/Helpers/Helpers.js" as Helpers
 
@@ -57,6 +56,7 @@ Item {
         return storage.togglePin(symbols, uid)
     }
 
+    // Remove the symbol through the checked storage boundary.
     function removeSymbol(uid) {
         Logger.debug("symbols", "remove " + uid)
         return storage.removeSymbol(symbols, uid)

@@ -14,6 +14,7 @@
 .import "../Contracts/PluginError.js" as PluginError
 .import "ResponseInterpreter.js" as ResponseInterpreter
 
+// Build a fetch script that prints its status before the response body.
 function plainScript(tailLines) {
     var script = ""
     script += "set -e\n"
@@ -35,6 +36,7 @@ function plainScript(tailLines) {
     return script
 }
 
+// Validate the fetch arguments and pass the URL separately from shell text.
 function build(url, tailLines, customScript) {
     if (typeof url !== "string" || url.indexOf("https://") !== 0)
         throw PluginError.internal("a fetch URL must be https, got " + JSON.stringify(url))

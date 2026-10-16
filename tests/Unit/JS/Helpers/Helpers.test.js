@@ -45,18 +45,6 @@ assert.strictEqual(helpers.timeAgo(now - 3 * 3600000), "3 hr. ago");
 assert.strictEqual(helpers.timeAgo(now - 86400000), "1 day ago");
 assert.strictEqual(helpers.timeAgo(now - 3 * 86400000), "3 days ago");
 
-// Credential obfuscation round-trips and never stores plain text
-for (const secret of ["abc123", "a-very-long-api-key-0123456789abcdef", "ünïcode"]) {
-    const hidden = helpers.obfuscate(secret);
-    assert.notStrictEqual(hidden, secret);
-    assert(!hidden.includes(secret));
-    assert.strictEqual(helpers.deobfuscate(hidden), secret, "round trip");
-}
-assert.strictEqual(helpers.obfuscate(""), "");
-assert.strictEqual(helpers.deobfuscate(""), "");
-assert.strictEqual(helpers.deobfuscate("legacy plain text!"), "legacy plain text!", "legacy plain values pass through");
-
-
 // ── Internal symbol handles (UUID) ───────────────────────────────────────────
 const uuid = helpers.generateUuid();
 assert.strictEqual(typeof uuid, "string");

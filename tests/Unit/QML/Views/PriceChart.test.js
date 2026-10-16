@@ -39,12 +39,8 @@ assert(/property bool showProviderName:\s+true/.test(row) && /showProviderName:\
 assert(/providerAlias:\s+ProvidersManager\.aliasOf\(symbolData\.provider \|\| ProvidersManager\.defaultId\)/.test(row),
        "the alias comes from the symbol's provider (default provider for older symbols)");
 
-// ── Rounded corners that follow the theme ────────────────────────────────────
-const row2 = readSource("QML/Views/SymbolRow.qml");
-assert(/property real\s+cornerRadius:\s+0/.test(chart), "the chart takes a radius (square by default)");
-assert(/function _cornerInset\(x\)/.test(chart) && /_cornerInset\(centre\)/.test(chart) && /_cornerInset\(points\[j\]\.x\)/.test(chart), "fill and line are kept inside the corner arcs by the drawing itself (a canvas clip is not reliable; the pixels are checked in PriceChartCorners.test.qml)");
-assert(!/\.clip\(\)|destination-out|QtQuick\.Effects/.test(chart), "no clip path, composite trick or effect that a renderer may ignore");
-assert(/onCornerRadiusChanged:\s+requestPaint\(\)/.test(chart), "repainted when the radius changes");
-assert(/cornerRadius:\s+Math\.max\(0, Theme\.cornerRadius - constants\.chartAreaMargin\)/.test(row2), "the radius is the theme's, concentric with the card");
+// The fill reaches the chart's own edges, or the card's rounded clip would have nothing to cut at the corners.
+assert(/moveTo\(0, height\)[\s\S]*?lineTo\(width, height\)/.test(chart), "the fill runs to the left, right and bottom edges");
+assert(!/var bottom = height - constants\.chartPadding/.test(chart), "not inset by the padding");
 
 console.log("PriceChart tests passed");

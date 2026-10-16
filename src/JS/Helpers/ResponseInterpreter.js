@@ -19,11 +19,13 @@ var ENVELOPE_PREFIX = "MARKETS-RESPONSE"
 
 var ENVELOPE_PATTERN = new RegExp("^" + ENVELOPE_PREFIX + " (\\d+) (\\d*)\\r?$")
 
+// Build the plain fields of a successful provider response.
 function success(providerId, status, body) {
     return { providerId: providerId, ok: true, status: status || 200,
              body: body === undefined || body === null ? "" : String(body), error: null }
 }
 
+// Build a failed response and normalize its error to PluginError.
 function failure(providerId, error, status, body) {
     return { providerId: providerId, ok: false, status: status || (error && error.status) || 0,
              body: body === undefined || body === null ? "" : String(body), error: PluginError.from(error) }
@@ -56,11 +58,13 @@ function parseEnvelope(stdout) {
 
 // ── Messages ─────────────────────────────────────────────────────────────────
 
+// Collapse whitespace and bound the length of diagnostic text.
 function _short(text, maxLength) {
     var clean = String(text).replace(/\s+/g, " ").trim()
     return clean.length > maxLength ? clean.slice(0, maxLength - 1) + "…" : clean
 }
 
+// Collect the available process and HTTP failure details.
 function _detailsOf(parts) {
     var facts = []
     if (parts.status) facts.push("HTTP " + parts.status)
@@ -71,6 +75,7 @@ function _detailsOf(parts) {
     return facts.join("; ")
 }
 
+// Build a typed error with bounded user text and diagnostic details.
 function _error(code, message, parts, retryable) {
     return new PluginError.PluginError(code, _short(message, Constants.ERROR_USER_MESSAGE_MAX_CHARS), _detailsOf(parts),
                                        { status: parts.status || 0, retryable: retryable === true })
@@ -81,6 +86,7 @@ var _CURL_NETWORK  = { 5: true, 6: true, 7: true, 52: true, 55: true, 56: true }
 var _CURL_TIMEOUT  = { 28: true }
 var _CURL_SSL      = { 35: true, 51: true, 53: true, 54: true, 58: true, 59: true, 60: true, 64: true, 66: true, 77: true, 80: true, 82: true, 83: true, 90: true, 91: true }
 
+// Classify a curl failure and decide whether retrying may help.
 function _fromCurlExit(name, parts) {
     var code = parts.curlExit
     if (_CURL_TIMEOUT[code])
@@ -94,6 +100,7 @@ function _fromCurlExit(name, parts) {
     return _error(PluginError.Code.NETWORK, "The request to " + name + " failed.", parts, false)
 }
 
+// Translate an HTTP failure into a friendly typed error.
 function _fromHttpStatus(name, parts, apiMessage) {
     var status = parts.status
     var api = apiMessage ? _short(apiMessage, 100) : ""

@@ -12,7 +12,7 @@ import qs.Services
 import qs.Modules.Plugins
 import qs.Widgets
 import "../JS/Helpers/Helpers.js" as Helpers
-import "../JS/Helpers/Constants.js" as JsK
+import "../JS/Helpers/Constants.js" as JsConstants
 import "../JS/Helpers/SymbolDraft.js" as SymbolDraft
 import "../JS/Helpers/SymbolRules.js" as SymbolRules
 import "./Helpers"
@@ -42,6 +42,7 @@ PluginSettings {
     readonly property string tickerText:           (tickerInput.value || "").trim()
     readonly property var tickerValidation:        selectedHandler ? selectedHandler.validateSymbol(tickerText) : ({ valid: false, message: "No data provider is available." })
     // The display name: at most a few characters from a fixed set (see SymbolRules.validateName).
+    readonly property int    popoutRowsValue:      popoutRowsSetting.value      // the popup-height slider's value
     readonly property string nameText:             (nameInput.value || "").trim()
     readonly property var nameValidation:          SymbolRules.validateName(nameText)
     // Candle-count validation of the chosen resolution vs chart range (non-blocking notes).
@@ -75,14 +76,29 @@ PluginSettings {
         // DMS creates this page first and attaches the service afterwards: the list can only be read from then on.
         onPluginServiceChanged: {
             Logger.debug("settings", "plugin service " + (pluginService ? "attached" : "detached"))
-            if (pluginService) root.refreshSymbolsList()
+            if (pluginService) {
+                root.refreshSymbolsList()
+                root._resetFormOnce()
+            }
         }
+    }
+
+    // The "add a symbol" form always starts from its defaults when the page is created (expanded): what was typed or chosen
+    // before is not brought back. DMS's controls load their saved values when the service attaches, so the defaults are
+    // saved over them once, then.
+    property bool _formReset: false
+    // Reset the form after its host service attaches, once per page.
+    function _resetFormOnce() {
+        if (_formReset) return
+        _formReset = true
+        Qt.callLater(root.clearForm)
     }
 
     // Plugin data changes elsewhere too (the widget saves the migrated list, DMS delivers data late): follow it.
     Connections {
         target: root.pluginService
         enabled: root.pluginService !== null
+        // Reload this plugin when the host delivers updated settings.
         function onPluginDataChanged(changedPluginId) {
             if (changedPluginId === root.pluginId) root.refreshSymbolsList()
         }
@@ -90,6 +106,7 @@ PluginSettings {
 
     // Returns whether the value was really saved; a failure is reported by the storage.
     function saveValue(key, value) { return storage.save(key, value) }
+    // Read the saved value after the settings service becomes available.
     function loadValue(key, defaultValue) { return storage.load(key, defaultValue) }
 
     // Reads, migrates (and persists the migration of) the saved symbols; damaged data is
@@ -116,6 +133,7 @@ PluginSettings {
     Component.onCompleted: {
         Logger.debug("settings", "page created: " + ProvidersManager.types.length + " providers, plugin service " + (pluginService ? "present" : "not set yet"))
         refreshSymbolsList()
+        if (pluginService) _resetFormOnce()
         Logger.debug("settings", "page ready: " + symbolsList.length + " symbols, height " + implicitHeight)
     }
 
@@ -184,7 +202,8 @@ PluginSettings {
         topPadding: Theme.spacingM
     }
 
-    SliderSetting {
+    ValueSliderRow {
+        id: popoutRowsSetting
         settingKey: "popoutRows"
         label: "Visible Symbol Rows without scrolling"
         minimum: constants.minPopoutRows
@@ -261,7 +280,7 @@ PluginSettings {
 
     SelectionSetting {
         id: providerSelect
-        settingKey: JsK.DRAFT_KEYS.provider
+        settingKey: JsConstants.DRAFT_KEYS.provider
         label: "Data Provider"
         description: "Source for price data"
         visible: ProvidersManager.types.length > 1
@@ -314,10 +333,6 @@ PluginSettings {
         spacing: Theme.spacingS
 
         property alias value: tickerField.text
-
-        Component.onCompleted: Qt.callLater(function() {
-            tickerInput.value = storage.loadDraftField("ticker", "")
-        })
 
         StyledText {
             text: "Symbol Ticker"
@@ -416,9 +431,6 @@ PluginSettings {
 
         property alias value: nameField.text
 
-        Component.onCompleted: Qt.callLater(function() {
-            nameInput.value = storage.loadDraftField("name", "")
-        })
 
         StyledText {
             text: "Display Name"
@@ -428,7 +440,7 @@ PluginSettings {
         }
 
         StyledText {
-            text: "Short label shown for the symbol (max " + JsK.DISPLAY_NAME_MAX_LENGTH + " char.)"
+            text: "Short label shown for the symbol (max " + JsConstants.DISPLAY_NAME_MAX_LENGTH + " char.)"
             font.pixelSize: Theme.fontSizeSmall
             color: Theme.surfaceVariantText
             width: parent.width
@@ -439,7 +451,7 @@ PluginSettings {
             id: nameField
             width: parent.width
             placeholderText: "Gold"
-            maximumLength: JsK.DISPLAY_NAME_MAX_LENGTH
+            maximumLength: JsConstants.DISPLAY_NAME_MAX_LENGTH
             onEditingFinished: storage.saveDraftField("name", text.trim())
         }
 
@@ -455,39 +467,39 @@ PluginSettings {
 
     SelectionSetting {
         id: priceResolutionSelect
-        settingKey: JsK.DRAFT_KEYS.priceResolution
+        settingKey: JsConstants.DRAFT_KEYS.priceResolution
         label: "Price Resolution"
         description: "Candle size for the live price, also sets how often it is refreshed"
         visible: !root.selectedProviderDisabled
         options: root.priceResolutionOptions
-        defaultValue: JsK.DEFAULT_PRICE_RESOLUTION
+        defaultValue: JsConstants.DEFAULT_PRICE_RESOLUTION
     }
 
     SelectionSetting {
         id: changeResolutionSelect
-        settingKey: JsK.DRAFT_KEYS.changeResolution
+        settingKey: JsConstants.DRAFT_KEYS.changeResolution
         label: "Price Change Resolution"
         description: "The price change is calculated against the close of the previous period of this size"
         visible: !root.selectedProviderDisabled
         options: root.changeResolutionOptions
-        defaultValue: JsK.DEFAULT_CHANGE_RESOLUTION
+        defaultValue: JsConstants.DEFAULT_CHANGE_RESOLUTION
     }
 
     SelectionSetting {
         id: chartResolutionSelect
-        settingKey: JsK.DRAFT_KEYS.chartResolution
+        settingKey: JsConstants.DRAFT_KEYS.chartResolution
         label: "Chart Resolution"
         description: "Candle size of the charts"
         visible: !root.selectedProviderDisabled
         options: root.chartResolutionOptions
-        defaultValue: JsK.DEFAULT_CHART_RESOLUTION
+        defaultValue: JsConstants.DEFAULT_CHART_RESOLUTION
         // Keep the chart range valid for the newly chosen resolution.
         onValueChanged: Qt.callLater(root.syncSelections)
     }
 
     SelectionSetting {
         id: chartRangeSelect
-        settingKey: JsK.DRAFT_KEYS.chartRange
+        settingKey: JsConstants.DRAFT_KEYS.chartRange
         label: "Chart Range"
         description: root.chartRangeAvailable
                      ? "How much historical data to show in the charts"
@@ -496,7 +508,7 @@ PluginSettings {
         enabled: root.chartRangeAvailable
         opacity: enabled ? 1.0 : 0.5
         options: root.chartRangeOptions
-        defaultValue: JsK.DEFAULT_CHART_SPAN
+        defaultValue: JsConstants.DEFAULT_CHART_SPAN
     }
 
     // Non-blocking note: the chosen resolution gives very few / very many candles.
@@ -513,7 +525,7 @@ PluginSettings {
 
     ToggleSetting {
         id: showChangeToggle
-        settingKey: JsK.DRAFT_KEYS.showChange
+        settingKey: JsConstants.DRAFT_KEYS.showChange
         label: "Show Price Change When Pinned"
         description: "Display price change in the bar when this symbol is pinned"
         defaultValue: false
@@ -526,7 +538,7 @@ PluginSettings {
 
     ToggleSetting {
         id: invertToggle
-        settingKey: JsK.DRAFT_KEYS.invert
+        settingKey: JsConstants.DRAFT_KEYS.invert
         label: "Invert Prices (1/x)"
         description: "Show the reciprocal of the price and chart (e.g., USD/EUR instead of EUR/USD)"
         defaultValue: false
@@ -652,6 +664,7 @@ PluginSettings {
     //  FUNCTIONS
     // ═══════════════════════════════════════════════════════════════════════
 
+    // Validate the form and reject duplicates before saving the symbol.
     function addOrUpdateSymbol() {
         var ticker = (tickerInput.value || "").trim()
         var name   = (nameInput.value || "").trim()
@@ -683,6 +696,7 @@ PluginSettings {
         doSaveSymbol(ticker, name)
     }
 
+    // Build a current-format symbol and report a successful save.
     function doSaveSymbol(ticker, name) {
         var provider   = providerSelect.value || ProvidersManager.defaultId
 
@@ -722,6 +736,7 @@ PluginSettings {
         Qt.callLater(clearForm)
     }
 
+    // Load the selected symbol into the edit form.
     function editSymbol(symbolIndex) {
         if (symbolIndex < 0 || symbolIndex >= symbolsList.length) return
         // Toggle: clicking the already-selected symbol deselects it
@@ -731,8 +746,10 @@ PluginSettings {
         Qt.callLater(function() { refreshSymbolsList() })
     }
 
+    // Leave edit mode and return the form to its defaults.
     function cancelEdit() { clearForm() }
 
+    // Reset the form to the default provider and refresh the saved list.
     function clearForm() {
         editIndex = -1
         var defaultProvider = ProvidersManager.defaultId
@@ -763,6 +780,7 @@ PluginSettings {
         })
     }
 
+    // Persist the edited symbol flags without replacing its other settings.
     function saveEditedSymbolFlags() {
         if (editIndex < 0 || editIndex >= symbolsList.length) return
         var saved = storage.updateSymbolAt(symbolsList, editIndex, {
@@ -772,6 +790,7 @@ PluginSettings {
         if (saved) refreshSymbolsList()
     }
 
+    // Remove the selected entry and update the active edit position.
     function removeSymbolAt(symbolIndex) {
         var removed = storage.removeSymbolAt(symbolsList, symbolIndex)
         if (!removed) return
@@ -782,6 +801,7 @@ PluginSettings {
         else Qt.callLater(refreshSymbolsList)
     }
 
+    // Persist a reorder and keep the edit position on the same symbol.
     function moveSymbol(symbolIndex, direction) {
         var targetIndex = symbolIndex + direction
         if (!storage.moveSymbol(symbolsList, symbolIndex, direction)) return

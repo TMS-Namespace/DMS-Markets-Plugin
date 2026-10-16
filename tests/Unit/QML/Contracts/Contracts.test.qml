@@ -1,6 +1,8 @@
+// Instantiate the data holders and verify their per-field checks in the real QML runtime.
 import QtQml
 import "../../../Helpers"
 import "../../../../src/QML/Contracts"
+import "../../../../src/JS/Helpers/SymbolRules.js" as SymbolRules
 
 TestSuite {
     id: suite
@@ -20,18 +22,16 @@ TestSuite {
     function test_saved_symbol_holds_data_and_checks_each_field() {
         var symbol = symbolComponent.createObject(null, { uid: "11111111-1111-4111-8111-111111111111", ticker: "BRLPLN", name: "Real",
             provider: "wise", priceResolution: "1h", changeResolution: "1d", chartResolution: "1d", chartRange: "1M" })
-        check(symbol.valid)
-        equal(Object.keys(symbol.toJson()), ["uid", "ticker", "name", "provider", "priceResolution", "changeResolution", "chartResolution", "chartRange",
-                                        "showChangeWhenPinned", "invert", "pinned"])
+        check(SymbolRules.isValidSavedSymbol(symbol))
         symbol.chartRange = "7Y"
-        check(!symbol.chartRangeValid && !symbol.valid && symbol.priceResolutionValid, "a bad field only fails its own flag")
+        check(!symbol.chartRangeValid && !SymbolRules.isValidSavedSymbol(symbol) && symbol.priceResolutionValid, "a bad field only fails its own flag")
         symbol.chartRange = "1M"; symbol.uid = "nope"
-        check(!symbol.uidValid && !symbol.valid)
+        check(!symbol.uidValid && !SymbolRules.isValidSavedSymbol(symbol))
         symbol.destroy()
     }
     function test_new_symbol_is_invalid_until_filled() {
         var symbol = symbolComponent.createObject(null)
-        check(!symbol.valid && !symbol.uidValid && !symbol.tickerValid && !symbol.providerValid)
+        check(!SymbolRules.isValidSavedSymbol(symbol) && !symbol.uidValid && !symbol.tickerValid && !symbol.providerValid)
         symbol.destroy()
     }
     function test_data_point_field_checks() {
@@ -49,8 +49,8 @@ TestSuite {
         chartStatus.level = "warn"; check(chartStatus.warned && !chartStatus.blocked)
         chartStatus.destroy()
     }
-    function test_provider_load_error_builds_message() {
-        var loadError = providerLoadErrorComponent.createObject(null, { id: "x", name: "X", error: { userMessage: "It broke." } })
+    function test_provider_load_error_holds_prepared_message() {
+        var loadError = providerLoadErrorComponent.createObject(null, { id: "x", name: "X", error: { userMessage: "It broke." }, userMessage: "X couldn't be loaded and is unavailable. It broke." })
         same(loadError.userMessage, "X couldn't be loaded and is unavailable. It broke.")
         loadError.destroy()
     }

@@ -20,7 +20,7 @@ import QtQuick
 import "../Contracts"
 import "../Services"
 import "../../JS/Helpers/Helpers.js" as Helpers
-import "../../JS/Helpers/Constants.js" as JsK
+import "../../JS/Helpers/Constants.js" as JsConstants
 import "../../JS/Contracts/PluginError.js" as PluginError
 import "../../JS/Contracts/FetchType.js" as FetchType
 import "../../JS/Helpers/SeriesRules.js" as SeriesRules
@@ -29,9 +29,6 @@ import "../../JS/Helpers/SelectionPolicy.js" as SelectionPolicy
 
 Item {
     id: root
-
-    // ── QML constants ─────────────────────────────────────────────────────────
-    Constants { id: constants }
 
     // ── Inputs (bound from Widget.qml) ────────────────────────────────────────
     property var    providerCredentials: ({})
@@ -66,6 +63,7 @@ Item {
     // is the sum of what all handlers have pending.
     property var _connected: []
 
+    // Subscribe to the current provider handlers and detach the old ones.
     function _connectHandlers() {
         _connected.forEach(function(handler) {
             handler.pendingChanged.disconnect(_publishPending)
@@ -78,6 +76,7 @@ Item {
         })
     }
 
+    // Combine pending request counts from all provider handlers.
     function _publishPending() {
         var total = {}
         _connected.forEach(function(handler) {
@@ -88,6 +87,7 @@ Item {
 
     Connections {
         target: ProvidersManager
+        // Reconnect when the provider manager replaces its handlers.
         function onHandlersChanged() { root._connectHandlers() }
     }
 
@@ -98,12 +98,13 @@ Item {
     // ── Polling timer ─────────────────────────────────────────────────────────
     Timer {
         id: checkTimer
-        interval: JsK.POLL_INTERVAL_MS
+        interval: JsConstants.POLL_INTERVAL_MS
         running: symbols.length > 0
         repeat: true
         onTriggered: _checkAndFetch()
     }
 
+    // Apply the current credentials through each provider facade.
     function _syncProviderCredentials() {
         for (var providerId in providerCredentials) {
             var handler = ProvidersManager.handlerFromId(providerId)
@@ -157,6 +158,7 @@ Item {
                 || callContext.signature === Helpers.symbolFetchSignature(symbol, ProvidersManager.defaultId))
     }
 
+    // Find the current saved symbol by its internal handle.
     function _findSymbol(uid) {
         for (var i = 0; i < symbols.length; i++)
             if (symbols[i].uid === uid) return symbols[i]
@@ -188,9 +190,9 @@ Item {
                 handler.fetchChange(symbol.ticker, selection.changeResolution, context, _isLive)
             else
                 handler.fetchChart(symbol.ticker, selection.chartResolution, selection.chartRange, context, _isLive)
-        } catch (e) {
-            Logger.debug("fetcher", "cannot fetch " + symbol.ticker + " " + fetchType + ": " + String(e && e.message))
-            _reportSymbolError(symbol.uid, fetchType, e)
+        } catch (caughtError) {
+            Logger.debug("fetcher", "cannot fetch " + symbol.ticker + " " + fetchType + ": " + String(caughtError && caughtError.message))
+            _reportSymbolError(symbol.uid, fetchType, caughtError)
         }
     }
 
@@ -206,8 +208,8 @@ Item {
                 return
             }
             _store(context.uid, context.providerId, context.fetchType, series)
-        } catch (e) {
-            _reportSymbolError(context.uid, context.fetchType, e)
+        } catch (caughtError) {
+            _reportSymbolError(context.uid, context.fetchType, caughtError)
         }
     }
 
@@ -299,12 +301,14 @@ Item {
     readonly property var _priceFields: ["open", "high", "low", "close", "date", "time", "change", "changePercent"]
     readonly property var _candleFields: ["date", "time", "open", "high", "low", "close", "volume"]
 
+    // Copy the requested fields into plain snapshot data.
     function _plain(object, fields) {
         var plain = {}
         fields.forEach(function(field) { plain[field] = object[field] })
         return plain
     }
 
+    // Capture the latest price, reference, chart and successful fetch times.
     function snapshotOf(uid) {
         var price = priceData[uid], graph = graphData[uid]
         if (!price && !graph) return null
@@ -321,6 +325,7 @@ Item {
         }
     }
 
+    // Accept only finite JavaScript numbers from saved market data.
     function _isNumber(value) { return typeof value === "number" && isFinite(value) }
 
     // A saved price, or null when it is not a complete, sane one.
@@ -378,8 +383,8 @@ Item {
             if (restored) refreshedTimesUpdated(refreshed)
             Logger.debug("fetcher", "restored the saved data of " + uid + ": " + (price ? "price " : "") + (chart ? chart.length + " candles" : ""))
             return restored
-        } catch (e) {
-            ErrorHandler.handle("fetcher", PluginError.from(e), { context: "restoring saved data of " + uid, notify: false })
+        } catch (caughtError) {
+            ErrorHandler.handle("fetcher", PluginError.from(caughtError), { context: "restoring saved data of " + uid, notify: false })
             return false
         }
     }
@@ -409,11 +414,12 @@ Item {
 
     Timer {
         id: initialGraphTimer
-        interval: JsK.INITIAL_GRAPH_STAGGER_MS
+        interval: JsConstants.INITIAL_GRAPH_STAGGER_MS
         repeat: false
         onTriggered: _processInitialGraphQueue()
     }
 
+    // Start the next staggered initial chart request.
     function _processInitialGraphQueue() {
         if (_initialGraphQueue.length === 0) return
         var remaining = _initialGraphQueue.slice()
@@ -440,7 +446,7 @@ Item {
         }
         fetchTimesUpdated(newTimes)
         _initialGraphQueue     = queue
-        initialGraphTimer.interval = JsK.INITIAL_GRAPH_DELAY_MS
+        initialGraphTimer.interval = JsConstants.INITIAL_GRAPH_DELAY_MS
         initialGraphTimer.restart()
     }
 

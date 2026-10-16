@@ -8,5 +8,5 @@ QtObject {
     property string id: ""
     property string name: ""
     property var error: null
-    readonly property string userMessage: name + " couldn't be loaded and is unavailable. " + (error ? error.userMessage : "")
+    property string userMessage: ""
 }

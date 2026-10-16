@@ -37,11 +37,14 @@ var INFO = Object.freeze({
     "1M":  Object.freeze({ label: "1 Month",    shortLabel: "1 month", ms: TimeUnits.MONTH_MS       })
 })
 
+// Check whether the value belongs to this module's value domain.
 function isValid(value) { return INFO.hasOwnProperty(value) }
 
 // Unknown values are echoed (and an empty one gives ""), so labels never show "undefined".
 function label(resolution)      { return isValid(resolution) ? INFO[resolution].label      : (resolution ? String(resolution) : "") }
+// Return the short display label for this value.
 function shortLabel(resolution) { return isValid(resolution) ? INFO[resolution].shortLabel : (resolution ? String(resolution) : "") }
+// Return the resolution duration in milliseconds, or zero when unknown.
 function ms(resolution)         { return isValid(resolution) ? INFO[resolution].ms : 0 }
 
 // Builds a frozen { key: value } object from [[key, value], ...] pairs. Object literals

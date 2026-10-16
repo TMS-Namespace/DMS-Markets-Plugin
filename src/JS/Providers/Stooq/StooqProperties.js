@@ -9,37 +9,35 @@
 // are StooqApi.js.
 
 .pragma library
-.import "StooqConstants.js" as K
+.import "StooqConstants.js" as ProviderConstants
 .import "../../Contracts/Resolution.js" as Resolution
 
 var ResolutionValues = Resolution.Values
 
+// Return this provider's declared settings and supported data ranges.
 function create() {
     return {
-        providerId: K.STOOQ_PROVIDER_ID,
-        name: K.STOOQ_NAME,
-        alias: K.STOOQ_ALIAS,
-        description: K.STOOQ_DESCRIPTION,
-        baseUrl: K.STOOQ_BASE_URL,
+        providerId: ProviderConstants.STOOQ_PROVIDER_ID,
+        name: ProviderConstants.STOOQ_NAME,
+        alias: ProviderConstants.STOOQ_ALIAS,
+        description: ProviderConstants.STOOQ_DESCRIPTION,
+        baseUrl: ProviderConstants.STOOQ_BASE_URL,
         disabled: true,
-        disabledMessage: K.STOOQ_DISABLED_MESSAGE,
-        symbolSearchUrl: K.STOOQ_SYMBOL_SEARCH_URL,
-        symbolHelpText: K.STOOQ_SYMBOL_HELP_TEXT,
-        symbolPlaceholder: K.STOOQ_SYMBOL_PLACEHOLDER,
-        symbolPattern: K.STOOQ_SYMBOL_PATTERN,
-        symbolMinLength: K.STOOQ_SYMBOL_MIN_LENGTH,
-        symbolMaxLength: K.STOOQ_SYMBOL_MAX_LENGTH,
-        symbolFormatMessage: K.STOOQ_SYMBOL_FORMAT_MESSAGE,
+        disabledMessage: ProviderConstants.STOOQ_DISABLED_MESSAGE,
+        symbolSearchUrl: ProviderConstants.STOOQ_SYMBOL_SEARCH_URL,
+        symbolHelpText: ProviderConstants.STOOQ_SYMBOL_HELP_TEXT,
+        symbolPlaceholder: ProviderConstants.STOOQ_SYMBOL_PLACEHOLDER,
+        symbolPattern: ProviderConstants.STOOQ_SYMBOL_PATTERN,
+        symbolMinLength: ProviderConstants.STOOQ_SYMBOL_MIN_LENGTH,
+        symbolMaxLength: ProviderConstants.STOOQ_SYMBOL_MAX_LENGTH,
+        symbolFormatMessage: ProviderConstants.STOOQ_SYMBOL_FORMAT_MESSAGE,
         requiresCredential: true,
-        credentialSettingKey: K.STOOQ_CREDENTIAL_SETTING_KEY,
-        credentialLabel: K.STOOQ_CREDENTIAL_LABEL,
-        credentialPlaceholder: K.STOOQ_CREDENTIAL_PLACEHOLDER,
-        credentialMinLength: K.STOOQ_CREDENTIAL_MIN_LENGTH,
-        credentialMaxLength: K.STOOQ_CREDENTIAL_MAX_LENGTH,
-        credentialHelpTitle: K.STOOQ_CREDENTIAL_HELP_TITLE,
-        credentialHelpText: K.STOOQ_CREDENTIAL_HELP_TEXT,
-        credentialErrorSentinel: K.STOOQ_CREDENTIAL_ERROR_SENTINEL,
-        authErrorMessage: K.STOOQ_AUTH_ERROR_MESSAGE,
+        credentialSettingKey: ProviderConstants.STOOQ_CREDENTIAL_SETTING_KEY,
+        credentialLabel: ProviderConstants.STOOQ_CREDENTIAL_LABEL,
+        credentialMinLength: ProviderConstants.STOOQ_CREDENTIAL_MIN_LENGTH,
+        credentialMaxLength: ProviderConstants.STOOQ_CREDENTIAL_MAX_LENGTH,
+        credentialErrorSentinel: ProviderConstants.STOOQ_CREDENTIAL_ERROR_SENTINEL,
+        authErrorMessage: ProviderConstants.STOOQ_AUTH_ERROR_MESSAGE,
         minPullResolution: ResolutionValues.D1,
         changeResolutions: [ResolutionValues.D1, ResolutionValues.W1, ResolutionValues.MO1],
         priceResolutions: [ResolutionValues.D1, ResolutionValues.W1, ResolutionValues.MO1],

@@ -1,8 +1,8 @@
 import QtQuick
+import "../../../../src/JS/Helpers/Helpers.js" as Helpers
 import "../../../Helpers"
 import "../../../../src/QML/Helpers"
 import "../../../../src/QML/Services"
-import "../../../../src/JS/Helpers/Helpers.js" as Helpers
 
 TestSuite {
     id: suite
@@ -219,8 +219,8 @@ TestSuite {
 
     // ── Credentials / old settings ───────────────────────────────────────────
     function test_credentials_are_deobfuscated_for_providers_that_need_one() {
-        var dataStorage = storage(service()), secret = "abcdefghijklmnopqrstuvwxyz123456"
-        equal(dataStorage.readCredentials({ providerCredential_stooq: Helpers.obfuscate(secret), showTicker: true }), { stooq: secret })
+        var dataStorage = storage(service()), secret = "abc123"
+        equal(dataStorage.readCredentials({ providerCredential_stooq: "091617414109", showTicker: true }), { stooq: secret })
         equal(dataStorage.readCredentials({}), { stooq: "" }); equal(dataStorage.readCredentials(null), { stooq: "" })
         same(dataStorage.readCredentials({ providerCredential_stooq: "plain legacy text" }).stooq, "plain legacy text")
     }
@@ -242,12 +242,12 @@ TestSuite {
     }
 
     // ── The form draft ───────────────────────────────────────────────────────
-    function test_the_form_draft_is_saved_and_read_field_by_field() {
+    function test_the_form_fields_are_saved_through_the_storage_boundary() {
         var pluginService = service(), dataStorage = storage(pluginService)
         check(dataStorage.saveDraft({ ticker: "BRLPLN", name: "Real", provider: "wise", priceResolution: "1h", changeResolution: "1d", chartResolution: "1d", chartRange: "1M", showChange: true, invert: false }))
         same(pluginService.data._addTicker, "BRLPLN"); same(pluginService.data._addProvider, "wise"); same(pluginService.data._addShowChange, true)
-        same(dataStorage.loadDraftField("ticker", ""), "BRLPLN"); same(dataStorage.loadDraftField("name", "dflt"), "Real")
-        same(dataStorage.loadDraftField("invert", "dflt"), false)
+        same(dataStorage.load("_addTicker", ""), "BRLPLN"); same(dataStorage.load("_addName", "dflt"), "Real")
+        same(dataStorage.load("_addInvert", "dflt"), false)
         check(!storage(service({}, new Error("disk full"))).saveDraft({ ticker: "X", name: "", provider: "wise", priceResolution: "1h", changeResolution: "1d", chartResolution: "1d", chartRange: "1M", showChange: false, invert: false }),
               "a failed save is reported, not announced as success")
         same(toasts.length, 1, "...once")
@@ -274,6 +274,30 @@ TestSuite {
         check(dataStorage.saveSymbols([]), "saving resumes after a successful backup")
         same(pluginService.data.symbolsBackup, "{broken")
         same(pluginService.data.symbols, "[]")
+    }
+
+    function test_reading_for_a_binding_returns_only_current_symbols_without_writing() {
+        var pluginService = service(), dataStorage = storage(pluginService)
+        var current = dataStorage.readCurrentSymbols('[{"id":"BRLPLN","provider":"wise","priceInterval":"5m","graphInterval":"1M"}]')
+        same(current.length, 1)
+        check(current[0].uid && current[0].ticker === "BRLPLN")
+        same(current[0].priceResolution, "1h")
+        check(current[0].id === undefined && current[0].priceInterval === undefined)
+        same(pluginService.writes.length, 0, "binding evaluation never writes back to the host")
+        check(dataStorage.migrateSavedSymbols('[{"id":"BRLPLN","provider":"wise","priceInterval":"5m","graphInterval":"1M"}]').saved)
+        same(pluginService.writes.length, 1, "the upgrade is saved explicitly after binding evaluation")
+    }
+
+    function async_damaged_data_is_backed_up_after_binding_evaluation_without_a_write_loop(done) {
+        var pluginService = service({ symbols: "{broken" }), dataStorage = storage(pluginService)
+        equal(dataStorage.readCurrentSymbols("{broken"), [])
+        same(pluginService.writes.length, 0, "no host writes inside binding evaluation")
+        waitUntil(function() { return pluginService.data.symbolsBackup === "{broken" }, function(problem) {
+            if (problem) { done(problem); return }
+            equal(dataStorage.readCurrentSymbols("{broken"), [])
+            dataStorage.readSymbols("{broken")
+            done(pluginService.writes.length === 1 ? "" : "an identical backup was written again")
+        })
     }
 
 }

@@ -8,6 +8,8 @@ import "../../../../src/JS/Helpers/SeriesRules.js" as Series
 import "../../../../src/JS/Contracts/Resolution.js" as Resolution
 
 TestSuite {
+    property Component storageType: Component { DataStorage {} }
+
     function handlerOf(id) { return ProvidersManager.requireFromId(id) }
     Component.onCompleted: { if (!Array.prototype.at) Array.prototype.at = function(i) { return this[i < 0 ? this.length + i : i] } }
     property Component responseType: Component { ProviderResponse {} }
@@ -97,7 +99,7 @@ TestSuite {
             equal([selection.priceResolution, selection.chartResolution, selection.chartRange], ["1h", "1h", "1W"],
                  "switching to Wise moves every dropdown to a supported value immediately");
             // Symbols already saved with unsupported values are fixed on load, not only when edited and saved.
-            const migrated = ProvidersManager.migrateSymbols([{ id: "BRLPLN", provider: "wise", priceInterval: "5m", graphInterval: "10Y" }]);
+            const migrated = storageType.createObject(null).migrate([{ id: "BRLPLN", provider: "wise", priceInterval: "5m", graphInterval: "10Y" }]);
             same(migrated.changed, true);
             same(migrated.symbols[0].priceResolution, "1h");
             same(migrated.symbols[0].chartRange, "6M");

@@ -15,6 +15,7 @@ var Values = Object.freeze({
 
 var ORDER = Object.freeze([Values.PRICE, Values.GRAPH, Values.CHANGE])
 
+// Check whether the value belongs to this module's value domain.
 function isValid(value) { return ORDER.indexOf(value) !== -1 }
 
 // Key of a pull in the "last fetched" map: one entry per symbol and kind of pull.

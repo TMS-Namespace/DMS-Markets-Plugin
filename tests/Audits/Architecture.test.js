@@ -28,8 +28,9 @@ for (const file of contractFiles) {
     for (const match of code.matchAll(/import "([^"]+\.js)"/g))
         assert(ALLOWED_CONTRACT_IMPORTS.some((allowedImport) => match[1].endsWith("/" + allowedImport)), `${relativePath(file)}: contracts only use value-domain checks, not ${match[1]}`);
     const functions = [...code.matchAll(/function\s+(\w+)/g)].map((match) => match[1]);
-    assert(functions.every((functionName) => functionName === "toJson"), `${relativePath(file)}: contracts hold data; no logic functions (${functions.join(", ")})`);
+    assert(functions.length === 0, `${relativePath(file)}: contracts hold data; no logic functions (${functions.join(", ")})`);
     assert(!/\b(for|while)\s*\(|JSON\.|\.parse\(|\.map\(|\.filter\(|\.reduce\(|\.split\(/.test(code), `${relativePath(file)}: no parsing or cross-field logic in a contract`);
+    assert(!/readonly property bool valid\s*:/.test(code), `${relativePath(file)}: aggregate validity belongs in a logic module`);
     // Validity flags are per field: each reads exactly one property.
     for (const match of code.matchAll(/readonly property bool (\w+Valid):\s*([^\n]+)/g))
         assert(!/&&|\|\|/.test(match[2]), `${relativePath(file)}: ${match[1]} must check a single field`);
@@ -46,7 +47,7 @@ for (const file of [...jsFiles, ...qmlFiles]) {
 for (const file of [...jsFiles, ...qmlFiles]) {
     const code = strip(read(file));
     if (/STORAGE_LEGACY_SHOW_PRICE_RANGE_KEY|showPriceRange/.test(code))
-        assert(["JS/Helpers/Constants.js", "QML/Services/DataStorage.qml"].includes(relativePath(file)), `${relativePath(file)}: legacy settings are handled by DataStorage only`);
+        assert(["JS/Helpers/Constants.js", "JS/Helpers/SymbolMigration.js"].includes(relativePath(file)), `${relativePath(file)}: legacy settings are handled by DataStorage only`);
 }
 
 // ── 3. Providers: two JS modules in their own folder; nothing else ──────────
@@ -90,6 +91,7 @@ for (const jsFile of jsFiles.filter((jsFile) => !/JS\/Providers\//.test(jsFile.r
 const providerType = read(path.join(srcRoot, "QML/Contracts/ProviderType.qml"));
 assert(/enum Type \{[^}]*\bYahoo\b[^}]*\bWise\b[^}]*\}/.test(providerType), "ProviderType lists the supported providers");
 const manager = strip(read(path.join(srcRoot, "QML/Services/ProvidersManager.qml")));
+assert(!/SymbolMigration|migrateSymbols/.test(manager), "saved-format migration belongs to storage, not the provider manager");
 for (const name of providerDirs) assert(new RegExp(`ProviderType\\.${name}\\b`).test(manager), `ProvidersManager starts ${name} by its ProviderType`);
 assert(!/Catalog/.test(qmlFiles.map(read).join("")), "the old ProviderCatalog is gone");
 

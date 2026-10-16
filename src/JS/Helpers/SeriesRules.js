@@ -17,11 +17,13 @@
 var DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/
 var TIME_PATTERN = /^(\d{2}:\d{2}:\d{2})?$/
 
+// Build a typed parsing error for a malformed candle.
 function _invalid(detail) {
     return new PluginError.PluginError(PluginError.Code.PARSE, "A data provider sent data in an unexpected format.",
                                        "candle: " + detail)
 }
 
+// Require a finite numeric candle field.
 function _number(fields, key) {
     var value = fields[key]
     if (typeof value !== "number" || !isFinite(value)) throw _invalid(key + " must be a finite number, got " + JSON.stringify(value))

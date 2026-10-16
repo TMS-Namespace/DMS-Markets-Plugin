@@ -1,6 +1,6 @@
 // WiseConstants.js - constants used only by the Wise provider
 //
-// Usage in WiseProperties.js and WiseApi.js:  .import "WiseConstants.js" as K
+// Usage in WiseProperties.js and WiseApi.js:  .import "WiseConstants.js" as ProviderConstants
 
 .pragma library
 .import "../../Contracts/Resolution.js" as Resolution

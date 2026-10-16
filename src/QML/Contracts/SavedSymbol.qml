@@ -8,7 +8,7 @@
 //   showChangeWhenPinned, invert (show 1/x), pinned          flags
 //
 // Each `…Valid` flag checks its own field only; whether a field suits the provider is SymbolRules
-// and SelectionPolicy, and the saved JSON shape is `toJson()`.
+// and SelectionPolicy; storage owns serialization.
 import QtQml
 import "../../JS/Helpers/Helpers.js" as Helpers
 import "../../JS/Contracts/Resolution.js" as Resolution
@@ -34,12 +34,4 @@ QtObject {
     readonly property bool changeResolutionValid: Resolution.isValid(changeResolution)
     readonly property bool chartResolutionValid: Resolution.isValid(chartResolution)
     readonly property bool chartRangeValid: ChartSpan.isValid(chartRange)
-    readonly property bool valid: uidValid && tickerValid && providerValid
-                                  && priceResolutionValid && changeResolutionValid && chartResolutionValid && chartRangeValid
-
-    function toJson() {
-        return { uid: uid, ticker: ticker, name: name, provider: provider,
-                 priceResolution: priceResolution, changeResolution: changeResolution, chartResolution: chartResolution, chartRange: chartRange,
-                 showChangeWhenPinned: showChangeWhenPinned, invert: invert, pinned: pinned }
-    }
 }

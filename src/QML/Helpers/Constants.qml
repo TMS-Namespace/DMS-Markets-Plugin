@@ -68,7 +68,7 @@ QtObject {
 
     // ── PriceChart rendering ──────────────────────────────────────────────────
     readonly property int    chartPadding:         3   // inside the chart: between the drawing and its edge
-    readonly property int    chartAreaMargin:      3   // around the chart on every side (one constant for all four)
+    readonly property int    chartAreaMargin:      5   // around the chart on every side (one constant for all four)
     readonly property real   chartLineWidth:       1.5
     readonly property real   chartFillOpacity:     0.25
     readonly property int    chartLabelLeftMargin: 4

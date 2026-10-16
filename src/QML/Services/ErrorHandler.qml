@@ -39,6 +39,7 @@ QtObject {
         if (settings.now !== undefined)     clock = settings.now
     }
 
+    // Clear recorded errors and notification configuration.
     function reset() {
         notifier = null
         clock = function() { return Date.now() }
@@ -69,13 +70,14 @@ QtObject {
         return record
     }
 
+    // Apply the cooldown before calling the configured notifier.
     function _notifyUser(record, category) {
         if (!notifier || !Policy.shouldNotify(lastNotified, record, Constants.ERROR_NOTIFY_COOLDOWN_MS)) return
         lastNotified = Helpers.withEntry(lastNotified, Policy.notifyKey(record), record.time)
         try {
             notifier(record.userMessage, record.details, "markets-" + (category || record.code))
-        } catch (e) {
-            Logger.error("ErrorHandler", "notifier failed: " + (e && e.message))
+        } catch (caughtError) {
+            Logger.error("ErrorHandler", "notifier failed: " + (caughtError && caughtError.message))
         }
     }
 
@@ -83,10 +85,11 @@ QtObject {
     function guard(scope, action, options) {
         try {
             return _guardType.createObject(null, { ok: true, value: action() })
-        } catch (e) {
-            return _guardType.createObject(null, { ok: false, error: handle(scope, e, options) })
+        } catch (caughtError) {
+            return _guardType.createObject(null, { ok: false, error: handle(scope, caughtError, options) })
         }
     }
 
+    // Allow only transient failures within the retry budget.
     function shouldRetry(error, attempt, maxRetries) { return Policy.shouldRetry(error, attempt, maxRetries) }
 }

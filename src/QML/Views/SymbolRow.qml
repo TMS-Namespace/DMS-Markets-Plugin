@@ -10,6 +10,7 @@
 // Moved from QML/ to QML/Views/ to keep all view-layer components together.
 
 import QtQuick
+import Quickshell.Widgets
 import qs.Common
 import qs.Widgets
 import "../Helpers"
@@ -79,9 +80,15 @@ Item {
 
     // ── Internal helpers ─────────────────────────────────────────────────────
     function formatNumber(value, decimals) { return Helpers.formatNumber(value, decimals) }
+    // Format elapsed time using the shared relative-time helper.
     function _timeAgo(epochMs)         { return Helpers.timeAgo(epochMs) }
 
     height: constants.symbolRowHeight
+
+    // The chart is rounded with the theme's corner radius, the card's own, by the ClippingRectangle below. See the notes on
+    // rounded corners at the top of PriceChart.qml (the fill must reach the chart's edges, or the clip has nothing to cut).
+    readonly property real chartRadius: Theme.cornerRadius
+    Component.onCompleted: Logger.debug("view", symbolData.ticker + ": chart corner radius " + chartRadius + " (theme " + Theme.cornerRadius + ")")
 
     // ── Background card ──────────────────────────────────────────────────────
     Rectangle {
@@ -173,19 +180,26 @@ Item {
         anchors.bottom:      parent.bottom
         anchors.bottomMargin: constants.chartAreaMargin
 
-        PriceChart {
-            anchors.fill:   parent
-            visible:        !symbolRow.priceFailed && !symbolRow.chartFailed
-            dataPoints:     symbolRow.chartData
-            isLoading:      symbolRow.isLoading
-            // Concentric with the card: the theme's corner radius less the gap between card and chart.
-            cornerRadius:   Math.max(0, Theme.cornerRadius - constants.chartAreaMargin)
-            chartRange:     symbolData.chartRange || ""
-            showRangeLabel: symbolRow.showChartRange
-            showProviderName: symbolRow.showProviderName
-            providerAlias:  ProvidersManager.aliasOf(symbolData.provider || ProvidersManager.defaultId)
-            positiveColor:  symbolRow.upColor
-            negativeColor:  symbolRow.downColor
+        // Clipped by Quickshell's ClippingRectangle, the item DMS itself uses for its rounded wallpaper, artwork and avatar
+        // images (checked on a real GPU window: it clips a canvas child to the rounded shape).
+        ClippingRectangle {
+            anchors.fill: parent
+            radius:       symbolRow.chartRadius
+            color:        "transparent"
+            visible:      !symbolRow.priceFailed && !symbolRow.chartFailed
+
+            PriceChart {
+                anchors.fill:   parent
+                visible:        !symbolRow.priceFailed && !symbolRow.chartFailed
+                dataPoints:     symbolRow.chartData
+                isLoading:      symbolRow.isLoading
+                chartRange:     symbolData.chartRange || ""
+                showRangeLabel: symbolRow.showChartRange
+                showProviderName: symbolRow.showProviderName
+                providerAlias:  ProvidersManager.aliasOf(symbolData.provider || ProvidersManager.defaultId)
+                positiveColor:  symbolRow.upColor
+                negativeColor:  symbolRow.downColor
+            }
         }
 
         // ── Error message (instead of the information that could not be loaded) ──

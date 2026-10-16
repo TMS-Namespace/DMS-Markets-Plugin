@@ -95,4 +95,40 @@ TestSuite {
         equal(ToastService.errors, [], "the controls saving their defaults before the service exists is not an error")
         page.destroy()
     }
+
+    // What was typed or chosen in the "add a symbol" form last time is not brought back when the page is expanded again.
+    function async_the_add_form_always_starts_from_its_defaults(done) {
+        var left = { _addTicker: "EURUSD=X", _addName: "Old", _addProvider: "wise", _addPriceResolution: "1d", _addChartRange: "1Y", _addShowChange: true, _addInvert: true }
+        var page = open(Object.assign({ symbols: JSON.stringify(current) }, left))
+        waitFor(function() { return page._formReset && page.tickerText === "" && page.nameText === "" }, function(problem) {
+            if (problem) { done(problem); return }
+            // give the deferred reset and DMS's own loads time to settle, then look again
+            waitFor(function() { return false }, function() {
+                try {
+                    same(page.tickerText, "", "no ticker"); same(page.nameText, "", "no name")
+                    same(page.selectedProviderId, "yahoo", "the default provider")
+                    same(service.data._addShowChange, false); same(service.data._addInvert, false)
+                    same(service.data._addTicker, "", "the saved draft was reset too"); same(service.data._addName, "")
+                    same(service.data._addProvider, "yahoo")
+                    equal(ToastService.errors, [], "no error")
+                    done("")
+                } catch (e) { done(e.message) }
+            })
+        })
+    }
+
+    // The popup height set before a restart is what the slider shows once the page has its service (not its default).
+    function async_the_popup_height_slider_shows_the_saved_value(done) {
+        var page = open({ symbols: JSON.stringify(current), popoutRows: 10 })
+        waitFor(function() { return page.popoutRowsValue === 10 }, function(problem) {
+            if (problem) { done(problem + " (shows " + page.popoutRowsValue + ")"); return }
+            waitFor(function() { return false }, function() {
+                try {
+                    same(page.popoutRowsValue, 10, "still the saved value after everything settled")
+                    same(service.data.popoutRows, 10, "and it was not overwritten by the default")
+                    done("")
+                } catch (e) { done(e.message) }
+            })
+        })
+    }
 }

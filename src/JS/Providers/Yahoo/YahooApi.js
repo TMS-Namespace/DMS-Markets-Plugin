@@ -8,7 +8,7 @@
 
 .pragma library
 .import "../../Helpers/Constants.js" as Constants
-.import "YahooConstants.js" as K
+.import "YahooConstants.js" as ProviderConstants
 .import "../../Contracts/PluginError.js" as PluginError
 .import "../../Contracts/ChartSpan.js" as ChartSpan
 .import "../../Helpers/SeriesRules.js" as SeriesRules
@@ -16,6 +16,7 @@
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+// Read an available numeric price and leave missing values invalid.
 function _safeNumber(rawValue) {
     if (rawValue === undefined || rawValue === null || rawValue === "null" || rawValue === "NaN")
         return NaN;
@@ -23,10 +24,12 @@ function _safeNumber(rawValue) {
     return isNaN(parsed) ? NaN : parsed;
 }
 
+// Pad one UTC date or time component to two digits.
 function _pad2(value) {
     return value < 10 ? "0" + value : "" + value;
 }
 
+// Convert an epoch timestamp to UTC date and time fields.
 function _dateParts(epochSeconds) {
     var date = new Date(epochSeconds * Constants.SECOND_MS);
     return {
@@ -35,20 +38,23 @@ function _dateParts(epochSeconds) {
     };
 }
 
+// Build a typed error for a setting this provider cannot serve.
 function _unsupported(detail) {
     return new PluginError.PluginError(PluginError.Code.UNSUPPORTED, "Yahoo Finance can't serve this chart setting.",
                                        "Yahoo Finance: " + detail);
 }
 
+// Encode the symbol and chart parameters into the provider URL.
 function _chartUrl(symbol, range, resolution) {
-    return K.YAHOO_CHART_BASE_URL
+    return ProviderConstants.YAHOO_CHART_BASE_URL
         + encodeURIComponent(symbol)
         + "?range=" + encodeURIComponent(range)
         + "&interval=" + encodeURIComponent(resolution)
-        + "&includePrePost=" + K.YAHOO_INCLUDE_PRE_POST
-        + "&events=" + K.YAHOO_EVENTS_PARAM;
+        + "&includePrePost=" + ProviderConstants.YAHOO_INCLUDE_PRE_POST
+        + "&events=" + ProviderConstants.YAHOO_EVENTS_PARAM;
 }
 
+// Build a typed error for an unreadable provider response.
 function _parseError(detail) {
     return new PluginError.PluginError(PluginError.Code.PARSE, "Yahoo Finance sent an answer that couldn't be understood.",
                                        "Yahoo Finance: " + detail);
@@ -57,7 +63,7 @@ function _parseError(detail) {
 // The API's own error message, if the body carries one (chart.error.description).
 function extractApiError(status, body) {
     var parsed;
-    try { parsed = JSON.parse(body); } catch (e) { return ""; }
+    try { parsed = JSON.parse(body); } catch (caughtError) { return ""; }
     var error = parsed && parsed.chart && parsed.chart.error;
     if (!error) return "";
     return String(error.description || error.code || "unknown error");
@@ -70,8 +76,8 @@ function _parseChartResponse(responseText, limit) {
     var parsed;
     try {
         parsed = JSON.parse(responseText);
-    } catch (e) {
-        throw _parseError("not valid JSON (" + e.message + ")");
+    } catch (caughtError) {
+        throw _parseError("not valid JSON (" + caughtError.message + ")");
     }
 
     var apiError = extractApiError(200, responseText);
@@ -115,14 +121,16 @@ function _parseChartResponse(responseText, limit) {
     return results.reverse();
 }
 
+// Select the request window needed for the latest price candles.
 function _priceRangeForResolution(resolution) {
-    var range = K.YAHOO_PRICE_RANGE_BY_RESOLUTION[resolution];
+    var range = ProviderConstants.YAHOO_PRICE_RANGE_BY_RESOLUTION[resolution];
     if (!range) throw _unsupported("no price range for resolution '" + resolution + "'");
     return range;
 }
 
+// Select a window that includes the previous change period.
 function _changeRangeForResolution(resolution) {
-    var range = K.YAHOO_CHANGE_RANGE_BY_RESOLUTION[resolution];
+    var range = ProviderConstants.YAHOO_CHANGE_RANGE_BY_RESOLUTION[resolution];
     if (!range) throw _unsupported("no change range for resolution '" + resolution + "'");
     return range;
 }
@@ -142,31 +150,40 @@ function _parseChangeReference(responseText) {
     return reference;
 }
 
+// Select the smallest API window covering the requested chart range.
 function _historyRangeForSpan(span) {
     var days = ChartSpan.days(span);
-    for (var i = 0; i < K.YAHOO_RANGES.length; i++)
-        if (K.YAHOO_RANGES[i].days >= days) return K.YAHOO_RANGES[i].range;
+    for (var i = 0; i < ProviderConstants.YAHOO_RANGES.length; i++)
+        if (ProviderConstants.YAHOO_RANGES[i].days >= days) return ProviderConstants.YAHOO_RANGES[i].range;
     throw _unsupported("no history range for span '" + span + "'");
 }
 
+// Translate an internal resolution into the provider API parameter.
 function _resolutionParam(resolution) {
-    var param = K.YAHOO_RESOLUTION_MAP[resolution];
+    var param = ProviderConstants.YAHOO_RESOLUTION_MAP[resolution];
     if (!param) throw _unsupported("unsupported resolution '" + resolution + "'");
     return param;
 }
 
 // ── Public API (what the ProviderHandler calls) ──────────────────────────────────
 
+// Build the provider request for the latest price candles.
 function priceUrl(symbol, resolution) {
     return _chartUrl(symbol, _priceRangeForResolution(resolution), _resolutionParam(resolution));
 }
+// Build the provider request for the previous-period reference close.
 function changeUrl(symbol, resolution) {
     return _chartUrl(symbol, _changeRangeForResolution(resolution), _resolutionParam(resolution));
 }
+// Read the close used as the price change reference.
 function parseChange(responseText) { return _parseChangeReference(responseText); }
+// Build the provider request for the selected chart window.
 function historyUrl(symbol, resolution, span) {
     return _chartUrl(symbol, _historyRangeForSpan(span), _resolutionParam(resolution));
 }
+// Parse the newest requested price candles.
 function parsePrice(responseText, limit) { return _parseChartResponse(responseText, limit); }
+// Parse the newest requested chart candles.
 function parseHistory(responseText, limit) { return _parseChartResponse(responseText, limit); }
-function pageUrl(symbolId) { return K.YAHOO_QUOTE_BASE_URL + encodeURIComponent(symbolId); }
+// Build the provider browser page for a validated symbol.
+function pageUrl(symbolId) { return ProviderConstants.YAHOO_QUOTE_BASE_URL + encodeURIComponent(symbolId); }

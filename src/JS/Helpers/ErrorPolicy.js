@@ -9,6 +9,7 @@
 .pragma library
 .import "../Contracts/PluginError.js" as PluginError
 
+// Build the fields of a handled error without changing notification state.
 function recordOf(scope, error, context, now) {
     var pluginError = PluginError.from(error)
     var details = pluginError.details
@@ -20,13 +21,16 @@ function recordOf(scope, error, context, now) {
     }
 }
 
+// Group identical failures for notification rate limiting.
 function notifyKey(record) { return record.scope + "|" + record.code + "|" + record.userMessage }
 
+// Check whether this failure is outside its notification cooldown.
 function shouldNotify(lastNotified, record, cooldownMs) {
     var last = lastNotified[notifyKey(record)]
     return last === undefined || record.time - last >= cooldownMs
 }
 
+// Allow only transient failures within the retry budget.
 function shouldRetry(error, attempt, maxRetries) {
     return PluginError.isPluginError(error) && error.retryable === true && attempt < maxRetries
 }

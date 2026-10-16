@@ -36,14 +36,8 @@ TestSuite {
     }
     function test_the_manager_does_no_provider_work_itself() {
         var source = readFile("src/QML/Services/ProvidersManager.qml")
-        check(!/priceUrl|historyUrl|parsePrice|parseHistory|\.pageUrl|FetchCommand|ResponseInterpreter|SymbolRules|SelectionPolicy/.test(source.replace(/\/\/.*$/gm, "")),
+        check(!/priceUrl|historyUrl|parsePrice|parseHistory|\.pageUrl|FetchCommand|ResponseInterpreter|SymbolRules|SelectionPolicy|SymbolMigration|migrateSymbols/.test(source.replace(/\/\/.*$/gm, "")),
               "requests, parsing and checks are the handler's job")
-    }
-    function test_migration_goes_through_the_manager() {
-        var result = ProvidersManager.migrateSymbols([{ id: "BRLPLN", provider: "wise", priceInterval: "5m", graphInterval: "1M" }])
-        check(result.changed); same(result.symbols[0].ticker, "BRLPLN"); same(result.symbols[0].priceResolution, "1h")
-        var unknown = ProvidersManager.migrateSymbols([{ id: "X", provider: "ghost", priceInterval: "5m", graphInterval: "1M", graphResolution: "1d" }])
-        same(unknown.symbols[0].priceResolution, "5m", "a symbol of an unavailable provider keeps its values")
     }
     function test_a_broken_provider_does_not_take_the_others_down() {
         var good = ProvidersManager.sources[0]

@@ -32,11 +32,11 @@ assert(/storage:\s+storage/.test(widget), "the widget gives it the storage");
 
 // ── Widget wiring around the storage ─────────────────────────────────────────
 assert(/DataStorage \{\s*id: storage\s*pluginId:\s+root\.pluginId\s*pluginService:\s+root\.pluginService/.test(widget));
-assert(/property var symbols: storage\.readSymbols\(pluginData\.symbols\)/.test(widget), "saved symbols are read (and damaged data handled) by the storage");
+assert(/property var symbols: storage\.readCurrentSymbols\(pluginData\.symbols\)/.test(widget), "saved symbols are read (and damaged data handled) by the storage");
 assert(/property var providerCredentials: storage\.readCredentials\(pluginData\)/.test(widget), "credentials come from the storage");
-assert(/storage\.migrate\(symbols\)/.test(widget), "migration is the storage's");
+assert(/storage\.migrateSavedSymbols\(pluginData\.symbols\)/.test(widget), "migration is the storage's");
 assert(/storage\.migrateSettings\(pluginData\)/.test(widget));
-assert(widget.indexOf("storage.migrate(symbols)") < widget.indexOf("fetcher.startInitialFetches(ready)"), "migration happens before the first fetches");
+assert(widget.indexOf("storage.migrateSavedSymbols(pluginData.symbols)") < widget.indexOf("fetcher.startInitialFetches(ready)"), "migration happens before the first fetches");
 assert(/symbols\.filter\(function\(symbol\) \{ return !!symbol\.uid \}\)/.test(widget) && !/migrationPending/.test(widget), "startup never waits for the migrated list to arrive: it starts the symbols that already have a uid (the behaviour is tested in Integration/QML/Widget.test.qml)");
 assert(/\.uid\b/.test(widget) && !/symbol\.id\b|\bsym\.id\b|\.map\(function\(s\) \{ return s\.id \}\)/.test(widget), "widget tracks symbols by uid");
 assert(/showPriceChange:\s+storage\.readShowPriceChange\(pluginData\)/.test(widget) && !/showPriceRange/.test(widget), "the old showPriceRange value is the storage's business");

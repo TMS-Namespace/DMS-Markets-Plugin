@@ -24,19 +24,19 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import "../../JS/Helpers/Constants.js" as JsK
+import "../../JS/Helpers/Constants.js" as JsConstants
 import "../../JS/Contracts/PluginError.js" as PluginError
 
 Item {
     id: root
 
     // ── Configuration ─────────────────────────────────────────────────────────
-    readonly property string defaultDirectory: (Quickshell.env("XDG_CACHE_HOME") || (Quickshell.env("HOME") + "/.cache")) + "/" + JsK.CACHE_DIR_NAME
+    readonly property string defaultDirectory: (Quickshell.env("XDG_CACHE_HOME") || (Quickshell.env("HOME") + "/.cache")) + "/" + JsConstants.CACHE_DIR_NAME
     property string directory: defaultDirectory
-    property int    attempts:      JsK.CACHE_ATTEMPTS
-    property int    retryDelayMs:  JsK.CACHE_RETRY_MS
-    property int    flushDelayMs:  JsK.CACHE_FLUSH_DELAY_MS
-    property int    maxFallbacks:  JsK.CACHE_MAX_FALLBACKS
+    property int    attempts:      JsConstants.CACHE_ATTEMPTS
+    property int    retryDelayMs:  JsConstants.CACHE_RETRY_MS
+    property int    flushDelayMs:  JsConstants.CACHE_FLUSH_DELAY_MS
+    property int    maxFallbacks:  JsConstants.CACHE_MAX_FALLBACKS
     // function(uid) → the symbol's current record (see above, without version/uid/savedAt), or null for nothing to save.
     property var    snapshotOf: null
 
@@ -51,11 +51,16 @@ Item {
     property var _writing: ({})       // uids with a write in progress (one at a time per symbol)
     property var _removed: ({})       // uids discarded while a write was in progress
     property bool _directoryReady: false
+    property var _processQueue: []
+    property int _processCount: 0
 
     readonly property var _uidPattern: /^[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}$/
 
+    // Reject handles that cannot safely identify a cache file.
     function isValidUid(uid) { return typeof uid === "string" && _uidPattern.test(uid) }
+    // Build the primary cache file name for a validated handle.
     function fileNameOf(uid) { return uid + ".json" }
+    // Choose a fallback file name after the primary cannot be written.
     function fallbackNameOf(uid) { return uid + "-" + (1 + Math.floor(Math.random() * 999999999)) + ".json" }
 
     // ── Small async tools ─────────────────────────────────────────────────────
@@ -67,6 +72,7 @@ Item {
             property bool  _exited: false
             property bool  _streamed: false
             property int   _code: -1
+            // Wait for process exit and stdout completion before delivering the result.
             function _finish() {
                 if (!_exited || !_streamed) return
                 var callback = done
@@ -80,12 +86,33 @@ Item {
 
     // Runs a program (argument list); callback(exitCode, stdout) afterwards. A program that cannot start counts as failed.
     function _run(command, callback) {
+        if (_processQueue.length >= JsConstants.CACHE_PROCESS_QUEUE_MAX) {
+            Logger.debug("cache", "shell queue is full: deferring to the caller's failure handling")
+            Qt.callLater(function() { callback(-1, "") })
+            return
+        }
         busy++
-        function finished(code, text) { busy--; callback(code, text) }
+        _processQueue = _processQueue.concat([{ command: command, callback: callback }])
+        _pumpProcesses()
+    }
+
+    // Serialize shell work; callbacks can queue more work without starting overlapping processes.
+    function _pumpProcesses() {
+        if (_processCount > 0 || _processQueue.length === 0) return
+        var job = _processQueue[0]
+        _processQueue = _processQueue.slice(1)
+        _processCount++
+        // Release the completed process slot and run its callback.
+        function finished(code, text) {
+            busy--
+            _processCount--
+            try { job.callback(code, text) } finally { Qt.callLater(root._pumpProcesses) }
+        }
         try {
-            runType.createObject(root, { command: command, done: finished, running: true })
-        } catch (e) {
-            Logger.debug("cache", "could not run " + command[0] + ": " + String(e && e.message))
+            var process = runType.createObject(root, { command: job.command, done: finished, running: true })
+            if (!process) throw PluginError.internal("could not create a cache process")
+        } catch (caughtError) {
+            Logger.debug("cache", "could not run " + job.command[0] + ": " + String(caughtError && caughtError.message))
             Qt.callLater(function() { finished(-1, "") })
         }
     }
@@ -98,6 +125,7 @@ Item {
             onTriggered: { var run = action; action = null; destroy(); run() }
         }
     }
+    // Run the action after a one-shot delay.
     function _later(delayMs, action) { laterType.createObject(root, { interval: delayMs, action: action, running: true }) }
 
     // FileView's `loaded` is also a property, so its signals are handled here and passed on.
@@ -122,6 +150,7 @@ Item {
         }
     }
 
+    // Create the cache directory when it has not yet been checked.
     function _ensureDirectory(callback) {
         if (_directoryReady) { callback(true); return }
         _run(["mkdir", "-p", "--", directory], function(code) {
@@ -160,6 +189,7 @@ Item {
         })
     }
 
+    // Find the newest readable saved record for one symbol.
     function _readSymbol(uid, callback) {
         _listFiles(uid, function(names) {
             if (names.length === 0) {
@@ -171,6 +201,7 @@ Item {
         })
     }
 
+    // Try the remaining cache files from newest to oldest.
     function _tryFiles(uid, names, index, callback) {
         if (index >= names.length) {
             Logger.debug("cache", "none of the " + names.length + " saved files of " + uid + " could be read: starting empty")
@@ -188,6 +219,7 @@ Item {
         busy++
         var settled = false
         var reader = null
+        // Finish this file operation once and release its file object.
         function settle(record) {
             if (settled) return
             settled = true
@@ -195,15 +227,17 @@ Item {
             reader.destroy()
             callback(record)
         }
+        // Parse a loaded cache file and complete the read.
         function loaded() {
             var record = null
             try {
                 record = _parseRecord(uid, reader.text())
-            } catch (e) {
-                Logger.debug("cache", name + " is not usable: " + String(e && e.message))
+            } catch (caughtError) {
+                Logger.debug("cache", name + " is not usable: " + String(caughtError && caughtError.message))
             }
             settle(record)
         }
+        // Retry a failed cache read or complete it without a record.
         function failed(error) {
             if (attempt < attempts) {
                 Logger.debug("cache", "reading " + name + " failed (attempt " + attempt + "/" + attempts + "), trying again")
@@ -219,14 +253,16 @@ Item {
         reader = readerType.createObject(root, { path: directory + "/" + name, whenLoaded: loaded, whenFailed: failed })
     }
 
+    // Build a typed error explaining why cached data cannot be restored.
     function _unusable(detail) {
         return new PluginError.PluginError(PluginError.Code.STORAGE, "Saved market data couldn't be read.", detail)
     }
 
+    // Require the supported cache version and matching symbol handle.
     function _parseRecord(uid, text) {
         var record = JSON.parse(text)
         if (!record || typeof record !== "object" || Array.isArray(record)) throw _unusable("not a record")
-        if (record.version !== JsK.CACHE_FORMAT_VERSION) throw _unusable("format version " + record.version)
+        if (record.version !== JsConstants.CACHE_FORMAT_VERSION) throw _unusable("format version " + record.version)
         if (record.uid !== uid) throw _unusable("belongs to another symbol")
         return record
     }
@@ -249,31 +285,35 @@ Item {
         Object.keys(_dirty).forEach(function(uid) { if (!_writing[uid]) _startWrite(uid) })
     }
 
+    // Return a new state map with the requested flag set or removed.
     function _flag(map, uid, on) {
         var copy = Object.assign({}, map)
         if (on) copy[uid] = true; else delete copy[uid]
         return copy
     }
 
+    // Snapshot dirty data and begin a bounded write attempt.
     function _startWrite(uid) {
         _dirty = _flag(_dirty, uid, false)
         var record = null
-        try { record = snapshotOf ? snapshotOf(uid) : null } catch (e) { Logger.debug("cache", "no snapshot of " + uid + ": " + String(e && e.message)) }
+        try { record = snapshotOf ? snapshotOf(uid) : null } catch (caughtError) { Logger.debug("cache", "no snapshot of " + uid + ": " + String(caughtError && caughtError.message)) }
         if (!record) return
         _writing = _flag(_writing, uid, true)
         busy++
-        record.version = JsK.CACHE_FORMAT_VERSION
+        record.version = JsConstants.CACHE_FORMAT_VERSION
         record.uid = uid
         record.savedAt = Date.now()
         _attemptWrite(uid, JSON.stringify(record), fileNameOf(uid), 1, 0)
     }
 
+    // Write the snapshot atomically after ensuring its directory exists.
     function _attemptWrite(uid, text, name, attempt, fallbacksUsed) {
         _ensureDirectory(function(ready) {
             if (!ready) { _writeFailed(uid, text, name, attempt, fallbacksUsed, "no directory"); return }
             busy++
             var settled = false
             var writer = null
+            // Finish this file operation once and release its file object.
             function settle(action) {
                 if (settled) return
                 settled = true
@@ -290,6 +330,7 @@ Item {
         })
     }
 
+    // Retry the write or try a bounded number of fallback file names.
     function _writeFailed(uid, text, name, attempt, fallbacksUsed, reason) {
         _directoryReady = false      // maybe the directory vanished: make sure of it on the next try
         if (attempt < attempts) {
@@ -308,6 +349,7 @@ Item {
         }
     }
 
+    // Remove older files after the newest snapshot reaches disk.
     function _writeSucceeded(uid, name) {
         Logger.debug("cache", "saved " + name)
         // Only the latest update stays: the symbol's other files (an older fallback, a stale primary) go.
@@ -318,6 +360,7 @@ Item {
         })
     }
 
+    // Release the write slot and handle newer data or a pending removal.
     function _writeEnded(uid) {
         _writing = _flag(_writing, uid, false)
         busy--

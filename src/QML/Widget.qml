@@ -11,15 +11,13 @@
 
 import QtQuick
 import Quickshell
-import Quickshell.Io
 import qs.Common
 import qs.Services
 import qs.Widgets
 import qs.Modules.Plugins
 import "../JS/Helpers/Helpers.js" as Helpers
-import "../JS/Contracts/PluginError.js" as PluginError
 import "../JS/Helpers/SymbolErrorMap.js" as SymbolErrors
-import "../JS/Helpers/Constants.js" as JsK
+import "../JS/Helpers/Constants.js" as JsConstants
 import "./Helpers"
 import "./Services"
 import "./Views"
@@ -70,6 +68,7 @@ PluginComponent {
     // Latest error per symbol and pull (a SymbolErrorMap map: { uid: { price, graph } }), cleared on success.
     property var symbolErrors: ({})
 
+    // Publish the latest error for one symbol and fetch type.
     function _setSymbolError(uid, fetchType, record) {
         symbolErrors = SymbolErrors.set(symbolErrors, uid, fetchType, record)
     }
@@ -99,7 +98,7 @@ PluginComponent {
         }
     }
 
-    property var symbols: storage.readSymbols(pluginData.symbols)
+    property var symbols: storage.readCurrentSymbols(pluginData.symbols)
 
     property var providerCredentials: storage.readCredentials(pluginData)
     property string _lastProviderCredentialsSignature: ""
@@ -160,6 +159,7 @@ PluginComponent {
     property var  _knownSymbolFetchSignatures: ({})
     property bool _initialized:    false
 
+    // Compare credential settings without changing provider state.
     function _providerCredentialsSignature(credentials) {
         var ids = ProvidersManager.types.map(function(type) { return ProvidersManager.idOf(type) }).sort()
         var parts = []
@@ -173,6 +173,7 @@ PluginComponent {
         return Helpers.symbolFetchSignature(symbol, ProvidersManager.defaultId)
     }
 
+    // Index the requested configuration by each symbol handle.
     function _symbolFetchSignatureMap(symbolList) {
         var result = {}
         for (var i = 0; i < symbolList.length; i++)
@@ -196,7 +197,7 @@ PluginComponent {
 
     Timer {
         id: newSymbolChecker
-        interval: JsK.SYMBOL_WATCH_DELAY_MS
+        interval: JsConstants.SYMBOL_WATCH_DELAY_MS
         repeat: false
         onTriggered: {
             var currentIds = symbols.map(function(symbol) { return symbol.uid })
@@ -240,7 +241,7 @@ PluginComponent {
         id: migrationTimer
         interval: 0
         repeat: false
-        onTriggered: storage.migrate(symbols)
+        onTriggered: storage.migrateSavedSymbols(pluginData.symbols)
     }
 
     Component.onCompleted: {
@@ -252,7 +253,7 @@ PluginComponent {
         // pluginData again: right away (inside this very call) or later. Neither case may be waited for, so
         // the symbols that already carry a uid are started now, and any that arrive later are picked up by
         // the symbol watcher as new symbols.
-        storage.migrate(symbols)
+        storage.migrateSavedSymbols(pluginData.symbols)
         storage.migrateSettings(pluginData)
         setVisibilityOverride(canFetchAnySymbol)
         var ready = symbols.filter(function(symbol) { return !!symbol.uid })
@@ -268,6 +269,7 @@ PluginComponent {
     // ── Per-symbol fetch results ─────────────────────────────────────────────
     Connections {
         target: fetcher
+        // Forward fetch failures and recoveries to the displayed error map.
         function onSymbolErrorChanged(uid, fetchType, record) {
             root._setSymbolError(uid, fetchType, record)
         }

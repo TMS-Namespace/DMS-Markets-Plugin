@@ -56,6 +56,7 @@ function internal(detail) {
     return new PluginError(Code.INTERNAL, "Something went wrong inside the plugin.", detail)
 }
 
+// Recognize errors created by the shared PluginError constructor.
 function isPluginError(value) {
     return !!value && value instanceof PluginError
 }

@@ -1,6 +1,6 @@
 const { assert, same, loadShared, readSource, compileFunction, compileFunctions } = require("../../Helpers/Loader");
 
-const widget = readSource("QML/Widget.qml");
+const widget = readSource("QML/Widget.qml").replace(/^\s*\/\/.*$/gm, "");
 const { errorMap } = loadShared();
 
 // ── DMS toast wiring ─────────────────────────────────────────────────────────
@@ -44,13 +44,13 @@ assert(/Connections \{\s*target: fetcher\s*function onSymbolErrorChanged\(uid, f
 assert(/symbolErrors:\s+root\.symbolErrors/.test(widget), "passed to the popup");
 
 // ── Reading the saved symbols: the storage's job (see DataStorage.test.js) ───
-assert(/property var symbols: storage\.readSymbols\(pluginData\.symbols\)/.test(widget), "damaged data is handled by the storage, not here");
+assert(/property var symbols: storage\.readCurrentSymbols\(pluginData\.symbols\)/.test(widget), "damaged data is handled by the storage, not here");
 assert(!/_readSymbols|symbolsBackup|catch \(e\) \{\s*return \[\]/.test(widget), "no ad-hoc parsing, backup or swallowing in the widget");
 assert(widget.indexOf("_errorHandlerReady") < widget.indexOf("DataStorage {"), "errors are configured before the storage can report any");
 
 // ── Startup order ────────────────────────────────────────────────────────────
 assert(/ProvidersManager\.loadErrors[\s\S]*?ErrorHandler\.handle\("providers"/.test(widget), "providers that failed to load are reported");
-assert(widget.indexOf("ProvidersManager.loadErrors") < widget.lastIndexOf("storage.migrate(symbols)"), "load errors are reported first");
+assert(widget.indexOf("ProvidersManager.loadErrors") < widget.lastIndexOf("storage.migrateSavedSymbols(pluginData.symbols)"), "load errors are reported first");
 const startup = /Component\.onCompleted: \{([\s\S]*?)\n    \}\n/.exec(widget)[1];
 assert(!/JSON\.parse/.test(startup) && !/\btry\b/.test(startup), "no ad-hoc parsing or swallowing at startup");
 

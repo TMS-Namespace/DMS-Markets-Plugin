@@ -15,7 +15,6 @@ import QtQml
 import "../Contracts"
 import "../../JS/Contracts/PluginError.js" as PluginError
 import "../../JS/Helpers/ProviderRules.js" as ProviderRules
-import "../../JS/Helpers/SymbolMigration.js" as SymbolMigration
 import "../../JS/Providers/Yahoo/YahooProperties.js" as YahooProperties
 import "../../JS/Providers/Yahoo/YahooApi.js" as YahooApi
 import "../../JS/Providers/Stooq/StooqProperties.js" as StooqProperties
@@ -64,10 +63,11 @@ QtObject {
                 handler.api = source.api         // assigned, not passed to createObject: that would flatten the module's functions away
                 started[source.type] = handler
                 Logger.debug("providers", "started " + source.id + " (" + properties.name + ")")
-            } catch (e) {
-                Logger.debug("providers", "could not start " + source.id + ": " + String(e && e.message))
-                failed.push(_loadErrorType.createObject(null, { id: source.id, name: source.name,
-                                                                error: PluginError.from(e, PluginError.Code.PROVIDER_CONFIG) }))
+            } catch (caughtError) {
+                Logger.debug("providers", "could not start " + source.id + ": " + String(caughtError && caughtError.message))
+                var error = PluginError.from(caughtError, PluginError.Code.PROVIDER_CONFIG)
+                failed.push(_loadErrorType.createObject(null, { id: source.id, name: source.name, error: error,
+                    userMessage: source.name + " couldn't be loaded and is unavailable. " + error.userMessage }))
             }
         })
         var ids = {}
@@ -90,7 +90,9 @@ QtObject {
         for (var type in _ids) if (_ids[type] === id) return Number(type)
         return -1
     }
+    // Convert a provider type into its persisted text identifier.
     function idOf(type) { return _ids[type] || "" }
+    // Find the provider facade by its persisted text identifier.
     function handlerFromId(id) { return handlerFor(typeOf(id)) }
 
     // Like handlerFromId, but a provider that is not available is an error (UNKNOWN_PROVIDER).
@@ -112,14 +114,4 @@ QtObject {
         return types.map(function(type) { return { label: handlers[type].properties.name, value: idOf(type) } })
     }
 
-    // ── Across providers ─────────────────────────────────────────────────────
-
-    // Brings a saved symbol list up to the current format and moves each symbol's ranges to what its
-    // provider serves (SymbolMigration). Returns { symbols, changed }.
-    function migrateSymbols(list) {
-        return SymbolMigration.migrate(list, defaultId, function(id) {
-            var handler = handlerFromId(id)
-            return handler ? handler.properties : null
-        })
-    }
 }

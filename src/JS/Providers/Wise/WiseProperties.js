@@ -9,31 +9,32 @@
 // are WiseApi.js.
 
 .pragma library
-.import "WiseConstants.js" as K
+.import "WiseConstants.js" as ProviderConstants
 .import "../../Contracts/Resolution.js" as Resolution
 
 var ResolutionValues = Resolution.Values
 
+// Return this provider's declared settings and supported data ranges.
 function create() {
     return {
-        providerId: K.WISE_PROVIDER_ID,
-        name: K.WISE_NAME,
-        alias: K.WISE_ALIAS,
-        description: K.WISE_DESCRIPTION,
-        baseUrl: K.WISE_BASE_URL,
-        symbolSearchUrl: K.WISE_SYMBOL_SEARCH_URL,
-        symbolHelpText: K.WISE_SYMBOL_HELP_TEXT,
-        symbolPlaceholder: K.WISE_SYMBOL_PLACEHOLDER,
-        symbolPattern: K.WISE_SYMBOL_PATTERN,
-        symbolMinLength: K.WISE_SYMBOL_MIN_LENGTH,
-        symbolMaxLength: K.WISE_SYMBOL_MAX_LENGTH,
-        symbolFormatMessage: K.WISE_SYMBOL_FORMAT_MESSAGE,
+        providerId: ProviderConstants.WISE_PROVIDER_ID,
+        name: ProviderConstants.WISE_NAME,
+        alias: ProviderConstants.WISE_ALIAS,
+        description: ProviderConstants.WISE_DESCRIPTION,
+        baseUrl: ProviderConstants.WISE_BASE_URL,
+        symbolSearchUrl: ProviderConstants.WISE_SYMBOL_SEARCH_URL,
+        symbolHelpText: ProviderConstants.WISE_SYMBOL_HELP_TEXT,
+        symbolPlaceholder: ProviderConstants.WISE_SYMBOL_PLACEHOLDER,
+        symbolPattern: ProviderConstants.WISE_SYMBOL_PATTERN,
+        symbolMinLength: ProviderConstants.WISE_SYMBOL_MIN_LENGTH,
+        symbolMaxLength: ProviderConstants.WISE_SYMBOL_MAX_LENGTH,
+        symbolFormatMessage: ProviderConstants.WISE_SYMBOL_FORMAT_MESSAGE,
         minPullResolution: ResolutionValues.H1,
         changeResolutions: [ResolutionValues.H1, ResolutionValues.D1],
         priceResolutions: [ResolutionValues.H1, ResolutionValues.D1],
         chartLimits: [
-            { resolution: ResolutionValues.H1, maxHistoryDays: K.WISE_HOURLY_MAX_DAYS },
-            { resolution: ResolutionValues.D1, maxHistoryDays: K.WISE_DAILY_MAX_DAYS }
+            { resolution: ResolutionValues.H1, maxHistoryDays: ProviderConstants.WISE_HOURLY_MAX_DAYS },
+            { resolution: ResolutionValues.D1, maxHistoryDays: ProviderConstants.WISE_DAILY_MAX_DAYS }
         ]
     }
 }

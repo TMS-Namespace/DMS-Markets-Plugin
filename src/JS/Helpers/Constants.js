@@ -4,7 +4,7 @@
 // provider-specific constants live next to each provider in JS/Providers/<Name>/.
 // UI constants (sizes, colors, strings) live in QML/Helpers/Constants.qml.
 //
-// Usage in QML:  import "../JS/Helpers/Constants.js" as JsK
+// Usage in QML:  import "../JS/Helpers/Constants.js" as JsConstants
 // Usage in JS:   .import "Constants.js" as Constants
 
 .pragma library
@@ -48,6 +48,7 @@ var CACHE_FORMAT_VERSION       = 1
 var CACHE_ATTEMPTS             = 3               // tries of one file read or write before giving up on that file
 var CACHE_RETRY_MS             = 500             // wait between those tries
 var CACHE_FLUSH_DELAY_MS       = 1000            // updates of a symbol within this time are written as one file
+var CACHE_PROCESS_QUEUE_MAX   = 100             // bounded shell work; excess work follows the normal failure path
 var CACHE_MAX_FALLBACKS        = 2               // other file names tried when a symbol's file cannot be written
 var STORAGE_SYMBOLS_KEY        = "symbols"
 var STORAGE_SYMBOLS_BACKUP_KEY = "symbolsBackup"
@@ -61,6 +62,7 @@ var STORAGE_SHOW_PRICE_CHANGE_KEY        = "showPriceChange"
 var STORAGE_LEGACY_SHOW_PRICE_RANGE_KEY  = "showPriceRange"   // old name of showPriceChange
 
 // ── Fetch limits ──────────────────────────────────────────────────────────────
+var FETCH_QUEUE_MAX        = 100        // reject excess work before allocating a pending call
 var MAX_RETRIES            = 3
 var MAX_CONCURRENT_FETCHES = 1          // keep curl bursts off the UI path
 var FETCH_QUEUE_PUMP_MS    = 50

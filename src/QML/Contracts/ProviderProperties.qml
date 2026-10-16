@@ -27,11 +27,8 @@ QtObject {
     property bool requiresCredential: false
     property string credentialSettingKey: ""
     property string credentialLabel: ""
-    property string credentialPlaceholder: ""
     property int credentialMinLength: 1
     property int credentialMaxLength: 0
-    property string credentialHelpTitle: ""
-    property string credentialHelpText: ""
     property string credentialErrorSentinel: ""
     property string authErrorMessage: ""
     property string credential: ""            // the current value, set through the ProviderHandler

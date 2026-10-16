@@ -15,9 +15,10 @@
 
 import QtQuick
 import "../Contracts"
-import "../../JS/Helpers/Helpers.js" as Helpers
+import "../../JS/Helpers/SymbolRules.js" as SymbolRules
+import "../../JS/Helpers/SymbolMigration.js" as SymbolMigration
 import "../../JS/Contracts/PluginError.js" as PluginError
-import "../../JS/Helpers/Constants.js" as JsK
+import "../../JS/Helpers/Constants.js" as JsConstants
 
 Item {
     id: root
@@ -46,7 +47,7 @@ Item {
             return false
         }
         try {
-            if (key === JsK.STORAGE_SYMBOLS_KEY && _unbackedSymbols !== null) {
+            if (key === JsConstants.STORAGE_SYMBOLS_KEY && _unbackedSymbols !== null) {
                 if (!_backup(_unbackedSymbols))
                     throw new PluginError.PluginError(PluginError.Code.STORAGE, "Your changes couldn't be saved.",
                                                       "the damaged saved symbols must be backed up before replacement")
@@ -55,15 +56,15 @@ Item {
             _write(key, value)
             Logger.debug("storage", "saved '" + key + "'")
             return true
-        } catch (e) {
-            var error = PluginError.isPluginError(e) ? e
-                : new PluginError.PluginError(PluginError.Code.STORAGE, "Your changes couldn't be saved.", String(e && e.message))
+        } catch (caughtError) {
+            var error = PluginError.isPluginError(caughtError) ? caughtError
+                : new PluginError.PluginError(PluginError.Code.STORAGE, "Your changes couldn't be saved.", String(caughtError && caughtError.message))
             ErrorHandler.handle("storage", error, { context: key })
             return false
         }
     }
 
-    // One write to the plugin data, tried up to JsK.STORAGE_SAVE_ATTEMPTS times (a write can fail for a moment, e.g. while
+    // One write to the plugin data, tried up to JsConstants.STORAGE_SAVE_ATTEMPTS times (a write can fail for a moment, e.g. while
     // the settings file is being replaced). A write that reports `false` is a failure too. Throws the last failure.
     function _write(key, value) {
         for (var attempt = 1; ; attempt++) {
@@ -71,9 +72,9 @@ Item {
                 if (pluginService.savePluginData(pluginId, key, value) === false)
                     throw new PluginError.PluginError(PluginError.Code.STORAGE, "Your changes couldn't be saved.", "the plugin service refused to save '" + key + "'")
                 return
-            } catch (e) {
-                Logger.debug("storage", "saving '" + key + "' failed (attempt " + attempt + "/" + JsK.STORAGE_SAVE_ATTEMPTS + "): " + String(e && e.message))
-                if (attempt >= JsK.STORAGE_SAVE_ATTEMPTS) throw e
+            } catch (caughtError) {
+                Logger.debug("storage", "saving '" + key + "' failed (attempt " + attempt + "/" + JsConstants.STORAGE_SAVE_ATTEMPTS + "): " + String(caughtError && caughtError.message))
+                if (attempt >= JsConstants.STORAGE_SAVE_ATTEMPTS) throw caughtError
             }
         }
     }
@@ -81,16 +82,17 @@ Item {
     // ── Symbols: reading ──────────────────────────────────────────────────────
     // `raw` is the saved text (or an already parsed list). Damaged data is reported and backed
     // up, and reads as an empty list only after that.
-    function readSymbols(raw) {
+    function readSymbols(raw, deferBackup) {
         try {
             var parsed = _parseSymbols(raw)
             Logger.debug("storage", "read " + parsed.length + " saved symbols")
             return parsed
-        } catch (e) {
-            ErrorHandler.handle("storage", e, { context: "saved symbols" })
+        } catch (caughtError) {
+            ErrorHandler.handle("storage", caughtError, { context: "saved symbols" })
             if (typeof raw === "string") {
                 _unbackedSymbols = raw
-                if (_backup(raw)) _unbackedSymbols = null
+                if (deferBackup) backupTimer.restart()
+                else if (_backup(raw)) _unbackedSymbols = null
             }
             return []
         }
@@ -103,8 +105,8 @@ Item {
         var parsed
         try {
             parsed = typeof raw === "string" ? JSON.parse(raw) : raw
-        } catch (e) {
-            throw _unreadableSymbols("symbols is not valid JSON: " + e.message, e)
+        } catch (caughtError) {
+            throw _unreadableSymbols("symbols is not valid JSON: " + caughtError.message, caughtError)
         }
         if (!Array.isArray(parsed)) throw _unreadableSymbols("symbols is not a list")
         for (var i = 0; i < parsed.length; i++)
@@ -113,27 +115,64 @@ Item {
         return parsed
     }
 
+    // Build a typed storage error for damaged saved symbol data.
     function _unreadableSymbols(detail, cause) {
         return new PluginError.PluginError(PluginError.Code.STORAGE, "Your saved symbols couldn't be read.", detail,
                                            cause ? { cause: cause } : undefined)
     }
 
+    // Preserve the original damaged symbol text before replacement is allowed.
     function _backup(raw) {
         try {
             if (!pluginService)
                 throw new PluginError.PluginError(PluginError.Code.STORAGE, "Your saved symbols couldn't be backed up.", "plugin service unavailable")
-            _write(JsK.STORAGE_SYMBOLS_BACKUP_KEY, raw)
-            Logger.debug("storage", "kept the unreadable saved symbols in '" + JsK.STORAGE_SYMBOLS_BACKUP_KEY + "'")
+            // Host data delivery can reenter the reader: never rewrite an identical backup.
+            if (load(JsConstants.STORAGE_SYMBOLS_BACKUP_KEY, null) === raw) return true
+            _write(JsConstants.STORAGE_SYMBOLS_BACKUP_KEY, raw)
+            Logger.debug("storage", "kept the unreadable saved symbols in '" + JsConstants.STORAGE_SYMBOLS_BACKUP_KEY + "'")
             return true
-        } catch (e) {
-            ErrorHandler.handle("storage", PluginError.from(e, PluginError.Code.STORAGE), { context: "backing up saved symbols", notify: false })
+        } catch (caughtError) {
+            ErrorHandler.handle("storage", PluginError.from(caughtError, PluginError.Code.STORAGE), { context: "backing up saved symbols", notify: false })
             return false
         }
     }
 
+    Timer {
+        id: backupTimer
+        interval: 0
+        repeat: false
+        onTriggered: {
+            var original = _unbackedSymbols
+            if (original !== null && _backup(original) && _unbackedSymbols === original)
+                _unbackedSymbols = null
+        }
+    }
+
+    // Return current-format values without writing while a QML binding is being evaluated.
+    function readCurrentSymbols(raw) {
+        var parsed = readSymbols(raw, true)
+        try {
+            return _migrationOf(parsed).symbols
+        } catch (caughtError) {
+            ErrorHandler.handle("storage", caughtError, { context: "reading current symbols" })
+            return []
+        }
+    }
+
+    // Apply legacy compatibility only at the storage boundary.
+    function _migrationOf(list) {
+        return SymbolMigration.migrate(list, ProvidersManager.defaultId, function(providerId) {
+            var handler = ProvidersManager.handlerFromId(providerId)
+            return handler ? handler.properties : null
+        })
+    }
+
+    // Persist any upgrade after the host has delivered the raw saved value.
+    function migrateSavedSymbols(raw) { return migrate(readSymbols(raw)) }
+
     // Reads the symbols from storage and migrates them; see migrate().
     function loadSymbols() {
-        return migrate(readSymbols(load(JsK.STORAGE_SYMBOLS_KEY, "[]"))).symbols
+        return migrateSavedSymbols(load(JsConstants.STORAGE_SYMBOLS_KEY, "[]")).symbols
     }
 
     // ── Symbols: migration ────────────────────────────────────────────────────
@@ -144,9 +183,9 @@ Item {
     function migrate(list) {
         var result
         try {
-            result = ProvidersManager.migrateSymbols(list)
-        } catch (e) {
-            ErrorHandler.handle("storage", e, { context: "migrating saved symbols" })
+            result = _migrationOf(list)
+        } catch (caughtError) {
+            ErrorHandler.handle("storage", caughtError, { context: "migrating saved symbols" })
             return { symbols: list, changed: false, saved: false }
         }
         if (!result.changed) return { symbols: result.symbols, changed: false, saved: false }
@@ -157,11 +196,13 @@ Item {
     // ── Symbols: writing ──────────────────────────────────────────────────────
     function saveSymbols(list) {
         Logger.debug("storage", "saving " + list.length + " symbols")
-        return save(JsK.STORAGE_SYMBOLS_KEY, JSON.stringify(list))
+        return save(JsConstants.STORAGE_SYMBOLS_KEY, JSON.stringify(list))
     }
 
+    // Copy saved symbol data before applying a list edit.
     function _copy(list) { return JSON.parse(JSON.stringify(list)) }
 
+    // Persist a toggled pin flag without mutating the displayed list.
     function togglePin(list, uid) {
         var copy = _copy(list)
         for (var i = 0; i < copy.length; i++) {
@@ -173,6 +214,7 @@ Item {
         return false
     }
 
+    // Remove the symbol through the checked storage boundary.
     function removeSymbol(list, uid) {
         var copy = list.filter(function(symbol) { return symbol.uid !== uid })
         if (copy.length === list.length) {
@@ -190,6 +232,7 @@ Item {
         return saveSymbols(copy) ? removed : null
     }
 
+    // Persist a reorder and keep the edit position on the same symbol.
     function moveSymbol(list, index, direction) {
         var target = index + direction
         if (index < 0 || index >= list.length || target < 0 || target >= list.length) return false
@@ -205,9 +248,10 @@ Item {
     function upsertSymbol(list, entry, editIndex) {
         // Nothing malformed is written: the entry must be a valid SavedSymbol.
         var candidate = savedSymbolType.createObject(null)
-        var known = candidate.toJson()
-        for (var field in known) if (entry[field] !== undefined) candidate[field] = entry[field]
-        var valid = candidate.valid
+        SymbolRules.SAVED_FIELDS.forEach(function(field) {
+            if (entry[field] !== undefined) candidate[field] = entry[field]
+        })
+        var valid = SymbolRules.isValidSavedSymbol(candidate)
         candidate.destroy()
         if (!valid) {
             ErrorHandler.handle("storage", new PluginError.PluginError(PluginError.Code.STORAGE, "A saved symbol is damaged.",
@@ -235,14 +279,13 @@ Item {
     }
 
     // ── The "add / edit symbol" form's draft ──────────────────────────────────
-    // One stored value per form field (JsK.DRAFT_KEYS), so the form survives closing the settings.
-    function loadDraftField(field, defaultValue) { return load(JsK.DRAFT_KEYS[field], defaultValue) }
-    function saveDraftField(field, value) { return save(JsK.DRAFT_KEYS[field], value) }
+    // The host setting controls save individual form values; the page deliberately starts each form empty.
+    function saveDraftField(field, value) { return save(JsConstants.DRAFT_KEYS[field], value) }
 
     // Saves every field of a draft; true when all were saved.
     function saveDraft(draft) {
         var allSaved = true
-        for (var field in JsK.DRAFT_KEYS)
+        for (var field in JsConstants.DRAFT_KEYS)
             if (!saveDraftField(field, draft[field])) allSaved = false
         return allSaved
     }
@@ -255,7 +298,7 @@ Item {
         ProvidersManager.types.forEach(function(type) {
             var provider = ProvidersManager.handlerFor(type).properties
             if (provider.requiresCredential) {
-                result[provider.providerId] = Helpers.deobfuscate((data && data[provider.credentialSettingKey]) || "")
+                result[provider.providerId] = SymbolMigration.deobfuscate((data && data[provider.credentialSettingKey]) || "")
                 Logger.debug("storage", "credential for " + provider.providerId + ": " + (result[provider.providerId] ? "present" : "missing"))
             }
         })
@@ -263,20 +306,16 @@ Item {
     }
 
     // ── Settings written by older versions ────────────────────────────────────
-    // The current value of the price-change toggle: an old "showPriceRange" value still applies until
-    // the renamed setting is touched. `data` is the plugin data map.
+    // Read the price-change preference through the saved-format compatibility module.
     function readShowPriceChange(data) {
-        var value = data[JsK.STORAGE_SHOW_PRICE_CHANGE_KEY] !== undefined
-                    ? data[JsK.STORAGE_SHOW_PRICE_CHANGE_KEY] : data[JsK.STORAGE_LEGACY_SHOW_PRICE_RANGE_KEY]
-        return Helpers.pluginDataBool(value)
+        return SymbolMigration.showPriceChangeValue(data)
     }
 
-    // "showPriceRange" was renamed "showPriceChange": carry an old saved value over once.
+    // Persist a display-setting upgrade when the migration module supplies one.
     function migrateSettings(data) {
-        if (!data || data[JsK.STORAGE_SHOW_PRICE_CHANGE_KEY] !== undefined
-                || data[JsK.STORAGE_LEGACY_SHOW_PRICE_RANGE_KEY] === undefined)
-            return false
-        Logger.debug("storage", "carrying the old '" + JsK.STORAGE_LEGACY_SHOW_PRICE_RANGE_KEY + "' setting over to '" + JsK.STORAGE_SHOW_PRICE_CHANGE_KEY + "'")
-        return save(JsK.STORAGE_SHOW_PRICE_CHANGE_KEY, data[JsK.STORAGE_LEGACY_SHOW_PRICE_RANGE_KEY])
+        var change = SymbolMigration.settingsChange(data)
+        if (!change) return false
+        Logger.debug("storage", "migrating the saved price-change display setting")
+        return save(change.key, change.value)
     }
 }

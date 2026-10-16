@@ -13,6 +13,7 @@
 
 .pragma library
 .import "Helpers.js" as Helpers
+.import "Constants.js" as Constants
 .import "../Contracts/Resolution.js" as Resolution
 .import "../Contracts/ChartSpan.js" as ChartSpan
 .import "SelectionPolicy.js" as SelectionPolicy
@@ -42,6 +43,7 @@ var LEGACY_RESOLUTION = Object.freeze({
 
 var _FLAGS = ["showChangeWhenPinned", "invert", "pinned"]
 
+// Convert one saved symbol to the current field names and handle format.
 function upgrade(raw, defaultProvider, position) {
     var copy = Helpers.copyOf(raw)
     var changed = false
@@ -82,6 +84,7 @@ function upgrade(raw, defaultProvider, position) {
     return { symbol: changed ? copy : raw, changed: changed }
 }
 
+// Upgrade each saved symbol and clamp its selection to provider capabilities.
 function migrate(list, defaultProvider, rulesOf) {
     var changed = false
     var symbols = (list || []).map(function(raw, position) {
@@ -108,4 +111,34 @@ function migrate(list, defaultProvider, rulesOf) {
         return symbol
     })
     return { symbols: symbols, changed: changed }
+}
+
+// Decode stored credentials, including the plain-text format written by older releases.
+function deobfuscate(encoded) {
+    if (!encoded) return ""
+    // Hex-encoded XOR format: even-length string of hex digits
+    if (/^[0-9a-fA-F]+$/.test(encoded) && encoded.length % 2 === 0) {
+        var key = Constants.CREDENTIAL_OBF_SEED
+        var plain = ""
+        for (var i = 0; i < encoded.length; i += Constants.HEX_BYTE_WIDTH)
+            plain += String.fromCharCode(parseInt(encoded.substring(i, i + Constants.HEX_BYTE_WIDTH), 16) ^ key.charCodeAt((i / Constants.HEX_BYTE_WIDTH) % key.length))
+        return plain
+    }
+    // Fallback: treat as a legacy plain-text value and return as-is
+    return encoded
+}
+
+// Read the renamed price-change flag while preserving an older saved preference.
+function showPriceChangeValue(data) {
+    var saved = data || {}
+    var value = saved[Constants.STORAGE_SHOW_PRICE_CHANGE_KEY] !== undefined
+                ? saved[Constants.STORAGE_SHOW_PRICE_CHANGE_KEY] : saved[Constants.STORAGE_LEGACY_SHOW_PRICE_RANGE_KEY]
+    return Helpers.pluginDataBool(value)
+}
+
+// Return the display-setting migration, or null when the current key already exists.
+function settingsChange(data) {
+    if (!data || data[Constants.STORAGE_SHOW_PRICE_CHANGE_KEY] !== undefined
+            || data[Constants.STORAGE_LEGACY_SHOW_PRICE_RANGE_KEY] === undefined) return null
+    return { key: Constants.STORAGE_SHOW_PRICE_CHANGE_KEY, value: data[Constants.STORAGE_LEGACY_SHOW_PRICE_RANGE_KEY] }
 }

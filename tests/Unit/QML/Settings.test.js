@@ -1,7 +1,7 @@
 // Static wiring checks of Settings.qml (the behaviour is tested in Settings.test.qml on the real runtime).
 const { assert, readSource } = require("../../Helpers/Loader");
 
-const source = readSource("QML/Settings.qml");
+const source = readSource("QML/Settings.qml").replace(/^\s*\/\/.*$/gm, "");
 const code = source.replace(/\/\/.*$/gm, "");
 
 // ── Dropdowns come from the provider properties, never from hard-coded lists ─
@@ -19,7 +19,7 @@ assert(source.includes("readonly property bool chartRangeAvailable:    chartRang
 assert(/onSelectedProviderIdChanged:\s*Qt\.callLater\(syncSelections\)/.test(source), "provider change re-clamps selections");
 assert(/chartResolutionSelect[\s\S]*?onValueChanged:\s*Qt\.callLater\(root\.syncSelections\)/.test(source), "resolution change re-filters the chart range");
 assert(/changeResolutionSelect[\s\S]*?options:\s*root\.changeResolutionOptions/.test(source), "change resolution options are provider driven");
-assert(/id: changeResolutionSelect[\s\S]*?defaultValue:\s*JsK\.DEFAULT_CHANGE_RESOLUTION/.test(source), "the change defaults to one day");
+assert(/id: changeResolutionSelect[\s\S]*?defaultValue:\s*JsConstants\.DEFAULT_CHANGE_RESOLUTION/.test(source), "the change defaults to one day");
 const order = ["priceResolutionSelect", "changeResolutionSelect", "chartResolutionSelect", "chartRangeSelect"].map((id) => source.indexOf(`id: ${id}`));
 assert(order[0] > 0 && order[0] < order[1] && order[1] < order[2] && order[2] < order[3], "dropdown order: price, change, chart resolution, chart range");
 
@@ -35,16 +35,16 @@ for (const field of ["priceResolution:", "chartResolution:", "chartRange:", "tic
     assert(source.includes(field), `saved symbols store ${field}`);
 assert(/storage\.saveDraft\(\{/.test(source), "the form draft is saved by the storage");
 assert(!/"_add\w+"/.test(source), "the draft's storage keys live in the constants only");
-assert(/settingKey: JsK\.DRAFT_KEYS\.provider/.test(source) && /settingKey: JsK\.DRAFT_KEYS\.invert/.test(source), "the controls use the draft keys");
+assert(/settingKey: JsConstants\.DRAFT_KEYS\.provider/.test(source) && /settingKey: JsConstants\.DRAFT_KEYS\.invert/.test(source), "the controls use the draft keys");
 assert(!/\n\s+id:\s+ticker,/.test(source), "the ticker is stored as `ticker`, not `id`");
 assert(!/symbol\.id\b/.test(source), "the ticker is never read from `id`");
 assert(!/Contracts\/|SavedSymbol\.create|Selection\.create/.test(source), "no JS contracts: symbols are plain current-format data checked by the storage");
 
 // ── Defaults come from constants / the provider ──────────────────────────────
-assert(/id: chartResolutionSelect[\s\S]*?defaultValue:\s*JsK\.DEFAULT_CHART_RESOLUTION/.test(source));
-assert(/id: chartRangeSelect[\s\S]*?defaultValue:\s*JsK\.DEFAULT_CHART_SPAN/.test(source));
-assert(/id: priceResolutionSelect[\s\S]*?defaultValue:\s*JsK\.DEFAULT_PRICE_RESOLUTION/.test(source));
-assert(source.includes('import "../JS/Helpers/Constants.js" as JsK'));
+assert(/id: chartResolutionSelect[\s\S]*?defaultValue:\s*JsConstants\.DEFAULT_CHART_RESOLUTION/.test(source));
+assert(/id: chartRangeSelect[\s\S]*?defaultValue:\s*JsConstants\.DEFAULT_CHART_SPAN/.test(source));
+assert(/id: priceResolutionSelect[\s\S]*?defaultValue:\s*JsConstants\.DEFAULT_PRICE_RESOLUTION/.test(source));
+assert(source.includes('import "../JS/Helpers/Constants.js" as JsConstants'));
 assert(!/\|\|\s*"(1m|5m|15m|1h|1d|1w|1M|1W|3M|6M|1Y|2Y|5Y|10Y)"/.test(source), "no range literals as fallbacks");
 assert(!/\bdefaultValue:\s*"(1m|5m|15m|1h|1d|1w|1M|1W)"/.test(source), "no range literals as control defaults");
 assert(!/providerCredentials|setProviderCredential/.test(source), "dead credential code removed");
@@ -71,13 +71,13 @@ assert(rowSettings.every((position, index) => position > 0 && (index === 0 || po
 
 // ── Naming ───────────────────────────────────────────────────────────────────
 assert(/label: "Price Resolution"/.test(source) && !/Price Range/.test(source), "the control is called Price Resolution");
-assert(/settingKey: JsK\.DRAFT_KEYS\.priceResolution/.test(source) && !/_addPriceRange/.test(source));
+assert(/settingKey: JsConstants\.DRAFT_KEYS\.priceResolution/.test(source) && !/_addPriceRange/.test(source));
 assert(!/priceRange|priceInterval|graphInterval|graphResolution|showPriceRange/.test(source), "old variable names are gone");
 assert(/settingKey: "showPriceChange"/.test(source));
 
 // ── Display name hints and symbol validation come from the selected provider ─
 assert(!/displayName(Placeholder|HelpText)/.test(source), "how a symbol is named is the user's choice: no provider text or limits for it");
-assert(/id: nameField[\s\S]*?placeholderText: "Gold"/.test(source) && /up to " \+ JsK\.DISPLAY_NAME_MAX_LENGTH/.test(source), "one generic hint for every provider");
+assert(/id: nameField[\s\S]*?placeholderText: "Gold"/.test(source) && /\+ JsConstants\.DISPLAY_NAME_MAX_LENGTH \+/.test(source), "one generic hint for every provider");
 assert(/tickerValidation:\s+selectedHandler \? selectedHandler\.validateSymbol\(tickerText\)/.test(source), "validated against the selected provider");
 assert(/tickerText:\s+\(tickerInput\.value \|\| ""\)\.trim\(\)/.test(source), "the typed text is trimmed before validation");
 assert(/visible: root\.tickerText !== "" && !root\.tickerValidation\.valid[\s\S]{0,80}text: root\.tickerValidation\.message/.test(source));
@@ -86,7 +86,7 @@ assert(/root\.tickerValidation\.valid && root\.nameValidation\.valid/.test(sourc
 // The display name is validated by SymbolRules.validateName: shown when wrong, blocking on save, and capped while typing.
 assert(/nameValidation:\s+SymbolRules\.validateName\(nameText\)/.test(source));
 assert(/visible: root\.nameText !== "" && !root\.nameValidation\.valid[\s\S]{0,80}text: root\.nameValidation\.message/.test(source), "the reason is shown under the field");
-assert(/id: nameField[\s\S]*?maximumLength: JsK\.DISPLAY_NAME_MAX_LENGTH/.test(source), "typing stops at the maximum length");
+assert(/id: nameField[\s\S]*?maximumLength: JsConstants\.DISPLAY_NAME_MAX_LENGTH/.test(source), "typing stops at the maximum length");
 assert(/SymbolRules\.validateName\(name\)[\s\S]{0,120}ToastService\.showError\("Markets", nameVerdict\.message\)/.test(source), "saving a bad name is refused with the reason");
 assert(source.indexOf("tickerValidation.message") > source.indexOf("symbolHelpText"), "message sits under the symbol help text");
 
@@ -104,5 +104,16 @@ assert(/function saveValue\(key, value\) \{ return storage\.save\(key, value\) \
 // ── Providers that failed to load are shown ──────────────────────────────────
 assert(/readonly property var providerLoadErrors: ProvidersManager\.loadErrors/.test(source));
 assert(/model: root\.providerLoadErrors[\s\S]{0,200}text: modelData\.userMessage[\s\S]{0,200}color: Theme\.error/.test(source), "each failure is listed in the error colour");
+
+// ── Always the defaults when the page is created ─────────────────────────────
+assert(!/loadDraftField\(/.test(source), "what was typed or chosen last time is not brought back");
+assert(/function _resetFormOnce\(\) \{[\s\S]*?_formReset = true[\s\S]*?Qt\.callLater\(root\.clearForm\)/.test(source), "the form is reset once to its defaults");
+assert(/onPluginServiceChanged:[\s\S]*?root\._resetFormOnce\(\)/.test(source) && /if \(pluginService\) _resetFormOnce\(\)/.test(source), "…when the service attaches (or is there already)");
+// ── The popup height shows its value next to the slider ──────────────────────
+assert(/ValueSliderRow \{\s*id: popoutRowsSetting\s*settingKey: "popoutRows"/.test(source) && !/\bSliderSetting \{/.test(source), "the popup height uses the slider with a value label");
+const sliderRow = require("fs").readFileSync(require("path").join(__dirname, "../../../src/QML/Views/ValueSliderRow.qml"), "utf8");
+assert(/DankSlider \{[\s\S]*?width: sliderRow\.width - root\.valueWidth - sliderRow\.spacing/.test(sliderRow) && /text: root\.value/.test(sliderRow), "the value sits to the right of the slider");
+assert(/DankSlider \{[\s\S]*?anchors\.verticalCenter: parent\.verticalCenter[\s\S]*?StyledText \{[\s\S]*?anchors\.verticalCenter: parent\.verticalCenter/.test(sliderRow), "slider and value are centred on the same line");
+assert(/valueWidth: Math\.round\(Theme\.fontSizeMedium/.test(sliderRow), "sized from the theme font");
 
 console.log("Settings static tests passed");

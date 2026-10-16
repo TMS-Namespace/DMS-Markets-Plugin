@@ -57,3 +57,9 @@ const again = Migration.migrate(result.symbols, "wise", rulesOf);
 assert.strictEqual(again.changed, false, "idempotent");
 assert.strictEqual(Migration.migrate(undefined, "wise", rulesOf).changed, false);
 console.log("SymbolMigration tests passed");
+
+// Old XOR-hex credentials and the original plain-text format remain readable.
+const credentialMigration = Migration;
+assert.strictEqual(credentialMigration.deobfuscate("091617414109"), "abc123");
+assert.strictEqual(credentialMigration.deobfuscate(""), "");
+assert.strictEqual(credentialMigration.deobfuscate("legacy plain text!"), "legacy plain text!");

@@ -11,6 +11,7 @@ TestSuite {
     property var seen: ({ finished: [], pendingChanges: [] })
     property var handler: null
     property bool current: true
+    property real now: 1000
     readonly property int max: JsConstants.MAX_RETRIES
 
     function envelope(curlExit, status, body) { return "MARKETS-RESPONSE " + curlExit + " " + status + "\n" + (body || "") }
@@ -19,8 +20,9 @@ TestSuite {
     function setup() {
         ProvidersManager.reload(ProvidersManager.sources)         // fresh handlers: no state leaks between tests
         seen = { finished: [], pendingChanges: [] }
-        current = true
+        current = true; now = 1000
         handler = ProvidersManager.handlerFor(ProviderType.Wise)
+        handler.clock = function() { return suite.now }
         handler.finished.connect(function(context, response, series) { seen.finished.push({ context: context, response: response, series: series }) })
         handler.pendingChanged.connect(function() { seen.pendingChanges.push(Object.assign({}, handler.pending)) })
     }
@@ -45,6 +47,11 @@ TestSuite {
         handler._activeCount += 1
         handler._handleFinished(job, exitCode, stdout, stderr || "")
         return job
+    }
+    // Move the fake clock to the next deadline; no wall-clock waiting in queue unit tests.
+    function advanceRetry() {
+        now = Math.max(now, handler._retryQueue[0].readyAt, handler._retryAfter)
+        handler._processRetryQueue()
     }
     function keyCount() { return Object.keys(handler._keys).length }
 
@@ -124,7 +131,7 @@ TestSuite {
         handler.properties.credential = "SECRET-KEY"
         send(request("https://x.test/?apikey=SECRET-KEY"))
         runNext(0, envelope(6, "000"))                          // transient: a retry
-        handler._processRetryQueue()
+        advanceRetry()
         runNext(0, envelope(0, 200, wiseBody))
         var text = lines.join("\n")
         check(/queued BRLPLN price/.test(text), "queued"); check(/retrying BRLPLN price/.test(text), "retry")
@@ -147,7 +154,7 @@ TestSuite {
         same(handler._activeCount, 0, "the failed attempt frees the slot")
         equal(handler.pending, { u1: 1 })
         check(!send(request()), "cannot be submitted again meanwhile")
-        handler._processRetryQueue()
+        advanceRetry()
         same(handler._retryQueue.length, 0); same(handler._queue.length, 1)
         runNext(0, envelope(0, 200, wiseBody))
         same(seen.finished.length, 1); check(seen.finished[0].response.ok)
@@ -161,7 +168,7 @@ TestSuite {
             check(attempts <= max + 1, "never more attempts than the limit allows")
             runNext(0, envelope(28, "000"), "timed out")
             if (handler._retryQueue.length === 0) break
-            handler._processRetryQueue()
+            advanceRetry()
         }
         same(attempts, max + 1)
         same(seen.finished.length, 1)
@@ -176,7 +183,7 @@ TestSuite {
             send(request("k", { command: ["bash", "-c", "same-command"] }))
             runNext(0, envelope(0, statuses[i], "x"))
             same(handler._retryQueue.length, 1, "HTTP " + statuses[i] + " is retried")
-            handler._processRetryQueue()
+            advanceRetry()
             equal(handler._queue[0].request.command, ["bash", "-c", "same-command"], "the same request is repeated")
             same(handler._queue[0].attempt, 1)
         }
@@ -209,7 +216,7 @@ TestSuite {
         send(request())
         runNext(0, envelope(6, "000"))
         current = false
-        handler._processRetryQueue()
+        advanceRetry()
         same(handler._queue.length, 0); same(seen.finished.length, 0)
         equal(handler.pending, {}); same(keyCount(), 0)
     }
@@ -256,4 +263,34 @@ TestSuite {
         })
         send(call)
     }
+    function test_new_request_queue_is_bounded_without_leaking_pending_counts() {
+        for (var i = 0; i < JsConstants.FETCH_QUEUE_MAX; i++) check(send(request("request-" + i)))
+        var failure = throws(function() { send(request("overflow")) }, "queue reached its limit")
+        same(failure.code, "process")
+        same(handler._queue.length, JsConstants.FETCH_QUEUE_MAX)
+        same(handler.pending.u1, JsConstants.FETCH_QUEUE_MAX)
+        same(keyCount(), JsConstants.FETCH_QUEUE_MAX)
+        check(!send(request("request-0")), "a duplicate still reports already in flight")
+    }
+
+    function test_each_retry_keeps_its_deadline_when_more_failures_arrive() {
+        check(handler._scheduleRetry({ request: request("first"), attempt: 1 }))
+        now += 1000
+        check(handler._scheduleRetry({ request: request("later"), attempt: 2 }))
+        now = 1000 + JsConstants.RETRY_INTERVAL_MS - 1
+        handler._processRetryQueue()
+        same(handler._queue.length, 0, "never before the first backoff expires")
+        now++
+        handler._processRetryQueue()
+        same(handler._queue.length, 1, "a later failure never postpones the first retry")
+        same(handler._queue[0].request.url, "first")
+        now = 2000 + JsConstants.RETRY_INTERVAL_MS * 2 - 1
+        handler._processRetryQueue()
+        same(handler._queue.length, 1, "the second attempt keeps its longer delay")
+        now++
+        handler._processRetryQueue()
+        same(handler._queue.length, 2)
+        same(handler._queue[1].request.url, "later")
+    }
+
 }

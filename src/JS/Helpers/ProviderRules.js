@@ -27,9 +27,20 @@ function isValidCredential(properties, credential) {
 var API_FUNCTIONS = ["priceUrl", "historyUrl", "changeUrl", "parsePrice", "parseHistory", "parseChange", "pageUrl"]
 var OPTIONAL_API_FUNCTIONS = ["extractApiError", "fetchScript"]
 
+// Raise a typed error identifying an inconsistent provider declaration.
 function _fail(id, detail) {
     throw new PluginError.PluginError(PluginError.Code.PROVIDER_CONFIG, "A data provider is misconfigured and was not loaded.",
                                       "Provider '" + id + "': " + detail)
+}
+
+// Reject duplicate resolutions and choices that require polling faster than the provider permits.
+function _assertResolutions(id, values, minimumMs, disabled, change) {
+    values.forEach(function(resolution, index) {
+        if (!Resolution.isValid(resolution)) _fail(id, "unknown resolution '" + resolution + "'")
+        if (values.indexOf(resolution) !== index) _fail(id, "duplicate resolution '" + resolution + "'")
+        var refreshMs = change ? Math.min(Resolution.ms(resolution), Resolution.ms(Resolution.Values.H1)) : Resolution.ms(resolution)
+        if (!disabled && refreshMs < minimumMs) _fail(id, "resolution '" + resolution + "' requires polling below minPullResolution")
+    })
 }
 
 // Throws a PROVIDER_CONFIG error naming the first problem found.
@@ -46,17 +57,19 @@ function assertDeclaration(id, declared, api) {
         _fail(id, "symbol lengths must satisfy 1 <= min <= max")
     if (!Resolution.isValid(declared.minPullResolution)) _fail(id, "'minPullResolution' is not a Resolution")
     if (!Array.isArray(declared.priceResolutions) || declared.priceResolutions.length === 0) _fail(id, "'priceResolutions' must be a non-empty list")
-    declared.priceResolutions.forEach(function(resolution) { if (!Resolution.isValid(resolution)) _fail(id, "unknown price resolution '" + resolution + "'") })
+    _assertResolutions(id, declared.priceResolutions, Resolution.ms(declared.minPullResolution), declared.disabled, false)
     if (!Array.isArray(declared.changeResolutions) || declared.changeResolutions.length === 0) _fail(id, "'changeResolutions' must be a non-empty list")
-    declared.changeResolutions.forEach(function(r) { if (!Resolution.isValid(r)) _fail(id, "unknown change resolution '" + r + "'") })
+    _assertResolutions(id, declared.changeResolutions, Resolution.ms(declared.minPullResolution), declared.disabled, true)
     if (!Array.isArray(declared.chartLimits) || declared.chartLimits.length === 0) _fail(id, "'chartLimits' must be a non-empty list")
     var seen = {}
     declared.chartLimits.forEach(function(limit) {
         if (!limit || !Resolution.isValid(limit.resolution)) _fail(id, "unknown chart resolution in 'chartLimits'")
         if (seen[limit.resolution]) _fail(id, "chart resolution '" + limit.resolution + "' is declared twice")
+        if (!declared.disabled && Resolution.ms(limit.resolution) < Resolution.ms(declared.minPullResolution))
+            _fail(id, "chart resolution requires polling below minPullResolution")
         seen[limit.resolution] = true
         var days = limit.maxHistoryDays === undefined ? 0 : limit.maxHistoryDays
-        if (typeof days !== "number" || !(days >= 0)) _fail(id, "'maxHistoryDays' of '" + limit.resolution + "' must be a number >= 0")
+        if (typeof days !== "number" || !isFinite(days) || !(days >= 0)) _fail(id, "'maxHistoryDays' of '" + limit.resolution + "' must be a number >= 0")
     })
     if (declared.requiresCredential && (typeof declared.credentialSettingKey !== "string" || declared.credentialSettingKey === ""))
         _fail(id, "a provider that needs a credential must declare 'credentialSettingKey'")

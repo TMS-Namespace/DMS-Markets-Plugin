@@ -16,6 +16,8 @@ QtObject {
     readonly property color warning: "#e8a200"
     readonly property real cornerRadius: 12
     readonly property int spacingXS: 4
+    readonly property real popupTransparency: 1.0
+    function withAlpha(color, alpha) { return Qt.rgba(color.r, color.g, color.b, alpha) }
     readonly property int spacingS: 8
     readonly property int spacingM: 12
     readonly property int spacingXL: 24

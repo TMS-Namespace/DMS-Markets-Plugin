@@ -1,10 +1,10 @@
 const vm = require("vm");
 const { assert, same, readSource, loadShared } = require("../../../Helpers/Loader");
 
-const row = readSource("QML/Views/SymbolRow.qml");
+const row = readSource("QML/Views/SymbolRow.qml").replace(/^\s*\/\/.*$/gm, "");
 const rowCode = row.replace(/\/\/.*$/gm, "");   // ignore comments
-const popout = readSource("QML/Views/PopoutPanel.qml");
-const chart = readSource("QML/Views/PriceChart.qml");
+const popout = readSource("QML/Views/PopoutPanel.qml").replace(/^\s*\/\/.*$/gm, "");
+const chart = readSource("QML/Views/PriceChart.qml").replace(/^\s*\/\/.*$/gm, "");
 const { Resolution, ChartSpan, errorMap } = loadShared();
 
 // ── Popup: labels instead of raw ids; the resolution is NOT added here ───────
@@ -84,7 +84,7 @@ assert(/property var\s+symbolError:\s+\(\{\}\)/.test(row), "defaults to no error
 assert(/id: priceColumn[\s\S]*?visible: !symbolRow\.priceFailed/.test(row), "the price column gives way to the message");
 assert(/id: chartArea\s*\n\s*anchors\.left:\s+symbolRow\.priceFailed \? nameColumn\.right : priceColumn\.right/.test(row), "the message uses the room of the price column");
 assert(/PriceChart \{[\s\S]*?visible:\s+!symbolRow\.priceFailed && !symbolRow\.chartFailed/.test(row), "the chart is hidden while either failed");
-const block = /id: errorBlock([\s\S]*?)\n        \}\n\n        \/\/ ── Chart click/.exec(row)[1];
+const block = /id: errorBlock([\s\S]*?)\n        \}\n\n        MouseArea \{\s*id: chartMouseArea/.exec(row)[1];
 assert(/visible: symbolRow\.errorMessage !== ""/.test(block), "shown only when there is a message");
 assert(/name:\s+"error"/.test(block) && /color: Theme\.error/.test(block), "error icon and colour");
 assert(/text:\s+symbolRow\.errorMessage/.test(block), "shows the friendly message");
@@ -105,7 +105,7 @@ assert(!/StyledText \{[^}]*text:\s+symbolRow\.errorDetails/.test(row), "technica
 assert(/ErrorHandler\.guard\("symbol-row", function\(\) \{[\s\S]*?requireFromId\(symbolData\.provider \|\| ProvidersManager\.defaultId\)\s*\.symbolPageUrl[\s\S]*?\}, \{ context: symbolData\.ticker \}\)/.test(row));
 
 // ── Layout constants: one margin around every chart; ticker text sits between the name and the "ago" text ──
-const constants = readSource("QML/Helpers/Constants.qml");
+const constants = readSource("QML/Helpers/Constants.qml").replace(/^\s*\/\/.*$/gm, "");
 const delta = (name) => { const match = new RegExp(`${name}:\\s*([^\\n/]+)`).exec(constants); assert(match, name); return match[1].trim(); };
 assert(/chartAreaMargin:\s+\d+/.test(constants), "one constant for the margin around the chart");
 const area = /id: chartArea([\s\S]*?)PriceChart \{/.exec(row)[1];
@@ -115,5 +115,13 @@ assert(/symbolTickerFontSizeDelta:\s+smallFontSizeDelta \+ 1/.test(constants), "
 assert(/Theme\.fontSizeSmall \+ constants\.symbolTickerFontSizeDelta/.test(row) && /Theme\.fontSizeSmall \+ constants\.smallFontSizeDelta/.test(row), "both sized from the same base");
 assert(/symbolNameFontSizeDelta:\s+1\b/.test(constants), "the symbol NAME size is unchanged");
 assert(/anchors\.leftMargin:\s+Theme\.spacingS \+ constants\.symbolPriceColumnShift/.test(row) && /symbolPriceColumnShift:\s+5\b/.test(constants), "the price column is shifted 5px to the right");
+
+// ── The chart's corners follow the theme: clipped by DMS's ClippingRectangle, concentric with the card ──
+assert(/import Quickshell\.Widgets/.test(row), "the clipping item");
+assert(/readonly property real chartRadius: Theme\.cornerRadius\b/.test(row), "the theme's own corner radius (no hard-coded value)");
+assert(/ClippingRectangle \{[\s\S]*?radius:\s+symbolRow\.chartRadius[\s\S]*?color:\s+"transparent"[\s\S]*?PriceChart \{/.test(row), "the chart is inside a ClippingRectangle of that radius");
+assert(/radius:\s+Theme\.cornerRadius/.test(row), "the card itself uses the theme radius");
+assert(!/EXPERIMENT|chartRadius:\s+\d/.test(row), "no experiment left behind");
+assert(!/Canvas.*clip|\.clip\(\)|destination-out/.test(readSource("QML/Views/PriceChart.qml").replace(/^\s*\/\/.*$/gm, "")), "the canvas itself does no clipping");
 
 console.log("SymbolRow tests passed");
