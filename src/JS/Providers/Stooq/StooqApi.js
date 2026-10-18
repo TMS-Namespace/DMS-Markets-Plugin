@@ -14,6 +14,7 @@
 //   ^ndq    Nasdaq 100                ^ftse   FTSE 100
 
 .pragma library
+.import "../../Contracts/ProviderApi.js" as Base
 .import "../../Helpers/Constants.js" as Constants
 .import "../../Contracts/PluginError.js" as PluginError
 .import "StooqConstants.js" as ProviderConstants
@@ -146,42 +147,51 @@ function _url(symbol, resolution, credential) {
         credential
     );
 }
-// Build the provider request for the latest price candles.
-function priceUrl(symbol, resolution, credential) {
-    return _url(symbol, resolution, credential);
-}
-// Build the provider request for the selected chart window.
-function historyUrl(symbol, resolution, span, credential) {
-    return _url(symbol, resolution, credential);
-}
-// Build the provider request for the previous-period reference close.
-function changeUrl(symbol, resolution, credential) {
-    return _url(symbol, resolution, credential);
-}
-// The close of the period before the newest one.
-function parseChange(responseText) {
-    let candles = _parseCsv(responseText, true, 2);
-    if (candles.length < 2)
-        throw new PluginError.PluginError(
-            PluginError.Code.PARSE,
-            "Stooq sent an answer that couldn't be understood.",
-            "Stooq: no previous close in the answer"
-        );
-    return candles[0].close;
-}
-// Parse the newest requested price candles.
-function parsePrice(responseText, limit) {
-    return _parseCsv(responseText, true, limit);
-}
-// Parse the newest requested chart candles.
-function parseHistory(responseText, limit) {
-    return _parseCsv(responseText, false, limit);
-}
-// Return the provider-specific fetch script for the requested history limit.
-function fetchScript(tailLines) {
-    return _buildVerifiedFetchCommand(tailLines);
-}
-// Build the provider browser page for a validated symbol.
-function pageUrl(symbolId) {
-    return ProviderConstants.STOOQ_SYMBOL_PAGE_URL + "?s=" + encodeURIComponent(symbolId);
+
+// Concrete API implementation; inherited optional hooks retain their base defaults.
+var StooqApi = class StooqApi extends Base.ProviderApi {
+    // Build the provider request for the latest price candles.
+    priceUrl(symbol, resolution, credential) {
+        return _url(symbol, resolution, credential);
+    }
+    // Build the provider request for the selected chart window.
+    historyUrl(symbol, resolution, span, credential) {
+        return _url(symbol, resolution, credential);
+    }
+    // Build the provider request for the previous-period reference close.
+    changeUrl(symbol, resolution, credential) {
+        return _url(symbol, resolution, credential);
+    }
+    // Parse the newest requested price candles.
+    parsePrice(responseText, limit) {
+        return _parseCsv(responseText, true, limit);
+    }
+    // Parse the newest requested chart candles.
+    parseHistory(responseText, limit) {
+        return _parseCsv(responseText, false, limit);
+    }
+    // The close of the period before the newest one.
+    parseChange(responseText) {
+        let candles = _parseCsv(responseText, true, 2);
+        if (candles.length < 2)
+            throw new PluginError.PluginError(
+                PluginError.Code.PARSE,
+                "Stooq sent an answer that couldn't be understood.",
+                "Stooq: no previous close in the answer"
+            );
+        return candles[0].close;
+    }
+    // Build the provider browser page for a validated symbol.
+    pageUrl(symbolId) {
+        return ProviderConstants.STOOQ_SYMBOL_PAGE_URL + "?s=" + encodeURIComponent(symbolId);
+    }
+    // Return the provider-specific fetch script for the requested history limit.
+    fetchScript(tailLines) {
+        return _buildVerifiedFetchCommand(tailLines);
+    }
+};
+
+// Create an API instance with the common provider contract.
+function create() {
+    return new StooqApi();
 }

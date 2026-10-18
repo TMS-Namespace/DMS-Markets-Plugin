@@ -19,6 +19,7 @@
 // The provider declares exactly this in `properties`; anything else throws.
 
 .pragma library
+.import "../../Contracts/ProviderApi.js" as Base
 .import "WiseConstants.js" as ProviderConstants
 .import "../../Contracts/PluginError.js" as PluginError
 .import "../../Contracts/ChartSpan.js" as ChartSpan
@@ -75,19 +76,6 @@ function _unsupported(detail) {
         "Wise can't serve this chart setting.",
         "Wise: " + detail
     );
-}
-
-// The API's own error message, if the body carries one.
-function extractApiError(status, body) {
-    let parsed;
-    try {
-        parsed = JSON.parse(body);
-    } catch (caughtError) {
-        return "";
-    }
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed) || parsed.value !== undefined) return "";
-    let first = parsed.errors && parsed.errors[0];
-    return String(parsed.message || parsed.error || (first && (first.message || first.code)) || "");
 }
 
 // Read valid rates and sort them by UTC timestamp.
@@ -212,42 +200,61 @@ function _requirePair(symbol) {
 
 // ── Public API (what the ProviderHandler calls) ──────────────────────────────────
 
-// Build the provider request for the latest price candles.
-function priceUrl(symbol, resolution) {
-    return _url(_requirePair(symbol), _priceParams(resolution));
-}
-// Build the provider request for the previous-period reference close.
-function changeUrl(symbol, resolution) {
-    return _url(_requirePair(symbol), _priceParams(resolution));
-}
-// The value of the period before the newest one.
-function parseChange(responseText) {
-    let points = _parseRaw(responseText);
-    if (points.length < 2) throw _parseError("no previous value in the answer");
-    return points[points.length - 2].value;
-}
-// Build the provider request for the selected chart window.
-function historyUrl(symbol, resolution, span) {
-    return _url(_requirePair(symbol), _historyParams(resolution, span));
-}
-// Parse the newest requested price candles.
-function parsePrice(responseText, limit) {
-    return _parseResponse(responseText, limit);
-}
-// Parse the newest requested chart candles.
-function parseHistory(responseText, limit) {
-    return _parseResponse(responseText, limit);
-}
+// Concrete API implementation; inherited optional hooks retain their base defaults.
+var WiseApi = class WiseApi extends Base.ProviderApi {
+    // Build the provider request for the latest price candles.
+    priceUrl(symbol, resolution) {
+        return _url(_requirePair(symbol), _priceParams(resolution));
+    }
+    // Build the provider request for the selected chart window.
+    historyUrl(symbol, resolution, span) {
+        return _url(_requirePair(symbol), _historyParams(resolution, span));
+    }
+    // Build the provider request for the previous-period reference close.
+    changeUrl(symbol, resolution) {
+        return _url(_requirePair(symbol), _priceParams(resolution));
+    }
+    // Parse the newest requested price candles.
+    parsePrice(responseText, limit) {
+        return _parseResponse(responseText, limit);
+    }
+    // Parse the newest requested chart candles.
+    parseHistory(responseText, limit) {
+        return _parseResponse(responseText, limit);
+    }
+    // The value of the period before the newest one.
+    parseChange(responseText) {
+        let points = _parseRaw(responseText);
+        if (points.length < 2) throw _parseError("no previous value in the answer");
+        return points[points.length - 2].value;
+    }
+    // Build the provider browser page for a validated symbol.
+    pageUrl(symbolId) {
+        let pair = parsePair(symbolId);
+        if (!pair) return ProviderConstants.WISE_CONVERTER_BASE_URL;
+        return (
+            ProviderConstants.WISE_CONVERTER_BASE_URL +
+            pair.source.toLowerCase() +
+            "-to-" +
+            pair.target.toLowerCase() +
+            "-rate"
+        );
+    }
+    // The API's own error message, if the body carries one.
+    extractApiError(status, body) {
+        let parsed;
+        try {
+            parsed = JSON.parse(body);
+        } catch (caughtError) {
+            return "";
+        }
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed) || parsed.value !== undefined) return "";
+        let first = parsed.errors && parsed.errors[0];
+        return String(parsed.message || parsed.error || (first && (first.message || first.code)) || "");
+    }
+};
 
-// Build the provider browser page for a validated symbol.
-function pageUrl(symbolId) {
-    let pair = parsePair(symbolId);
-    if (!pair) return ProviderConstants.WISE_CONVERTER_BASE_URL;
-    return (
-        ProviderConstants.WISE_CONVERTER_BASE_URL +
-        pair.source.toLowerCase() +
-        "-to-" +
-        pair.target.toLowerCase() +
-        "-rate"
-    );
+// Create an API instance with the common provider contract.
+function create() {
+    return new WiseApi();
 }

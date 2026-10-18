@@ -1,4 +1,6 @@
 import QtQml
+import "../../../../src/JS/Contracts/ProviderApi.js" as ApiContract
+import "../../../../src/JS/Contracts/ProviderProperties.js" as PropertiesContract
 import "../../../../src/QML/Contracts"
 import "../../../../src/QML/Services"
 import "../../../Helpers"
@@ -97,6 +99,31 @@ TestSuite {
         });
         same(ProvidersManager.handlerFor(ProviderType.Wise).properties.name, "Wise");
         same(ProvidersManager.handlerFor(99), null, "an unknown type has no handler");
+    }
+    // Module factories and their prototypes must survive assignment to QML var properties.
+    function test_provider_instances_keep_their_inherited_contracts() {
+        ProvidersManager.sources.forEach(function (source) {
+            let api = source.api.create();
+            let declaration = source.properties.create();
+            check(api instanceof ApiContract.ProviderApi);
+            check(declaration instanceof PropertiesContract.ProviderProperties);
+            let handler = ProvidersManager.handlerFor(source.type);
+            check(handler.api instanceof ApiContract.ProviderApi, "QML retains the API prototype");
+            same(typeof handler.api.priceUrl, "function");
+            same(typeof handler.api.fetchScript(1), "string", "optional hooks have inherited defaults");
+            same(handler.properties.providerId, declaration.providerId);
+            check(handler.properties instanceof ProviderProperties, "QML properties remain typed");
+        });
+        let first = PropertiesContract.create(), second = PropertiesContract.create();
+        first.chartLimits.push({
+            resolution: "1h",
+            maxHistoryDays: 1
+        });
+        same(second.chartLimits.length, 0, "instances do not share mutable defaults");
+        let error = throws(function () {
+            new ApiContract.ProviderApi().priceUrl("EURUSD=X", "1h", "");
+        }, "priceUrl");
+        same(error.code, "providerConfig", "unchecked abstract calls fail clearly");
     }
     function test_saved_text_ids_convert_to_types_and_back() {
         same(ProvidersManager.typeOf("wise"), ProviderType.Wise);

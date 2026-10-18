@@ -4,7 +4,7 @@
 // UI needs a provider → asks the manager for it by ProviderType → gets it wrapped in a ProviderHandler,
 // which does every query. The manager itself never queries a provider's JS API:
 //   • it lists the supported providers (the ProviderType enum; `sources` maps each to its two JS modules,
-//     both in the provider's own folder: <Name>Properties.js, plain data, and <Name>Api.js)
+//     both in the provider's own folder: <Name>Properties.js and <Name>Api.js, each with a subclass factory)
 //   • it initiates each one: checks its declaration (ProviderRules.assertDeclaration), builds its
 //     ProviderProperties contract and creates its ProviderHandler
 //   • a provider that fails to start is recorded (`loadErrors`) and shown in the settings instead of
@@ -116,7 +116,8 @@ QtObject {
         list.forEach(function (source) {
             try {
                 let declared = source.properties.create();
-                ProviderRules.assertDeclaration(source.id, declared, source.api);
+                let api = source.api.create();
+                ProviderRules.assertDeclaration(source.id, declared, api);
                 let properties = _propertiesType.createObject(null) as ProviderProperties;
                 for (let key in declared) {
                     if (!(key in properties))
@@ -127,7 +128,7 @@ QtObject {
                     type: source.type,
                     properties: properties
                 }) as ProviderHandler;
-                handler.api = source.api;         // assigned, not passed to createObject: that would flatten the module's functions away
+                handler.api = api;         // Assign directly so the JavaScript instance keeps its prototype methods.
                 started[source.type] = handler;
                 Logger.debug("providers", "started " + source.id + " (" + properties.name + ")");
             } catch (caughtError) {

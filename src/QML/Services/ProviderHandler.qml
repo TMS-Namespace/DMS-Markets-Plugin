@@ -51,7 +51,7 @@ Item {
     property var _retryQueue: []     // jobs waiting for their retry delay
 
     property var _transfers: ({})   // identical commands share one queued/running transfer and retry budget
-    property var api: null            // the provider's JS API module; used only inside this handler
+    property var api: null            // the provider's ProviderApi subclass instance; used only inside this handler
 
     property var clock: function () {
         return Date.now();
@@ -63,7 +63,7 @@ Item {
     // ── Outputs ───────────────────────────────────────────────────────────────
     // Number of calls per `group` (the symbol's uid) that are queued, running, or waiting to be retried.
     property var pending: ({})
-    property var properties: null     // ProviderProperties: what the provider declares (read it freely)
+    property ProviderProperties properties: null     // ProviderProperties: what the provider declares (read it freely)
 
     // ── Which provider ────────────────────────────────────────────────────────
     property int type: -1             // ProviderType

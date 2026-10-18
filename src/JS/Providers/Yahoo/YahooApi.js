@@ -7,6 +7,7 @@
 //   ^GSPC      S&P 500                  ^GDAXI   DAX
 
 .pragma library
+.import "../../Contracts/ProviderApi.js" as Base
 .import "../../Helpers/Constants.js" as Constants
 .import "YahooConstants.js" as ProviderConstants
 .import "../../Contracts/PluginError.js" as PluginError
@@ -70,19 +71,6 @@ function _parseError(detail) {
     );
 }
 
-// The API's own error message, if the body carries one (chart.error.description).
-function extractApiError(status, body) {
-    let parsed;
-    try {
-        parsed = JSON.parse(body);
-    } catch (caughtError) {
-        return "";
-    }
-    let error = parsed && parsed.chart && parsed.chart.error;
-    if (!error) return "";
-    return String(error.description || error.code || "unknown error");
-}
-
 // Throws a PARSE error for anything that is not a Yahoo chart answer; returns [] for a
 // valid answer without usable candles (the caller reports that as "no data").
 // Only the newest `limit` candles are built (limit 0 = all): the rows are walked from the newest backwards.
@@ -94,7 +82,7 @@ function _parseChartResponse(responseText, limit) {
         throw _parseError("not valid JSON (" + caughtError.message + ")");
     }
 
-    let apiError = extractApiError(200, responseText);
+    let apiError = _extractApiError(200, responseText);
     if (apiError)
         throw new PluginError.PluginError(
             PluginError.Code.HTTP,
@@ -185,31 +173,56 @@ function _resolutionParam(resolution) {
 
 // ── Public API (what the ProviderHandler calls) ──────────────────────────────────
 
-// Build the provider request for the latest price candles.
-function priceUrl(symbol, resolution) {
-    return _chartUrl(symbol, _priceRangeForResolution(resolution), _resolutionParam(resolution));
+// The API's own error message, if the body carries one (chart.error.description).
+function _extractApiError(status, body) {
+    let parsed;
+    try {
+        parsed = JSON.parse(body);
+    } catch (caughtError) {
+        return "";
+    }
+    let error = parsed && parsed.chart && parsed.chart.error;
+    if (!error) return "";
+    return String(error.description || error.code || "unknown error");
 }
-// Build the provider request for the previous-period reference close.
-function changeUrl(symbol, resolution) {
-    return _chartUrl(symbol, _changeRangeForResolution(resolution), _resolutionParam(resolution));
-}
-// Read the close used as the price change reference.
-function parseChange(responseText) {
-    return _parseChangeReference(responseText);
-}
-// Build the provider request for the selected chart window.
-function historyUrl(symbol, resolution, span) {
-    return _chartUrl(symbol, _historyRangeForSpan(span), _resolutionParam(resolution));
-}
-// Parse the newest requested price candles.
-function parsePrice(responseText, limit) {
-    return _parseChartResponse(responseText, limit);
-}
-// Parse the newest requested chart candles.
-function parseHistory(responseText, limit) {
-    return _parseChartResponse(responseText, limit);
-}
-// Build the provider browser page for a validated symbol.
-function pageUrl(symbolId) {
-    return ProviderConstants.YAHOO_QUOTE_BASE_URL + encodeURIComponent(symbolId);
+
+// Concrete API implementation; inherited optional hooks retain their base defaults.
+var YahooApi = class YahooApi extends Base.ProviderApi {
+    // Build the provider request for the latest price candles.
+    priceUrl(symbol, resolution) {
+        return _chartUrl(symbol, _priceRangeForResolution(resolution), _resolutionParam(resolution));
+    }
+    // Build the provider request for the selected chart window.
+    historyUrl(symbol, resolution, span) {
+        return _chartUrl(symbol, _historyRangeForSpan(span), _resolutionParam(resolution));
+    }
+    // Build the provider request for the previous-period reference close.
+    changeUrl(symbol, resolution) {
+        return _chartUrl(symbol, _changeRangeForResolution(resolution), _resolutionParam(resolution));
+    }
+    // Parse the newest requested price candles.
+    parsePrice(responseText, limit) {
+        return _parseChartResponse(responseText, limit);
+    }
+    // Parse the newest requested chart candles.
+    parseHistory(responseText, limit) {
+        return _parseChartResponse(responseText, limit);
+    }
+    // Read the close used as the price change reference.
+    parseChange(responseText) {
+        return _parseChangeReference(responseText);
+    }
+    // Build the provider browser page for a validated symbol.
+    pageUrl(symbolId) {
+        return ProviderConstants.YAHOO_QUOTE_BASE_URL + encodeURIComponent(symbolId);
+    }
+    // Expose the same error reader used by the candle parser.
+    extractApiError(status, body) {
+        return _extractApiError(status, body);
+    }
+};
+
+// Create an API instance with the common provider contract.
+function create() {
+    return new YahooApi();
 }

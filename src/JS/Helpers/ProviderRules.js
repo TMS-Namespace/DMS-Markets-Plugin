@@ -2,6 +2,7 @@
 // about symbols or selections (those live in SymbolRules.js and SelectionPolicy.js).
 
 .pragma library
+.import "../Contracts/ProviderApi.js" as ProviderApi
 .import "../Contracts/PluginError.js" as PluginError
 .import "../Contracts/Resolution.js" as Resolution
 .import "SymbolRules.js" as SymbolRules
@@ -22,9 +23,6 @@ function isValidCredential(properties, credential) {
 // ── Declaration check ────────────────────────────────────────────────────────
 // A provider's declared properties (plain data) and API module must be coherent before the plugin
 // uses them; one broken provider is reported (ProviderLoadError) and the others keep working.
-
-var API_FUNCTIONS = ["priceUrl", "historyUrl", "changeUrl", "parsePrice", "parseHistory", "parseChange", "pageUrl"];
-var OPTIONAL_API_FUNCTIONS = ["extractApiError", "fetchScript"];
 
 // Raise a typed error identifying an inconsistent provider declaration.
 function _fail(id, detail) {
@@ -99,10 +97,11 @@ function assertDeclaration(id, declared, api) {
     )
         _fail(id, "a provider that needs a credential must declare 'credentialSettingKey'");
     if (!api || typeof api !== "object") _fail(id, "the API module is missing");
-    API_FUNCTIONS.forEach(function (name) {
-        if (typeof api[name] !== "function") _fail(id, "the API must provide `" + name + "`");
+    ProviderApi.RequiredMethods.forEach(function (name) {
+        if (typeof api[name] !== "function" || api[name] === ProviderApi.ProviderApi.prototype[name])
+            _fail(id, "the API must provide `" + name + "`");
     });
-    OPTIONAL_API_FUNCTIONS.forEach(function (name) {
+    ProviderApi.OptionalMethods.forEach(function (name) {
         if (api[name] !== undefined && typeof api[name] !== "function")
             _fail(id, "`" + name + "` must be a function when present");
     });

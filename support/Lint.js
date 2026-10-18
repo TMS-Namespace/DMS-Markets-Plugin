@@ -7,6 +7,8 @@ const { spawn, spawnSync } = require("child_process");
 const { pathToFileURL, fileURLToPath } = require("url");
 const { prepareQmlImports, qmlImportPaths } = require("./PrepareQmlImports");
 
+const { checkProviders } = require("./CheckProviders");
+
 const root = path.resolve(__dirname, "..");
 
 // List source and test files without traversing symlinked editor imports.
@@ -195,6 +197,7 @@ function checkQml(executable, files) {
 
 // Keep lint separate from the runtime suite so missing developer tooling can never masquerade as a passing lint run.
 async function main() {
+    console.log(`Provider contracts: ${checkProviders().join(", ")}; all implementations conform.`);
     const qmlFiles = ["src", "tests"].flatMap((directory) => collect(path.join(root, directory), ".qml"));
     const jsFiles = ["src", "tests", "support"].flatMap((directory) => collect(path.join(root, directory), ".js"));
     const syntaxFailures = checkJavaScript(jsFiles);

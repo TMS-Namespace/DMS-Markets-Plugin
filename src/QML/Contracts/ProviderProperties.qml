@@ -1,43 +1,43 @@
-// ProviderProperties.qml - contract: what a provider declares about itself (read by the settings, the
-// logic modules and the catalog). A data holder: each provider's values are written once, as plain data,
-// in its own folder (JS/Providers/<Name>/<Name>Properties.js), and checked as a whole by
-// ProviderRules.assertDeclaration before this object is created.
+// ProviderProperties.qml - Typed QML data holder for provider declarations.
+// Defaults come from the shared JavaScript base. ProvidersManager validates each declaration before copying it here.
 import QtQml
+import "../../JS/Contracts/ProviderProperties.js" as Declaration
 
 QtObject {
-    property string alias: ""        // three capital letters, e.g. "YHF": the short form of the name (shown on charts)
-    property string authErrorMessage: ""
-    property string baseUrl: ""
-    property var changeResolutions: []        // Resolution values the change can be measured against (previous period's close)
-    property var chartLimits: []              // [{ resolution, maxHistoryDays }], 0 = unlimited
-    property string credential: ""            // the current value, set through the ProviderHandler
+    property string alias: defaults.alias    // three capital letters, e.g. "YHF": the short form of the name (shown on charts)
+    property string authErrorMessage: defaults.authErrorMessage
+    property string baseUrl: defaults.baseUrl
+    property var changeResolutions: defaults.changeResolutions    // Resolution values the change can be measured against (previous period's close)
+    property var chartLimits: defaults.chartLimits    // [{ resolution, maxHistoryDays }], 0 = unlimited
+    property string credential: defaults.credential    // the current value, set through the ProviderHandler
 
-    property string credentialErrorSentinel: ""
-    property string credentialLabel: ""
-    property int credentialMaxLength: 0
-    property int credentialMinLength: 1
-    property string credentialSettingKey: ""
-    property string description: ""
-    property bool disabled: false
-    property string disabledMessage: ""
+    property string credentialErrorSentinel: defaults.credentialErrorSentinel
+    property string credentialLabel: defaults.credentialLabel
+    property int credentialMaxLength: defaults.credentialMaxLength
+    property int credentialMinLength: defaults.credentialMinLength
+    property string credentialSettingKey: defaults.credentialSettingKey
+    readonly property var defaults: Declaration.create()
+    property string description: defaults.description
+    property bool disabled: defaults.disabled
+    property string disabledMessage: defaults.disabledMessage
 
     // ── What it can serve ────────────────────────────────────────────────────
-    property string minPullResolution: "1d"   // finest refresh rate the provider allows
-    property string name: ""
-    property var priceResolutions: []         // Resolution values
+    property string minPullResolution: defaults.minPullResolution    // finest refresh rate the provider allows
+    property string name: defaults.name
+    property var priceResolutions: defaults.priceResolutions    // Resolution values
     // ── Identity ─────────────────────────────────────────────────────────────
-    property string providerId: ""
+    property string providerId: defaults.providerId
 
     // ── Credential (when the provider needs one) ─────────────────────────────
-    property bool requiresCredential: false
-    property string symbolFormatMessage: ""
-    property string symbolHelpText: "Provider-specific symbol"
-    property int symbolMaxLength: 1
-    property int symbolMinLength: 1
-    property string symbolPattern: ""
-    property string symbolPlaceholder: ""
+    property bool requiresCredential: defaults.requiresCredential
+    property string symbolFormatMessage: defaults.symbolFormatMessage
+    property string symbolHelpText: defaults.symbolHelpText
+    property int symbolMaxLength: defaults.symbolMaxLength
+    property int symbolMinLength: defaults.symbolMinLength
+    property string symbolPattern: defaults.symbolPattern
+    property string symbolPlaceholder: defaults.symbolPlaceholder
 
     // ── Symbols ──────────────────────────────────────────────────────────────
     property string symbolSearchUrl: baseUrl
-    property bool tailHistory: false          // the fetch keeps only the last N lines of a history answer
+    property bool tailHistory: defaults.tailHistory    // the fetch keeps only the last N lines of a history answer
 }

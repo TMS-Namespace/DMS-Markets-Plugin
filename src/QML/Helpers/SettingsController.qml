@@ -5,6 +5,7 @@ import QtQuick
 import "../../JS/Helpers/Helpers.js" as Helpers
 import "../../JS/Helpers/SymbolDraft.js" as SymbolDraft
 import "../../JS/Helpers/SymbolRules.js" as SymbolRules
+import "../Contracts"
 import "../Services"
 
 Item {
@@ -40,8 +41,8 @@ Item {
     // Providers that failed to load (the others keep working); shown next to the provider list.
     readonly property var providerLoadErrors: ProvidersManager.loadErrors
     // Every question about a provider goes to its ProviderHandler (null only when no provider started).
-    readonly property var selectedHandler: ProvidersManager.handlerFromId(selectedProviderId)
-    readonly property var selectedProvider: selectedHandler ? selectedHandler.properties : ({})
+    readonly property ProviderHandler selectedHandler: ProvidersManager.handlerFromId(selectedProviderId)
+    readonly property ProviderProperties selectedProvider: selectedHandler ? selectedHandler.properties : unavailableProvider
     readonly property bool selectedProviderDisabled: !!(selectedHandler && selectedHandler.properties.disabled)
     readonly property string selectedProviderId: formState.provider || ProvidersManager.defaultId
     property var symbolsList: []
@@ -289,6 +290,10 @@ Item {
         Logger.debug("settings", "controller ready: " + symbolsList.length + " symbols");
     }
     onSelectedProviderIdChanged: Qt.callLater(syncSelections)
+
+    ProviderProperties {
+        id: unavailableProvider
+    }
 
     // ── Saved data ───────────────────────────────────────────────────────────
     // All persistence, including requests forwarded by host controls, goes through DataStorage.

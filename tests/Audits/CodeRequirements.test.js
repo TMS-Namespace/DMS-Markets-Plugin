@@ -1,4 +1,4 @@
-// Enforce documented functions, descriptive names, stateless JS modules and registered QML folders.
+// Enforce documented functions, descriptive names, QML JavaScript library directives, and registered QML folders.
 const fs = require("fs");
 const path = require("path");
 const { assert, srcRoot, listFiles } = require("../Helpers/Loader");
@@ -23,7 +23,7 @@ for (const file of files) {
         !/\bfunction\s*\(\s*(?:c|s|k|r|e|sel|ctx|fn|btn|tmp)\b/.test(code),
         `${name}: name callback arguments for what they contain`
     );
-    if (file.endsWith(".js")) assert(/^\.pragma library$/m.test(text), `${name}: JS modules are stateless libraries`);
+    if (file.endsWith(".js")) assert(/^\.pragma library$/m.test(text), `${name}: QML JavaScript libraries declare .pragma library`);
     if (file.endsWith(".qml"))
         assert(fs.existsSync(path.join(path.dirname(file), "qmldir")), `${name}: every QML folder has a qmldir`);
     for (const match of text.matchAll(/^\s*\.?import "([^"]+\.js)" as (\w+)/gm)) {

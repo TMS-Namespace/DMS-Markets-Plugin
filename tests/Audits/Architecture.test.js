@@ -22,11 +22,25 @@ assert(contractFiles.length >= 8, "the contracts exist as QML types");
 const jsContracts = fs.readdirSync(path.join(srcRoot, "JS/Contracts")).sort();
 assert.deepStrictEqual(
     jsContracts,
-    ["ChartSpan.js", "FetchType.js", "PluginError.js", "Resolution.js", "TimeUnits.js"],
-    "JS/Contracts holds only value domains"
+    [
+        "ChartSpan.js",
+        "FetchType.js",
+        "PluginError.js",
+        "ProviderApi.js",
+        "ProviderProperties.js",
+        "Resolution.js",
+        "TimeUnits.js"
+    ],
+    "JS/Contracts holds value domains, the error type, and provider base contracts"
 );
 assert(!fs.existsSync(path.join(srcRoot, "JS/Shared")), "JS/Shared is split into JS/Contracts and JS/Helpers");
-const ALLOWED_CONTRACT_IMPORTS = ["Resolution.js", "ChartSpan.js", "FetchType.js", "Helpers.js"]; // shallow per-field checks only
+const ALLOWED_CONTRACT_IMPORTS = [
+    "Resolution.js",
+    "ChartSpan.js",
+    "FetchType.js",
+    "Helpers.js",
+    "ProviderProperties.js"
+]; // shallow per-field checks only
 for (const file of contractFiles) {
     const text = read(file);
     const code = strip(text);
@@ -95,14 +109,14 @@ for (const name of providerDirs) {
     assert(
         /function create\(\)/.test(props) &&
             /providerId:/.test(props) &&
+            /extends Base\.ProviderProperties/.test(props) &&
             /priceResolutions:/.test(props) &&
             /chartLimits:/.test(props),
         `${name}Properties.js declares the provider as plain data`
     );
     assert(!/\bfunction\s+(?!create\b)\w+/.test(props), `${name}Properties.js holds data only (no logic)`);
     const api = read(path.join(srcRoot, "JS/Providers", name, `${name}Api.js`));
-    for (const functionName of ["priceUrl", "historyUrl", "parsePrice", "parseHistory", "pageUrl"])
-        assert(new RegExp(`function ${functionName}\\(`).test(api), `${name}Api.js provides ${functionName}`);
+    assert(/extends Base\.ProviderApi/.test(api), `${name}: API extends the common base`);
 }
 assert(
     !fs.existsSync(path.join(srcRoot, "QML/Providers")) &&
@@ -181,7 +195,7 @@ for (const file of jsFiles) {
         ),
         `${relativePath(file)}: UI belongs in QML, not JavaScript`
     );
-    // PluginError is the one JS class left: an exception type has to be a JS Error to be thrown.
+    // Provider declarations and implementations may inherit JavaScript base contracts; shared state stays in QML.
     if (relativePath(file) === "JS/Contracts/PluginError.js") continue;
     assert(
         !/\bNAME\s*=\s*"|\bfunction is[A-Z]\w+\(value\)\s*\{\s*return !!value && value instanceof/.test(code),
@@ -242,8 +256,8 @@ const qmlLines = qmlFiles.reduce(
     0
 );
 assert(
-    // The former 1550-line budget rebased for Prettier layout; application JS behavior is unchanged.
-    jsLines <= 2160,
+    // Includes the explicit provider base contracts and subclass factories requested for contributor checks.
+    jsLines <= 2310,
     `JS must stay small (${jsLines} code lines; QML has ${qmlLines}): move declarations and wiring to QML before adding JS`
 );
 assert(qmlLines > jsLines, "QML carries more of the code than JS");

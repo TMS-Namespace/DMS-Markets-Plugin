@@ -25,7 +25,8 @@ failed, not what any one plugin does.
   Reusable logic lives in `.js` modules; short component-specific handlers may stay inside QML.
 - Prefer QML. Add JavaScript only when a calculation or decision needs it, and keep the total small.
 - JavaScript modules never touch UI, QML types or logging; they take plain data and return plain data.
-- A JS module is `.pragma library` and holds no state. State belongs to QML objects.
+- JavaScript modules should preferably be stateless. Use `.pragma library`; classes and per-instance data are allowed.
+  Shared queues, timers, caches, and observable application state belong to QML objects.
 
 ## 2. Layers and folders
 
@@ -78,10 +79,14 @@ failed, not what any one plugin does.
 
 - Each integration is a folder with **declared properties as plain data** (names, URLs, rules, limits) and an **API
   module** (build requests, read answers) plus its constants.
+- Provider API classes extend `JS/Contracts/ProviderApi.js`; declarations extend `JS/Contracts/ProviderProperties.js`.
+  Both modules export `create()`. Override every required API method; optional hooks have inherited defaults.
+- Lint checks every provider's inheritance, required overrides, method signatures, property names and property types
+  before starting QML. `node support/CheckProviders.js` runs these contributor checks on their own.
 - The properties are checked as a whole when the integration is loaded; unknown keys and inconsistent declarations
   are errors.
-- Integrations are stateless and see only current-format data. They know nothing about storage, UI, retries or
-  other integrations.
+- Integrations should preferably be stateless and see only current-format data. They know nothing about storage, UI,
+  retries or other integrations.
 - Limits (ranges, resolutions, polling rates) are declared by the integration and verified against the real service.
   Requests outside the declared limits are refused before any request is made; nothing is silently approximated.
 - Retries, queues, timeouts and response interpretation are centralised once, in the facade, not per integration.
@@ -169,7 +174,7 @@ Add `--check` to check formatting without changing source files. This uses Qt 6 
 Prettier as a development tool. Formatting settings live in `.qmlformat.ini` and `.prettierrc.json`;
 QML JavaScript directives are preserved automatically. Run lint and tests afterwards.
 
-Lint checks QML language-server warnings and errors and JavaScript syntax. It requires Node.js, installed
+Lint checks provider contracts, QML language-server warnings and errors, and JavaScript syntax. It requires Node.js, installed
 Qt 6/Quickshell QML modules, and Qt 6 `qmlls`. It finds the Qt QML VS Code extension's language server
 automatically, or you can set `QMLLS` to its executable path. Set `QML_IMPORT_PATH` for a custom QML
 installation. No npm packages are required. The test suite requires Quickshell and runs headlessly with
