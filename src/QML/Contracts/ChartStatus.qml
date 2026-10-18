@@ -5,11 +5,10 @@
 import QtQml
 
 QtObject {
-    property string level: "ok"
-    property string reason: ""
-    property real candles: 0
-    property string message: ""
-
     readonly property bool blocked: level === "block"
+    property real candles: 0
+    property string level: "ok"
+    property string message: ""
+    property string reason: ""
     readonly property bool warned: level === "warn"
 }

@@ -11,19 +11,34 @@ const vm = require("vm");
 const repoRoot = path.resolve(__dirname, "..", "..");
 const srcRoot = path.join(repoRoot, "src");
 
-function createRegistry() { return new Map(); }
+function createRegistry() {
+    return new Map();
+}
 
 // `relativePath` is relative to src/, e.g. "JS/Contracts/Resolution.js".
 function loadModule(relativePath, registry) {
     const filePath = path.resolve(srcRoot, relativePath);
     if (registry.has(filePath)) return registry.get(filePath);
     const context = {
-        console, Object, JSON, Math, Date, Array, Number, String, Error,
-        parseInt, parseFloat, isNaN, isFinite, encodeURIComponent
+        console,
+        Object,
+        JSON,
+        Math,
+        Date,
+        Array,
+        Number,
+        String,
+        Error,
+        parseInt,
+        parseFloat,
+        isNaN,
+        isFinite,
+        encodeURIComponent
     };
     vm.createContext(context);
     registry.set(filePath, context);
-    const source = fs.readFileSync(filePath, "utf8")
+    const source = fs
+        .readFileSync(filePath, "utf8")
         .replace(/^\s*\.pragma\s+library\s*$/gm, "")
         .replace(/^\s*\.import\s+"([^"]+)"\s+as\s+(\w+)\s*$/gm, (_fullMatch, importPath, alias) => {
             const dependency = path.relative(srcRoot, path.resolve(path.dirname(filePath), importPath));
@@ -38,7 +53,7 @@ function loadModule(relativePath, registry) {
 // (e.g. a PluginError from PluginError.js is an instance for every module that imports it).
 function loadShared() {
     const registry = createRegistry();
-    const VALUE_DOMAINS = ["Resolution.js", "ChartSpan.js", "FetchType.js", "PluginError.js", "TimeUnits.js"];   // src/JS/Contracts; the rest is src/JS/Helpers
+    const VALUE_DOMAINS = ["Resolution.js", "ChartSpan.js", "FetchType.js", "PluginError.js", "TimeUnits.js"]; // src/JS/Contracts; the rest is src/JS/Helpers
     const load = (file) => loadModule(`JS/${VALUE_DOMAINS.includes(file) ? "Contracts" : "Helpers"}/${file}`, registry);
     return {
         registry,
@@ -69,11 +84,17 @@ function loadShared() {
 }
 
 function throwsWith(action, fragment, message) {
-    assert.throws(action, (error) => {
-        assert(String(error.message).includes(fragment),
-               `${message}: expected "${fragment}" in "${error.message}"`);
-        return true;
-    }, message);
+    assert.throws(
+        action,
+        (error) => {
+            assert(
+                String(error.message).includes(fragment),
+                `${message}: expected "${fragment}" in "${error.message}"`
+            );
+            return true;
+        },
+        message
+    );
 }
 
 function readSource(relativePath) {
@@ -112,7 +133,7 @@ function compileFunction(source, name, globals) {
     const context = vm.createContext({ console, Date, Math, JSON, Object, Array, isNaN, ...globals });
     vm.runInContext(extractFunction(source, name), context);
     const compiled = context[name];
-    compiled.context = context;   // lets tests read globals the function assigns (e.g. QML properties)
+    compiled.context = context; // lets tests read globals the function assigns (e.g. QML properties)
     return compiled;
 }
 
@@ -124,4 +145,18 @@ function compileFunctions(source, names, globals) {
     return context;
 }
 
-module.exports = { compileFunctions, extractFunction, compileFunction, same, listFiles, assert, repoRoot, srcRoot, createRegistry, loadModule, loadShared, throwsWith, readSource };
+module.exports = {
+    compileFunctions,
+    extractFunction,
+    compileFunction,
+    same,
+    listFiles,
+    assert,
+    repoRoot,
+    srcRoot,
+    createRegistry,
+    loadModule,
+    loadShared,
+    throwsWith,
+    readSource
+};

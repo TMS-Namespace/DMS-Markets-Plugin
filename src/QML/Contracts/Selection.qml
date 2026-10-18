@@ -6,17 +6,16 @@
 //   chartRange        how much history the chart shows
 // What a provider can serve, and the closest choice to a wish, is SelectionPolicy.clamp.
 import QtQml
-import "../../JS/Contracts/Resolution.js" as Resolution
 import "../../JS/Contracts/ChartSpan.js" as ChartSpan
+import "../../JS/Contracts/Resolution.js" as Resolution
 
 QtObject {
-    property string priceResolution: ""
     property string changeResolution: ""
-    property string chartResolution: ""
-    property string chartRange: ""
-
-    readonly property bool priceResolutionValid: Resolution.isValid(priceResolution)
     readonly property bool changeResolutionValid: Resolution.isValid(changeResolution)
-    readonly property bool chartResolutionValid: Resolution.isValid(chartResolution)
+    property string chartRange: ""
     readonly property bool chartRangeValid: ChartSpan.isValid(chartRange)
+    property string chartResolution: ""
+    readonly property bool chartResolutionValid: Resolution.isValid(chartResolution)
+    property string priceResolution: ""
+    readonly property bool priceResolutionValid: Resolution.isValid(priceResolution)
 }

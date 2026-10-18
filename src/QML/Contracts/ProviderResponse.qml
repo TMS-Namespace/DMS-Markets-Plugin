@@ -8,9 +8,9 @@
 import QtQml
 
 QtObject {
-    property string providerId: ""
-    property bool ok: false
-    property int status: 0
     property string body: ""
     property var error: null
+    property bool ok: false
+    property string providerId: ""
+    property int status: 0
 }

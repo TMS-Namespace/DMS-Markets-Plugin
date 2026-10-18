@@ -14,16 +14,16 @@ import qs.Widgets
 Column {
     id: root
 
-    property string settingKey: ""
-    property string label: ""
-    property string description: ""
-    property int minimum: 0
-    property int maximum: 100
+    // The page's plugin service can arrive after this row exists (DMS attaches it after creating the page), and the page's
+    // own storage follows it a moment later: load again then, or the default would stay shown.
+    property var _page: null
     property int defaultValue: 0
+    property string description: ""
+    property string label: ""
+    property int maximum: 100
+    property int minimum: 0
+    property string settingKey: ""
     property int value: defaultValue
-
-    width: parent ? parent.width : implicitWidth
-    spacing: Theme.spacingS
 
     // Room for the widest value, sized from the font so it follows the theme.
     readonly property real valueWidth: Math.round(Theme.fontSizeMedium * 2.5)
@@ -31,79 +31,87 @@ Column {
     // Find the nearest host settings page that owns this control.
     // The page this row sits in (the nearest parent that can save and load values), or null.
     function _settings() {
-        let item = root.parent
+        let item = root.parent;
         while (item) {
-            if ("saveValue" in item && "loadValue" in item) return item
-            item = item.parent
+            if ("saveValue" in item && "loadValue" in item)
+                return item;
+            item = item.parent;
         }
-        return null
+        return null;
     }
 
     // Read the saved value after the settings service becomes available.
     function loadValue() {
-        let settings = _settings()
-        if (settings && settings.pluginService) value = settings.loadValue(settingKey, defaultValue)
+        let settings = _settings();
+        if (settings && settings.pluginService)
+            value = settings.loadValue(settingKey, defaultValue);
     }
 
-    // The page's plugin service can arrive after this row exists (DMS attaches it after creating the page), and the page's
-    // own storage follows it a moment later: load again then, or the default would stay shown.
-    property var _page: null
-    Component.onCompleted: { _page = _settings(); loadValue() }
+    spacing: Theme.spacingS
+    width: parent ? parent.width : implicitWidth
+
+    Component.onCompleted: {
+        _page = _settings();
+        loadValue();
+    }
     onParentChanged: _page = _settings()
-    Connections {
-        target: root._page
-        ignoreUnknownSignals: true
-        // Reload saved control values after the host attaches its service.
-        function onPluginServiceChanged() { Qt.callLater(root.loadValue) }
-    }
-
     onValueChanged: {
-        let settings = _settings()
-        if (settings) settings.saveValue(settingKey, value)
+        let settings = _settings();
+        if (settings)
+            settings.saveValue(settingKey, value);
     }
 
+    Connections {
+        // Reload saved control values after the host attaches its service.
+        function onPluginServiceChanged() {
+            Qt.callLater(root.loadValue);
+        }
+
+        ignoreUnknownSignals: true
+        target: root._page
+    }
     StyledText {
-        text: root.label
+        color: Theme.surfaceText
         font.pixelSize: Theme.fontSizeMedium
         font.weight: Font.Medium
-        color: Theme.surfaceText
+        text: root.label
     }
-
     StyledText {
-        visible: root.description !== ""
-        text: root.description
-        font.pixelSize: Theme.fontSizeSmall
         color: Theme.surfaceVariantText
+        font.pixelSize: Theme.fontSizeSmall
+        text: root.description
+        visible: root.description !== ""
         width: parent.width
         wrapMode: Text.WordWrap
     }
-
     Row {
         id: sliderRow
-        width: parent.width
+
         spacing: Theme.spacingS
+        width: parent.width
 
         DankSlider {
             id: slider
+
             anchors.verticalCenter: parent.verticalCenter
-            width: sliderRow.width - root.valueWidth - sliderRow.spacing
-            value: root.value
-            minimum: root.minimum
             maximum: root.maximum
-            unit: ""
-            wheelEnabled: false
+            minimum: root.minimum
             thumbOutlineColor: Theme.withAlpha(Theme.surfaceContainerHighest, Theme.popupTransparency)
+            unit: ""
+            value: root.value
+            wheelEnabled: false
+            width: sliderRow.width - root.valueWidth - sliderRow.spacing
+
             onSliderValueChanged: newValue => root.value = newValue
         }
-
         StyledText {
             anchors.verticalCenter: parent.verticalCenter
-            width: root.valueWidth
-            text: root.value
+            color: Theme.surfaceText
             font.pixelSize: Theme.fontSizeMedium
             font.weight: Font.Medium
-            color: Theme.surfaceText
             horizontalAlignment: Text.AlignRight
+            text: root.value
+            width: root.valueWidth
         }
     }
 }

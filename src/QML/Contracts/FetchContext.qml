@@ -7,13 +7,12 @@ import QtQml
 import "../../JS/Contracts/FetchType.js" as FetchType
 
 QtObject {
-    property string uid: ""
-    property string ticker: ""
-    property string providerId: ""
-    property string fetchType: ""
-    property string signature: ""     // configuration identity: rejects answers from before a symbol edit
     property string chartRange: ""
     property string chartResolution: ""
-
+    property string fetchType: ""
     readonly property bool fetchTypeValid: FetchType.isValid(fetchType)
+    property string providerId: ""
+    property string signature: ""     // configuration identity: rejects answers from before a symbol edit
+    property string ticker: ""
+    property string uid: ""
 }

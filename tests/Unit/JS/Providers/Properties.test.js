@@ -9,15 +9,26 @@ const providers = {
     wise: { properties: loadModule("JS/Providers/Wise/WiseProperties.js", shared.registry), api: shared.wise },
     stooq: { properties: loadModule("JS/Providers/Stooq/StooqProperties.js", shared.registry), api: shared.stooq }
 };
-const limitsOf = (declared) => Object.fromEntries(Array.from(declared.chartLimits).map((limit) => [limit.resolution, limit.maxHistoryDays || 0]));
+const limitsOf = (declared) =>
+    Object.fromEntries(Array.from(declared.chartLimits).map((limit) => [limit.resolution, limit.maxHistoryDays || 0]));
 
 for (const [id, { properties, api }] of Object.entries(providers)) {
     const declared = properties.create();
     rules.assertDeclaration(id, declared, api);
     assert.strictEqual(declared.providerId, id);
-    assert(Array.from(declared.priceResolutions).every((resolution) => shared.Resolution.isValid(resolution)), `${id}: price resolutions are valid`);
-    assert(new RegExp(declared.symbolPattern).test(declared.symbolPlaceholder), `${id}: the placeholder is an accepted symbol`);
-    throwsWith(() => rules.assertDeclaration(id, Object.assign({}, declared, { providerId: "other" }), api), "declares providerId", `${id}: the id must match`);
+    assert(
+        Array.from(declared.priceResolutions).every((resolution) => shared.Resolution.isValid(resolution)),
+        `${id}: price resolutions are valid`
+    );
+    assert(
+        new RegExp(declared.symbolPattern).test(declared.symbolPlaceholder),
+        `${id}: the placeholder is an accepted symbol`
+    );
+    throwsWith(
+        () => rules.assertDeclaration(id, Object.assign({}, declared, { providerId: "other" }), api),
+        "declares providerId",
+        `${id}: the id must match`
+    );
 }
 
 // Every provider has a three-letter capital alias (what charts show), and no two share one.
@@ -28,7 +39,11 @@ for (const [id, { properties, api }] of Object.entries(providers)) {
     assert.strictEqual(declared.alias, expectedAliases[id], `${id}: alias`);
     assert(/^[A-Z]{3}$/.test(declared.alias), `${id}: exactly three capital letters`);
     for (const bad of [undefined, "", "yhf", "YH", "YHFX", "Y1F", "YH ", 5, null])
-        throwsWith(() => rules.assertDeclaration(id, Object.assign({}, declared, { alias: bad }), api), "alias", `${id}: alias ${String(bad)} is refused`);
+        throwsWith(
+            () => rules.assertDeclaration(id, Object.assign({}, declared, { alias: bad }), api),
+            "alias",
+            `${id}: alias ${String(bad)} is refused`
+        );
 }
 assert.strictEqual(new Set(aliases).size, aliases.length, "aliases are unique");
 
@@ -60,6 +75,10 @@ console.log("Provider properties tests passed");
         { minPullResolution: "1d" },
         { chartLimits: [{ resolution: "1h", maxHistoryDays: Infinity }] },
         { chartLimits: [{ resolution: "1m", maxHistoryDays: 1 }] }
-    ]) assert.throws(() => rules.assertDeclaration("wise", Object.assign({}, declared, changed), providers.wise.api),
-                     (error) => error.code === "providerConfig", JSON.stringify(changed));
+    ])
+        assert.throws(
+            () => rules.assertDeclaration("wise", Object.assign({}, declared, changed), providers.wise.api),
+            (error) => error.code === "providerConfig",
+            JSON.stringify(changed)
+        );
 }

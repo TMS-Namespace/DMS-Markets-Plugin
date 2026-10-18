@@ -10,7 +10,8 @@ const installedRoot = path.join(temporaryRoot, "installed");
 const installedModule = path.join(installedRoot, "Quickshell", "Io");
 const overlayRoot = path.join(temporaryRoot, "editor");
 const overlayModule = path.join(overlayRoot, "Quickshell", "Io");
-const moduleDeclaration = "module Quickshell.Io\ntypeinfo io.qmltypes\nprefer :/qt/qml/Quickshell/Io/\nFileView 0.0 FileView.qml\n";
+const moduleDeclaration =
+    "module Quickshell.Io\ntypeinfo io.qmltypes\nprefer :/qt/qml/Quickshell/Io/\nFileView 0.0 FileView.qml\n";
 const incompleteMetadata = `import QtQuick.tooling 1.2
 Module {
     Component {
@@ -47,7 +48,10 @@ try {
 
     // Regeneration is repeatable and removes the supplement after an upstream metadata fix.
     prepareQmlImports([installedRoot], overlayRoot);
-    const completeMetadata = incompleteMetadata.replace("Module {", 'Module { Component { name: "QProcess"; Enum { name: "ExitStatus"; values: ["NormalExit", "CrashExit"] } }');
+    const completeMetadata = incompleteMetadata.replace(
+        "Module {",
+        'Module { Component { name: "QProcess"; Enum { name: "ExitStatus"; values: ["NormalExit", "CrashExit"] } }'
+    );
     fs.writeFileSync(path.join(installedModule, "io.qmltypes"), completeMetadata);
     prepareQmlImports([installedRoot], overlayRoot);
     assert.equal(fs.readFileSync(path.join(overlayModule, "io.qmltypes"), "utf8"), completeMetadata);

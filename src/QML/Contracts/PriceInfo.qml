@@ -5,12 +5,12 @@
 import QtQml
 
 QtObject {
-    property real open: 0
-    property real high: 0
-    property real low: 0
-    property real close: 0
-    property string date: ""
-    property string time: ""
     property real change: 0
     property real changePercent: 0
+    property real close: 0
+    property string date: ""
+    property real high: 0
+    property real low: 0
+    property real open: 0
+    property string time: ""
 }

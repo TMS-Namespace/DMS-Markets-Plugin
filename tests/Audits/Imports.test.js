@@ -14,7 +14,10 @@ const relativePath = (file) => path.relative(srcRoot, file);
 // ── JS imports (".import "x.js" as Alias") resolve ────────────────────────────
 for (const file of jsFiles)
     for (const match of fs.readFileSync(file, "utf8").matchAll(/^\s*\.import\s+"([^"]+)"\s+as\s+(\w+)/gm))
-        assert(fs.existsSync(path.resolve(path.dirname(file), match[1])), `${relativePath(file)}: missing import ${match[1]}`);
+        assert(
+            fs.existsSync(path.resolve(path.dirname(file), match[1])),
+            `${relativePath(file)}: missing import ${match[1]}`
+        );
 
 // ── QML imports resolve (files or qmldir directories); aliases map to modules ─
 for (const file of qmlFiles) {
@@ -30,10 +33,18 @@ for (const file of qmlFiles) {
     // Every Alias.member referenced in this file exists in the aliased JS module.
     for (const [alias, target] of Object.entries(aliases)) {
         const module = loadModule(relativePath(target), registry);
-        const code = text.replace(/^\s*import .*$/gm, "").replace(/\/\/.*$/gm, "").replace(/"(?:[^"\\]|\\.)*"/g, '""');
-        const used = new Set([...code.matchAll(new RegExp(`(?<![\\w.])${alias}\\.(\\w+)`, "g"))].map((usage) => usage[1]));
+        const code = text
+            .replace(/^\s*import .*$/gm, "")
+            .replace(/\/\/.*$/gm, "")
+            .replace(/"(?:[^"\\]|\\.)*"/g, '""');
+        const used = new Set(
+            [...code.matchAll(new RegExp(`(?<![\\w.])${alias}\\.(\\w+)`, "g"))].map((usage) => usage[1])
+        );
         for (const member of used)
-            assert(member in module, `${relativePath(file)}: ${alias}.${member} does not exist in ${relativePath(target)}`);
+            assert(
+                member in module,
+                `${relativePath(file)}: ${alias}.${member} does not exist in ${relativePath(target)}`
+            );
     }
 }
 
@@ -56,8 +67,12 @@ for (const qmldir of listFiles(srcRoot, /^qmldir$/)) {
 for (const file of [...qmlFiles, ...jsFiles]) {
     const text = fs.readFileSync(file, "utf8");
     assert(!/\.\.\/JS\/(Constants|Helpers)\.js/.test(text), `${relativePath(file)}: stale JS path`);
-    assert(!/Contracts\/(DataPoint|SavedSymbol|ProviderResponse|ProviderPropertiesBase)\.js|ProviderInterface|ProviderBootstrap|ProviderPropertiesBase|ErrorHandler\.js/.test(text.replace(/\/\/.*$/gm, "")),
-           `${relativePath(file)}: refers to the removed JS contracts / interface / bootstrap / ErrorHandler.js`);
+    assert(
+        !/Contracts\/(DataPoint|SavedSymbol|ProviderResponse|ProviderPropertiesBase)\.js|ProviderInterface|ProviderBootstrap|ProviderPropertiesBase|ErrorHandler\.js/.test(
+            text.replace(/\/\/.*$/gm, "")
+        ),
+        `${relativePath(file)}: refers to the removed JS contracts / interface / bootstrap / ErrorHandler.js`
+    );
 }
 
 // ── Syntax check with qmllint when available (import-resolution warnings for the
@@ -67,8 +82,10 @@ if (lint.status === 0) {
     for (const file of qmlFiles) {
         const result = spawnSync("qmllint", [file], { encoding: "utf8" });
         const output = `${result.stdout}${result.stderr}`;
-        assert(!/syntax error|unexpected token|Expected token|unterminated/i.test(output),
-               `${relativePath(file)}: qmllint reported a syntax error\n${output}`);
+        assert(
+            !/syntax error|unexpected token|Expected token|unterminated/i.test(output),
+            `${relativePath(file)}: qmllint reported a syntax error\n${output}`
+        );
     }
 } else {
     console.log("qmllint not found; skipping QML syntax check");

@@ -4,31 +4,33 @@
 // Intended to be returned from the PluginComponent.horizontalBarPill property.
 
 import QtQuick
+import "../Helpers"
 import qs.Common
 import qs.Widgets
-import "../Helpers"
 
 Row {
     id: pill
-    Constants { id: constants }
+
+    property string displayText: constants.barDefaultLabel
 
     // ── Required bindings (set by Widget.qml) ────────────────────────────────
-    property int    iconSize:    constants.defaultBarIconSize
-    property string displayText: constants.barDefaultLabel
+    property int iconSize: constants.defaultBarIconSize
 
     spacing: Theme.spacingS
 
+    Constants {
+        id: constants
+    }
     DankIcon {
+        anchors.verticalCenter: parent.verticalCenter
+        color: Theme.primary
         name: "show_chart"
         size: pill.iconSize
-        color: Theme.primary
-        anchors.verticalCenter: parent.verticalCenter
     }
-
     StyledText {
-        text: pill.displayText
-        font.pixelSize: Theme.fontSizeSmall
-        color: Theme.surfaceText
         anchors.verticalCenter: parent.verticalCenter
+        color: Theme.surfaceText
+        font.pixelSize: Theme.fontSizeSmall
+        text: pill.displayText
     }
 }

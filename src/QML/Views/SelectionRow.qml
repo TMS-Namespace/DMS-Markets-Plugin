@@ -18,77 +18,85 @@ import qs.Widgets
 Column {
     id: root
 
-    property string settingKey: ""
-    property string label: ""
-    property string description: ""
-    property var    options: []
     property string defaultValue: ""
+    property string description: ""
+    property alias dropdown: field
+    property string label: ""
+    readonly property var labelToValue: {
+        let map = {};
+        for (let i = 0; i < options.length; i++) {
+            let option = options[i];
+            if (typeof option === "object")
+                map[option.label] = option.value;
+            else
+                map[option] = option;
+        }
+        return map;
+    }
+    readonly property var optionLabels: {
+        let labels = [];
+        for (let i = 0; i < options.length; i++)
+            labels.push(options[i].label || options[i]);
+        return labels;
+    }
+    property var options: []
+    property string settingKey: ""
     property string value: defaultValue
-    property alias  dropdown: field
-
-    width: parent ? parent.width : implicitWidth
-    spacing: Theme.spacingS
+    readonly property var valueToLabel: {
+        let map = {};
+        for (let i = 0; i < options.length; i++) {
+            let option = options[i];
+            if (typeof option === "object")
+                map[option.value] = option.label;
+            else
+                map[option] = option;
+        }
+        return map;
+    }
 
     // The page this row sits in (the nearest parent that can save and load values), or null.
     function _settings() {
-        let item = root.parent
+        let item = root.parent;
         while (item) {
-            if ("saveValue" in item && "loadValue" in item) return item
-            item = item.parent
+            if ("saveValue" in item && "loadValue" in item)
+                return item;
+            item = item.parent;
         }
-        return null
+        return null;
     }
 
     // Takes the saved value (called by the page when its plugin service attaches or its data changes).
     function loadValue() {
-        let settings = _settings()
-        if (settings && settings.pluginService) value = settings.loadValue(settingKey, defaultValue)
+        let settings = _settings();
+        if (settings && settings.pluginService)
+            value = settings.loadValue(settingKey, defaultValue);
     }
+
+    spacing: Theme.spacingS
+    width: parent ? parent.width : implicitWidth
 
     Component.onCompleted: loadValue()
-
     onValueChanged: {
-        let settings = _settings()
-        if (settings) settings.saveValue(settingKey, value)
-    }
-
-    readonly property var optionLabels: {
-        let labels = []
-        for (let i = 0; i < options.length; i++) labels.push(options[i].label || options[i])
-        return labels
-    }
-    readonly property var valueToLabel: {
-        let map = {}
-        for (let i = 0; i < options.length; i++) {
-            let option = options[i]
-            if (typeof option === "object") map[option.value] = option.label
-            else map[option] = option
-        }
-        return map
-    }
-    readonly property var labelToValue: {
-        let map = {}
-        for (let i = 0; i < options.length; i++) {
-            let option = options[i]
-            if (typeof option === "object") map[option.label] = option.value
-            else map[option] = option
-        }
-        return map
+        let settings = _settings();
+        if (settings)
+            settings.saveValue(settingKey, value);
     }
 
     DankDropdown {
         id: field
-        width: parent.width
-        text: root.label
+
         description: root.description
         options: root.optionLabels
+        text: root.label
+        width: parent.width
+
         onValueChanged: newValue => root.value = root.labelToValue[newValue] || newValue
     }
 
     // The dropdown's shown text always follows `value` (see the note at the top).
     Binding {
-        target: field
         property: "currentValue"
+        target: field
         value: root.valueToLabel[root.value] || root.value
     }
 }

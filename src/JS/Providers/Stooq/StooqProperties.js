@@ -11,8 +11,7 @@
 .pragma library
 .import "StooqConstants.js" as ProviderConstants
 .import "../../Contracts/Resolution.js" as Resolution
-
-var ResolutionValues = Resolution.Values
+var ResolutionValues = Resolution.Values;
 
 // Return this provider's declared settings and supported data ranges.
 function create() {
@@ -42,10 +41,10 @@ function create() {
         changeResolutions: [ResolutionValues.D1, ResolutionValues.W1, ResolutionValues.MO1],
         priceResolutions: [ResolutionValues.D1, ResolutionValues.W1, ResolutionValues.MO1],
         chartLimits: [
-            { resolution: ResolutionValues.D1,  maxHistoryDays: 0 },
-            { resolution: ResolutionValues.W1,  maxHistoryDays: 0 },
+            { resolution: ResolutionValues.D1, maxHistoryDays: 0 },
+            { resolution: ResolutionValues.W1, maxHistoryDays: 0 },
             { resolution: ResolutionValues.MO1, maxHistoryDays: 0 }
         ],
         tailHistory: true
-    }
+    };
 }

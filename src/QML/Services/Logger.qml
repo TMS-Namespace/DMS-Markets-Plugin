@@ -15,25 +15,34 @@ import QtQml
 
 QtObject {
     property bool devMode: false
-    property var sink: function(level, scope, text) {
-        (level === "error" ? console.warn : console.info)("[Markets/" + scope + "]", text)
+    property var sink: function (level, scope, text) {
+        (level === "error" ? console.warn : console.info)("[Markets/" + scope + "]", text);
+    }
+
+    // Write to the configured destination using this service's failure policy.
+    function _write(level, scope, text) {
+        if (!devMode || !sink)
+            return;
+        try {
+            sink(level, scope, text);
+        } catch (failure) { /* logging must never break the caller */ }
     }
 
     // Any of: devMode, sink. Unspecified fields keep their value.
     function configure(settings) {
-        let changes = settings || {}
-        if (changes.devMode !== undefined) devMode = !!changes.devMode
-        if (changes.sink !== undefined)    sink = changes.sink
+        let changes = settings || {};
+        if (changes.devMode !== undefined)
+            devMode = !!changes.devMode;
+        if (changes.sink !== undefined)
+            sink = changes.sink;
     }
 
     // Send a diagnostic message through the configured logging policy.
-    function debug(scope, text) { _write("debug", scope, text) }
+    function debug(scope, text) {
+        _write("debug", scope, text);
+    }
     // Send a failure message through the configured logging policy.
-    function error(scope, text) { _write("error", scope, text) }
-
-    // Write to the configured destination using this service's failure policy.
-    function _write(level, scope, text) {
-        if (!devMode || !sink) return
-        try { sink(level, scope, text) } catch (failure) { /* logging must never break the caller */ }
+    function error(scope, text) {
+        _write("error", scope, text);
     }
 }

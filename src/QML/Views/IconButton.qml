@@ -8,67 +8,72 @@
 //   pressable                                     false: shown, but not clickable
 //   hovered (read-only), clicked()
 import QtQuick
+import "../Helpers"
 import qs.Common
 import qs.Widgets
-import "../Helpers"
 
 Rectangle {
     id: button
 
-    property string iconName: ""
-    property int    iconSize: constants.actionIconSize
-    property color  iconColor: Theme.surfaceVariantText
-    property real   iconRotation: 0
-    property int    buttonSize: constants.actionButtonSize
-    property real   buttonRadius: constants.actionButtonRadius
-    property color  hoverTint: "transparent"
-    property bool   spinning: false
-    property bool   pressable: true
+    property real buttonRadius: constants.actionButtonRadius
+    property int buttonSize: constants.actionButtonSize
+    property color hoverTint: "transparent"
     readonly property bool hovered: mouseArea.containsMouse
+    property color iconColor: Theme.surfaceVariantText
+    property string iconName: ""
+    property real iconRotation: 0
+    property int iconSize: constants.actionIconSize
+    property bool pressable: true
+    property bool spinning: false
 
-    signal clicked()
+    signal clicked
 
-    Constants { id: constants }
-
-    width: buttonSize
+    color: hovered && hoverTint.a > 0 ? Qt.rgba(hoverTint.r, hoverTint.g, hoverTint.b, constants.buttonHoverAlpha) : Qt.rgba(Theme.surfaceContainer.r, Theme.surfaceContainer.g, Theme.surfaceContainer.b, constants.actionButtonBgOpacity)
     height: buttonSize
     radius: buttonRadius
-    color: hovered && hoverTint.a > 0
-           ? Qt.rgba(hoverTint.r, hoverTint.g, hoverTint.b, constants.buttonHoverAlpha)
-           : Qt.rgba(Theme.surfaceContainer.r, Theme.surfaceContainer.g, Theme.surfaceContainer.b, constants.actionButtonBgOpacity)
+    width: buttonSize
 
+    onSpinningChanged: if (!spinning)
+        spinner.rotation = 0
+
+    Constants {
+        id: constants
+    }
     MouseArea {
         id: mouseArea
+
         anchors.fill: parent
-        hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
         enabled: button.pressable
+        hoverEnabled: true
+
         onClicked: button.clicked()
     }
 
     // The spinner turns; the icon inside keeps its own fixed rotation (for example a tilted pin).
     Item {
         id: spinner
+
         anchors.centerIn: parent
-        width: icon.width
         height: icon.height
+        width: icon.width
 
         RotationAnimation on rotation {
-            running: button.spinning
-            from: 0; to: constants.fullRotationDeg
             duration: constants.headerAnimDurationMs
+            from: 0
             loops: Animation.Infinite
+            running: button.spinning
+            to: constants.fullRotationDeg
         }
 
         DankIcon {
             id: icon
+
             anchors.centerIn: parent
-            name: button.iconName
-            size: button.iconSize
             color: button.iconColor
+            name: button.iconName
             rotation: button.iconRotation
+            size: button.iconSize
         }
     }
-
-    onSpinningChanged: if (!spinning) spinner.rotation = 0
 }

@@ -6,11 +6,18 @@ const constants = loadModule("JS/Helpers/Constants.js", registry);
 const { Resolution, ChartSpan } = loadShared();
 
 // ── Thresholds are constants, in a sane order ────────────────────────────────
-const { CHART_CANDLES_BLOCK_MIN: blockMin, CHART_CANDLES_WARN_MIN: warnMin,
-        CHART_CANDLES_WARN_MAX: warnMax, CHART_CANDLES_BLOCK_MAX: blockMax } = constants;
+const {
+    CHART_CANDLES_BLOCK_MIN: blockMin,
+    CHART_CANDLES_WARN_MIN: warnMin,
+    CHART_CANDLES_WARN_MAX: warnMax,
+    CHART_CANDLES_BLOCK_MAX: blockMax
+} = constants;
 same([blockMin, warnMin, warnMax, blockMax], [3, 10, 100, 200], "thresholds: block<3, warn<10, warn>100, block>200");
 assert(blockMin < warnMin && warnMin < warnMax && warnMax < blockMax, "ordered thresholds");
-const source = require("fs").readFileSync(require("path").join(__dirname, "../../../../src/JS/Helpers/ChartRules.js"), "utf8");
+const source = require("fs").readFileSync(
+    require("path").join(__dirname, "../../../../src/JS/Helpers/ChartRules.js"),
+    "utf8"
+);
 assert(!/[<>]=?\s*(3|10|100|200)\b/.test(source.replace(/\/\/.*$/gm, "")), "thresholds are never compared as literals");
 
 // ── Candle counting ──────────────────────────────────────────────────────────
@@ -24,25 +31,28 @@ assert.strictEqual(rules.candleCount("zzz", "1M"), 0);
 const level = (resolution, span) => rules.evaluate(resolution, span);
 const cases = [
     // [resolution, span, candles, level, reason]
-    ["1M", "1M", 1,    "block", "tooBig"],      // 1 candle  (< 3)
-    ["1M", "3M", 3.03, "warn",  "tooBig"],      // 3.03: not < 3, so warn (< 10)
-    ["1w", "1M", 4.28, "warn",  "tooBig"],
-    ["1d", "1W", 7,    "warn",  "tooBig"],      // 7 < 10
-    ["1w", "3M", 13,   "ok",    ""],
-    ["1d", "1M", 30,   "ok",    ""],
-    ["1d", "3M", 91,   "ok",    ""],
-    ["15m", "1D", 96,  "ok",    ""],
-    ["1d", "6M", 182,  "warn",  "tooSmall"],    // > 100
-    ["1h", "1W", 168,  "warn",  "tooSmall"],
-    ["1d", "1Y", 365,  "block", "tooSmall"],    // > 200
-    ["1h", "1M", 720,  "block", "tooSmall"],
+    ["1M", "1M", 1, "block", "tooBig"], // 1 candle  (< 3)
+    ["1M", "3M", 3.03, "warn", "tooBig"], // 3.03: not < 3, so warn (< 10)
+    ["1w", "1M", 4.28, "warn", "tooBig"],
+    ["1d", "1W", 7, "warn", "tooBig"], // 7 < 10
+    ["1w", "3M", 13, "ok", ""],
+    ["1d", "1M", 30, "ok", ""],
+    ["1d", "3M", 91, "ok", ""],
+    ["15m", "1D", 96, "ok", ""],
+    ["1d", "6M", 182, "warn", "tooSmall"], // > 100
+    ["1h", "1W", 168, "warn", "tooSmall"],
+    ["1d", "1Y", 365, "block", "tooSmall"], // > 200
+    ["1h", "1M", 720, "block", "tooSmall"],
     ["1m", "1D", 1440, "block", "tooSmall"]
 ];
 for (const [resolution, span, candles, expectedLevel, reason] of cases) {
     const result = level(resolution, span);
     assert.strictEqual(result.level, expectedLevel, `${resolution}/${span} (${candles} candles) → ${expectedLevel}`);
     assert.strictEqual(result.reason, reason, `${resolution}/${span} reason`);
-    assert(Math.abs(result.candles - candles) < 0.1, `${resolution}/${span} candles ≈ ${candles}, got ${result.candles}`);
+    assert(
+        Math.abs(result.candles - candles) < 0.1,
+        `${resolution}/${span} candles ≈ ${candles}, got ${result.candles}`
+    );
 }
 
 // Exact edges, using a stub-free search over the real enum pairs: values equal to
@@ -57,12 +67,19 @@ for (const resolution of Resolution.ORDER)
 
 // ── Messages ─────────────────────────────────────────────────────────────────
 assert.strictEqual(level("1d", "1M").message, "", "ok has no message");
-assert(/too small for the current chart range.*prefer a bigger one/.test(level("1d", "6M").message),
-       "too many candles: resolution too small → prefer a bigger one");
-assert(/too big for the current chart range.*prefer a smaller one/.test(level("1d", "1W").message),
-       "too few candles: resolution too big → prefer a smaller one");
+assert(
+    /too small for the current chart range.*prefer a bigger one/.test(level("1d", "6M").message),
+    "too many candles: resolution too small → prefer a bigger one"
+);
+assert(
+    /too big for the current chart range.*prefer a smaller one/.test(level("1d", "1W").message),
+    "too few candles: resolution too big → prefer a smaller one"
+);
 assert(/^Note that/.test(level("1d", "6M").message), "warnings are phrased as notes");
-assert(/cannot be used/.test(level("1d", "1Y").message) && /cannot be used/.test(level("1M", "1M").message), "blocks say so");
+assert(
+    /cannot be used/.test(level("1d", "1Y").message) && /cannot be used/.test(level("1M", "1M").message),
+    "blocks say so"
+);
 assert(level("1d", "1W").message.includes("7 candles"), "message includes the candle count");
 
 // ── isAllowed ────────────────────────────────────────────────────────────────

@@ -14,22 +14,61 @@
 .import "Helpers.js" as Helpers
 .import "../Contracts/Resolution.js" as Resolution
 .import "../Contracts/ChartSpan.js" as ChartSpan
-
-var FORBIDDEN_CHARS = Object.freeze([" ", "\t", "\n", "\r", "\0", "'", "\"", "`", "$", ";", "|", "<", ">",
-                                     "(", ")", "{", "}", "\\", "#", "?", "%", "/", "*", "!", "~", ","])
+var FORBIDDEN_CHARS = Object.freeze([
+    " ",
+    "\t",
+    "\n",
+    "\r",
+    "\0",
+    "'",
+    '"',
+    "`",
+    "$",
+    ";",
+    "|",
+    "<",
+    ">",
+    "(",
+    ")",
+    "{",
+    "}",
+    "\\",
+    "#",
+    "?",
+    "%",
+    "/",
+    "*",
+    "!",
+    "~",
+    ","
+]);
 
 // "" when `pattern` is an acceptable symbol pattern, otherwise what is wrong with it.
 function patternProblem(pattern) {
-    if (typeof pattern !== "string" || pattern.length < 3 || pattern.charAt(0) !== "^" || pattern.charAt(pattern.length - 1) !== "$")
-        return "'symbolPattern' must be an anchored regular expression (^...$)"
-    let regex
-    try { regex = new RegExp(pattern) } catch (caughtError) { return "'symbolPattern' is not a valid regular expression" }
-    for (let i = 0; i < FORBIDDEN_CHARS.length; i++) {
-        let character = FORBIDDEN_CHARS[i]
-        if (regex.test(character) || regex.test("A" + character) || regex.test(character + "A") || regex.test("A" + character + "A"))
-            return "'symbolPattern' must not allow the character " + JSON.stringify(character)
+    if (
+        typeof pattern !== "string" ||
+        pattern.length < 3 ||
+        pattern.charAt(0) !== "^" ||
+        pattern.charAt(pattern.length - 1) !== "$"
+    )
+        return "'symbolPattern' must be an anchored regular expression (^...$)";
+    let regex;
+    try {
+        regex = new RegExp(pattern);
+    } catch (caughtError) {
+        return "'symbolPattern' is not a valid regular expression";
     }
-    return ""
+    for (let i = 0; i < FORBIDDEN_CHARS.length; i++) {
+        let character = FORBIDDEN_CHARS[i];
+        if (
+            regex.test(character) ||
+            regex.test("A" + character) ||
+            regex.test(character + "A") ||
+            regex.test("A" + character + "A")
+        )
+            return "'symbolPattern' must not allow the character " + JSON.stringify(character);
+    }
+    return "";
 }
 
 // `rules` is anything with name, symbolPattern, symbolMinLength, symbolMaxLength, symbolFormatMessage
@@ -37,47 +76,81 @@ function patternProblem(pattern) {
 // explanation when invalid.
 function validate(rules, symbol) {
     if (typeof symbol !== "string" || symbol === "")
-        return { valid: false, message: "Enter a symbol. " + rules.symbolFormatMessage }
+        return { valid: false, message: "Enter a symbol. " + rules.symbolFormatMessage };
     if (symbol.length < rules.symbolMinLength || symbol.length > rules.symbolMaxLength)
-        return { valid: false, message: "A " + rules.name + " symbol has "
-                 + (rules.symbolMinLength === rules.symbolMaxLength ? rules.symbolMinLength
-                    : rules.symbolMinLength + " to " + rules.symbolMaxLength)
-                 + " characters. " + rules.symbolFormatMessage }
-    if (!new RegExp(rules.symbolPattern).test(symbol))
-        return { valid: false, message: rules.symbolFormatMessage }
-    return { valid: true, message: "" }
+        return {
+            valid: false,
+            message:
+                "A " +
+                rules.name +
+                " symbol has " +
+                (rules.symbolMinLength === rules.symbolMaxLength
+                    ? rules.symbolMinLength
+                    : rules.symbolMinLength + " to " + rules.symbolMaxLength) +
+                " characters. " +
+                rules.symbolFormatMessage
+        };
+    if (!new RegExp(rules.symbolPattern).test(symbol)) return { valid: false, message: rules.symbolFormatMessage };
+    return { valid: true, message: "" };
 }
 
 // The display name a user gives a symbol: 1 to DISPLAY_NAME_MAX_LENGTH characters from a fixed set (spaces included, but not only spaces).
 // Returns plain { valid, message } like `validate`.
 function validateName(name) {
-    if (typeof name !== "string" || name === "")
-        return { valid: false, message: "Enter a display name." }
+    if (typeof name !== "string" || name === "") return { valid: false, message: "Enter a display name." };
     if (name.length > Constants.DISPLAY_NAME_MAX_LENGTH)
-        return { valid: false, message: "The display name can have at most " + Constants.DISPLAY_NAME_MAX_LENGTH + " characters." }
+        return {
+            valid: false,
+            message: "The display name can have at most " + Constants.DISPLAY_NAME_MAX_LENGTH + " characters."
+        };
     if (!new RegExp(Constants.DISPLAY_NAME_PATTERN).test(name))
-        return { valid: false, message: "The display name can only have letters, digits, spaces and & - + * / \\ . ~ % $ ^ _ ? ! # ( ) [ ] =" }
-    if (name.trim() === "")
-        return { valid: false, message: "Enter a display name." }
-    return { valid: true, message: "" }
+        return {
+            valid: false,
+            message:
+                "The display name can only have letters, digits, spaces and & - + * / \\ . ~ % $ ^ _ ? ! # ( ) [ ] ="
+        };
+    if (name.trim() === "") return { valid: false, message: "Enter a display name." };
+    return { valid: true, message: "" };
 }
 
 // Throws before any request is built from a symbol that is not acceptable.
 function assertValid(rules, symbol) {
-    let verdict = validate(rules, symbol)
+    let verdict = validate(rules, symbol);
     if (!verdict.valid)
-        throw new PluginError.PluginError(PluginError.Code.INVALID_SYMBOL, verdict.message,
-            rules.name + ": invalid symbol " + JSON.stringify(String(symbol).slice(0, 40)) + ". " + verdict.message)
+        throw new PluginError.PluginError(
+            PluginError.Code.INVALID_SYMBOL,
+            verdict.message,
+            rules.name + ": invalid symbol " + JSON.stringify(String(symbol).slice(0, 40)) + ". " + verdict.message
+        );
 }
 
 // The persisted fields are copied into a typed holder before storage checks their combined validity.
-var SAVED_FIELDS = Object.freeze(["uid", "ticker", "name", "provider", "priceResolution", "changeResolution",
-                                 "chartResolution", "chartRange", "showChangeWhenPinned", "invert", "pinned"])
+var SAVED_FIELDS = Object.freeze([
+    "uid",
+    "ticker",
+    "name",
+    "provider",
+    "priceResolution",
+    "changeResolution",
+    "chartResolution",
+    "chartRange",
+    "showChangeWhenPinned",
+    "invert",
+    "pinned"
+]);
 
 // Check the complete current-format symbol at the storage boundary, outside the data contract.
 function isValidSavedSymbol(symbol) {
-    return !!symbol && Helpers.isUuid(symbol.uid) && typeof symbol.ticker === "string" && symbol.ticker !== ""
-            && typeof symbol.provider === "string" && symbol.provider !== ""
-            && Resolution.isValid(symbol.priceResolution) && Resolution.isValid(symbol.changeResolution)
-            && Resolution.isValid(symbol.chartResolution) && ChartSpan.isValid(symbol.chartRange)
+    return (
+        !!symbol &&
+        Helpers.isUuid(symbol.uid) &&
+        typeof symbol.ticker === "string" &&
+        symbol.ticker !== "" &&
+        typeof symbol.provider === "string" &&
+        symbol.provider !== "" &&
+        Resolution.isValid(symbol.priceResolution) &&
+        Resolution.isValid(symbol.changeResolution) &&
+        Resolution.isValid(symbol.chartResolution) &&
+        ChartSpan.isValid(symbol.chartRange)
+    );
 }

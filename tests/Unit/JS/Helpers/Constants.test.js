@@ -2,7 +2,8 @@ const { assert, createRegistry, loadModule, srcRoot, listFiles, same } = require
 const fs = require("fs");
 
 // Constant names only (the vm context also exposes JS globals such as `console`).
-const constantNames = (module) => Object.keys(module).filter((constantName) => /^[A-Z][A-Z0-9_]*$/.test(constantName) && constantName !== "JSON");
+const constantNames = (module) =>
+    Object.keys(module).filter((constantName) => /^[A-Z][A-Z0-9_]*$/.test(constantName) && constantName !== "JSON");
 
 const constants = loadModule("JS/Helpers/Constants.js", createRegistry());
 
@@ -12,14 +13,25 @@ for (const name of constantNames(constants))
 
 // Fetch plumbing the providers rely on.
 same(constants.FETCH_SHELL_COMMAND, ["bash", "-o", "pipefail", "-c"]);
-for (const name of ["CURL_CONNECT_TIMEOUT_SECONDS", "CURL_MAX_TIME_SECONDS", "FETCH_USER_AGENT",
-                    "PROCESS_NICE_LEVEL", "PROCESS_IONICE_CLASS", "POLL_INTERVAL_MS", "MAX_RETRIES"])
+for (const name of [
+    "CURL_CONNECT_TIMEOUT_SECONDS",
+    "CURL_MAX_TIME_SECONDS",
+    "FETCH_USER_AGENT",
+    "PROCESS_NICE_LEVEL",
+    "PROCESS_IONICE_CLASS",
+    "POLL_INTERVAL_MS",
+    "MAX_RETRIES"
+])
     assert(constants[name] !== undefined, `${name} defined`);
 assert.strictEqual(constants.DEFAULT_PRICE_RESOLUTION, "1h");
 assert(!/'/.test(constants.FETCH_USER_AGENT), "User agent is embedded in single quotes in the shell script");
 
 // Each provider's constants are self-describing and use only its own prefix.
-for (const [folder, prefix] of [["Yahoo", "YAHOO"], ["Stooq", "STOOQ"], ["Wise", "WISE"]]) {
+for (const [folder, prefix] of [
+    ["Yahoo", "YAHOO"],
+    ["Stooq", "STOOQ"],
+    ["Wise", "WISE"]
+]) {
     const providerConstants = loadModule(`JS/Providers/${folder}/${folder}Constants.js`, createRegistry());
     const names = constantNames(providerConstants);
     assert(names.length > 5, `${folder} constants present`);

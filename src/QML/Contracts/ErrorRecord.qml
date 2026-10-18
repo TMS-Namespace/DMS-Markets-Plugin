@@ -7,11 +7,11 @@
 import QtQml
 
 QtObject {
-    property string scope: ""
     property string code: ""
-    property string userMessage: ""
     property string details: ""
     property bool retryable: false
+    property string scope: ""
     property int status: 0
     property real time: 0
+    property string userMessage: ""
 }

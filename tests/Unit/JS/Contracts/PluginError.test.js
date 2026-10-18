@@ -15,7 +15,12 @@ assert.strictEqual(error.retryable, true);
 assert.strictEqual(error.status, 0);
 assert.strictEqual(typeof error.stack, "string");
 assert(errors.isPluginError(error));
-assert.throws(() => { throw error; }, (thrown) => thrown === error);
+assert.throws(
+    () => {
+        throw error;
+    },
+    (thrown) => thrown === error
+);
 
 // Defaults and edge cases.
 const bare = new PluginError();
@@ -33,8 +38,24 @@ assert.strictEqual(new PluginError("x", "m").message, "m");
 assert(Object.isFrozen(Code), "codes are constants");
 const values = Object.values(Code);
 assert.strictEqual(new Set(values).size, values.length, "codes are unique");
-for (const needed of ["INVALID_SYMBOL", "UNSUPPORTED", "POLL_TOO_FAST", "UNKNOWN_PROVIDER", "PROVIDER_CONFIG", "NETWORK", "TIMEOUT", "HTTP",
-                      "NOT_FOUND", "RATE_LIMITED", "CREDENTIAL", "PROCESS", "PARSE", "NO_DATA", "STORAGE", "UNKNOWN"])
+for (const needed of [
+    "INVALID_SYMBOL",
+    "UNSUPPORTED",
+    "POLL_TOO_FAST",
+    "UNKNOWN_PROVIDER",
+    "PROVIDER_CONFIG",
+    "NETWORK",
+    "TIMEOUT",
+    "HTTP",
+    "NOT_FOUND",
+    "RATE_LIMITED",
+    "CREDENTIAL",
+    "PROCESS",
+    "PARSE",
+    "NO_DATA",
+    "STORAGE",
+    "UNKNOWN"
+])
     assert(Code[needed], needed);
 
 // ── from(): foreign errors never leak their text to users ────────────────────
@@ -52,6 +73,8 @@ assert.strictEqual(errors.from({ message: 5 }).details, "5");
 assert.strictEqual(errors.from(new Error("x"), Code.STORAGE).code, "storage", "fallback code for foreign errors");
 assert.strictEqual(errors.from(error, Code.STORAGE).code, "network", "...but never overrides a PluginError's own");
 
-assert(!errors.isPluginError(new Error("x")) && !errors.isPluginError(null) && !errors.isPluginError({ code: "network" }));
+assert(
+    !errors.isPluginError(new Error("x")) && !errors.isPluginError(null) && !errors.isPluginError({ code: "network" })
+);
 
 console.log("PluginError tests passed");

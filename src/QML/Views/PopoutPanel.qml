@@ -6,49 +6,54 @@
 
 pragma ComponentBehavior: Bound
 import QtQuick
+import "../../JS/Contracts/FetchType.js" as FetchType
+import "../Helpers"
 import qs.Common
 import qs.Widgets
-import "../Helpers"
-import "../../JS/Contracts/FetchType.js" as FetchType
 
 Item {
     id: panel
 
-    Constants { id: constants }
-
-    // ── Data inputs (bound from Widget.qml) ──────────────────────────────────
-    property var  symbols:        []
-    property var  priceData:      ({})
-    property var  graphData:      ({})
-    property var  pendingFetches: ({})
-    property var  lastFetchTimes: ({})
-    property var  symbolErrors:   ({})   // { uid: { price, graph } }
-
-    // ── Display settings (Widget.qml always binds all of these) ──────────────
-    property color upColor
-    property color downColor
-    property bool  showTicker:         true
-    property bool  showPriceChange:     true
-    property bool  showChartRange:     true
-    property bool  showProviderName:   true
-    property bool  showRefreshedSince: true
-    property int   popoutRows:         constants.defaultPopoutRows
-
-    // ── Header geometry (for positioning overlay buttons) ─────────────────────
-    property real  headerOffset: 0    // headerHeight + detailsHeight
-
-    // ── Signals (forwarded to Widget.qml) ────────────────────────────────────
-    signal togglePin(string uid)
-    signal removeSymbol(string uid)
-    signal refreshSymbol(string uid)
-    signal refreshAll()
-    signal closePopout()
-
     // ── Computed ─────────────────────────────────────────────────────────────
     property bool _anyLoading: {
         for (let key in pendingFetches)
-            if (pendingFetches[key] > 0) return true
-        return false
+            if (pendingFetches[key] > 0)
+                return true;
+        return false;
+    }
+    property color downColor
+    property var graphData: ({})
+
+    // ── Header geometry (for positioning overlay buttons) ─────────────────────
+    property real headerOffset: 0    // headerHeight + detailsHeight
+
+    property var lastFetchTimes: ({})
+    property var pendingFetches: ({})
+    property int popoutRows: constants.defaultPopoutRows
+    property var priceData: ({})
+    property bool showChartRange: true
+    property bool showPriceChange: true
+    property bool showProviderName: true
+    property bool showRefreshedSince: true
+    property bool showTicker: true
+    property var symbolErrors: ({})   // { uid: { price, graph } }
+
+    // ── Data inputs (bound from Widget.qml) ──────────────────────────────────
+    property var symbols: []
+
+    // ── Display settings (Widget.qml always binds all of these) ──────────────
+    property color upColor
+
+    signal closePopout
+    signal refreshAll
+    signal refreshSymbol(string uid)
+    signal removeSymbol(string uid)
+
+    // ── Signals (forwarded to Widget.qml) ────────────────────────────────────
+    signal togglePin(string uid)
+
+    Constants {
+        id: constants
     }
 
     // ═════════════════════════════════════════════════════════════════════════
@@ -57,46 +62,50 @@ Item {
 
     MouseArea {
         id: headerHoverArea
-        x: 0; width: parent.width
-        y: -panel.headerOffset
+
+        acceptedButtons: Qt.NoButton
         height: panel.headerOffset
         hoverEnabled: true
-        acceptedButtons: Qt.NoButton
+        width: parent.width
+        x: 0
+        y: -panel.headerOffset
         z: constants.headerHoverZ
     }
-
     Row {
         id: headerButtons
-        anchors.right:       parent.right
+
+        anchors.right: parent.right
         anchors.rightMargin: Theme.spacingS
-        y:       -panel.headerOffset + Theme.spacingS
         spacing: constants.headerButtonSpacing
-        visible: headerHoverArea.containsMouse
-                 || refreshAllButton.hovered
-                 || closePopoutButton.hovered
-                 || panel._anyLoading
+        visible: headerHoverArea.containsMouse || refreshAllButton.hovered || closePopoutButton.hovered || panel._anyLoading
+        y: -panel.headerOffset + Theme.spacingS
         z: constants.headerButtonZ
 
         IconButton {
             id: refreshAllButton
-            buttonSize: constants.headerButtonSize; buttonRadius: constants.headerButtonRadius
-            iconName:   "refresh"
-            iconSize:   constants.headerIconSize
-            iconColor:  panel._anyLoading ? Theme.primary : Theme.surfaceText
-            hoverTint:  Theme.primary
-            spinning:   panel._anyLoading
-            pressable:  !panel._anyLoading
-            onClicked:  panel.refreshAll()
-        }
 
+            buttonRadius: constants.headerButtonRadius
+            buttonSize: constants.headerButtonSize
+            hoverTint: Theme.primary
+            iconColor: panel._anyLoading ? Theme.primary : Theme.surfaceText
+            iconName: "refresh"
+            iconSize: constants.headerIconSize
+            pressable: !panel._anyLoading
+            spinning: panel._anyLoading
+
+            onClicked: panel.refreshAll()
+        }
         IconButton {
             id: closePopoutButton
-            buttonSize: constants.headerButtonSize; buttonRadius: constants.headerButtonRadius
-            iconName:   "close"
-            iconSize:   constants.headerIconSize
-            iconColor:  closePopoutButton.hovered ? Theme.error : Theme.surfaceText
-            hoverTint:  Theme.error
-            onClicked:  panel.closePopout()
+
+            buttonRadius: constants.headerButtonRadius
+            buttonSize: constants.headerButtonSize
+            hoverTint: Theme.error
+            iconColor: closePopoutButton.hovered ? Theme.error : Theme.surfaceText
+            iconName: "close"
+            iconSize: constants.headerIconSize
+
+            onClicked: panel.closePopout()
         }
     }
 
@@ -106,35 +115,37 @@ Item {
 
     ListView {
         id: symbolList
-        anchors.left:   parent.left
-        anchors.right:  scrollIndicator.visible ? scrollIndicator.left : parent.right
-        anchors.top:    parent.top
+
         anchors.bottom: parent.bottom
-        spacing:        Theme.spacingS
-        clip:           true
-        model:          panel.symbols
+        anchors.left: parent.left
+        anchors.right: scrollIndicator.visible ? scrollIndicator.left : parent.right
+        anchors.top: parent.top
         boundsBehavior: Flickable.StopAtBounds
+        clip: true
+        model: panel.symbols
+        spacing: Theme.spacingS
 
         delegate: SymbolRow {
             required property var modelData
-            width:         symbolList.width
-            symbolData:    modelData
-            priceInfo:     panel.priceData[modelData.uid]  || ({})
-            chartData:     panel.graphData[modelData.uid]  || []
-            isLoading:     (panel.pendingFetches[modelData.uid] || 0) > 0
-            lastFetchTime: panel.lastFetchTimes[FetchType.timeKey(modelData.uid, FetchType.Values.PRICE)] || 0
-            symbolError:   panel.symbolErrors[modelData.uid] || ({})
-            upColor:       panel.upColor
-            downColor:     panel.downColor
-            showTicker:          panel.showTicker
-            showPriceChange:      panel.showPriceChange
-            showChartRange:      panel.showChartRange
-            showProviderName:    panel.showProviderName
-            showRefreshedSince:  panel.showRefreshedSince
 
-            onTogglePin:     panel.togglePin(modelData.uid)
-            onRemoveSymbol:  panel.removeSymbol(modelData.uid)
+            chartData: panel.graphData[modelData.uid] || []
+            downColor: panel.downColor
+            isLoading: (panel.pendingFetches[modelData.uid] || 0) > 0
+            lastFetchTime: panel.lastFetchTimes[FetchType.timeKey(modelData.uid, FetchType.Values.PRICE)] || 0
+            priceInfo: panel.priceData[modelData.uid] || ({})
+            showChartRange: panel.showChartRange
+            showPriceChange: panel.showPriceChange
+            showProviderName: panel.showProviderName
+            showRefreshedSince: panel.showRefreshedSince
+            showTicker: panel.showTicker
+            symbolData: modelData
+            symbolError: panel.symbolErrors[modelData.uid] || ({})
+            upColor: panel.upColor
+            width: symbolList.width
+
             onRefreshSymbol: panel.refreshSymbol(modelData.uid)
+            onRemoveSymbol: panel.removeSymbol(modelData.uid)
+            onTogglePin: panel.togglePin(modelData.uid)
         }
     }
 
@@ -144,26 +155,29 @@ Item {
 
     Rectangle {
         id: scrollIndicator
-        visible:        panel.symbols.length > panel.popoutRows
-        anchors.right:  parent.right
-        anchors.top:    parent.top
+
         anchors.bottom: parent.bottom
-        width:  constants.scrollBarWidth
-        color:  "transparent"
+        anchors.right: parent.right
+        anchors.top: parent.top
+        color: "transparent"
+        visible: panel.symbols.length > panel.popoutRows
+        width: constants.scrollBarWidth
 
         Rectangle {
-            width:   parent.width
-            radius:  constants.scrollBarRadius
-            color:   Theme.outlineVariant
-            opacity: symbolList.moving ? constants.scrollOpacityActive : constants.scrollOpacityIdle
-
             property real ratio: symbolList.height / symbolList.contentHeight
-            height: Math.max(constants.scrollThumbMin, parent.height * ratio)
-            y: symbolList.contentHeight > symbolList.height
-               ? (symbolList.contentY / (symbolList.contentHeight - symbolList.height)) * (parent.height - height)
-               : 0
 
-            Behavior on opacity { NumberAnimation { duration: constants.scrollAnimDurationMs } }
+            color: Theme.outlineVariant
+            height: Math.max(constants.scrollThumbMin, parent.height * ratio)
+            opacity: symbolList.moving ? constants.scrollOpacityActive : constants.scrollOpacityIdle
+            radius: constants.scrollBarRadius
+            width: parent.width
+            y: symbolList.contentHeight > symbolList.height ? (symbolList.contentY / (symbolList.contentHeight - symbolList.height)) * (parent.height - height) : 0
+
+            Behavior on opacity {
+                NumberAnimation {
+                    duration: constants.scrollAnimDurationMs
+                }
+            }
         }
     }
 
@@ -172,29 +186,27 @@ Item {
     // ═════════════════════════════════════════════════════════════════════════
 
     Column {
-        visible:          panel.symbols.length === 0
         anchors.centerIn: parent
-        spacing:          Theme.spacingM
+        spacing: Theme.spacingM
+        visible: panel.symbols.length === 0
 
         DankIcon {
-            name:  "add_chart"
-            size:  constants.emptyStateIconSize
+            anchors.horizontalCenter: parent.horizontalCenter
             color: Theme.surfaceVariantText
-            anchors.horizontalCenter: parent.horizontalCenter
+            name: "add_chart"
+            size: constants.emptyStateIconSize
         }
-
         StyledText {
-            text:           "No symbols added"
+            anchors.horizontalCenter: parent.horizontalCenter
+            color: Theme.surfaceVariantText
             font.pixelSize: Theme.fontSizeMedium
-            color:          Theme.surfaceVariantText
-            anchors.horizontalCenter: parent.horizontalCenter
+            text: "No symbols added"
         }
-
         StyledText {
-            text:           "Open Settings → Markets to add symbols"
-            font.pixelSize: Theme.fontSizeSmall
-            color:          Theme.surfaceVariantText
             anchors.horizontalCenter: parent.horizontalCenter
+            color: Theme.surfaceVariantText
+            font.pixelSize: Theme.fontSizeSmall
+            text: "Open Settings → Markets to add symbols"
         }
     }
 }

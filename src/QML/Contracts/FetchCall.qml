@@ -9,10 +9,10 @@
 import QtQml
 
 QtObject {
-    property string key: ""
-    property string group: ""
-    property var command: []
     property int candles: 0
+    property var command: []
     property var context: null
+    property string group: ""
     property var isCurrent: null
+    property string key: ""
 }

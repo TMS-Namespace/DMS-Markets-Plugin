@@ -5,8 +5,8 @@
 import QtQml
 
 QtObject {
-    property string id: ""
-    property string name: ""
     property var error: null
+    property string name: ""
+    property string id: ""
     property string userMessage: ""
 }

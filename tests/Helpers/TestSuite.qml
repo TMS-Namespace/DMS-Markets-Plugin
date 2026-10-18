@@ -7,126 +7,194 @@ import Quickshell.Io
 QtObject {
     id: suite
 
-    function _fail(message) { throw new Error(message) }
+    // Objects made without a parent belong to the JS engine and would be collected while still waiting: keep them.
+    property var _alive: []
 
-    function check(condition, message) {
-        if (!condition) _fail(message || "check failed")
+    // A directory of its own for one test, below the cache root the runner gives every QML run (XDG_CACHE_HOME).
+    property int _directoryCounter: 0
+    property Component _shellType: Component {
+        Process {
+            id: testProcess
+
+            property int _code: -1
+            property bool _exited: false
+            property bool _streamed: false
+            property string _text: ""
+            property var done
+
+            function _finish() {
+                if (_exited && _streamed) {
+                    let callback = done;
+                    suite._forget(this);
+                    destroy();
+                    callback(_code, _text);
+                }
+            }
+
+            stdout: StdioCollector {
+                onStreamFinished: {
+                    testProcess._text = text;
+                    testProcess._streamed = true;
+                    testProcess._finish();
+                }
+            }
+
+            onExited: code => {
+                _code = code;
+                _exited = true;
+                _finish();
+            }
+        }
     }
-
-    // Compares by value (JSON), so arrays/objects can be compared.
-    function equal(actual, expected, message) {
-        let actualJson = JSON.stringify(actual), expectedJson = JSON.stringify(expected)
-        if (actualJson !== expectedJson) _fail((message || "values differ") + "\n  actual:   " + actualJson + "\n  expected: " + expectedJson)
+    property Component _viewType: Component {
+        FileView {
+            blockLoading: true
+        }
     }
+    property Component _waitType: Component {
+        Timer {
+            property var condition
+            property real deadline: 0
+            property var describe
+            property var done
 
-    function same(actual, expected, message) {
-        if (actual !== expected)
-            _fail((message || "values are not identical") + "\n  actual:   " + String(actual) + "\n  expected: " + String(expected))
-    }
+            interval: 20
+            repeat: true
+            running: true
 
-    function near(actual, expected, tolerance, message) {
-        if (Math.abs(actual - expected) > (tolerance === undefined ? 1e-9 : tolerance))
-            _fail((message || "numbers differ") + "\n  actual:   " + actual + "\n  expected: " + expected)
-    }
-
-    // Passes when action throws and the error's message contains `fragment`; returns the error.
-    function throws(action, fragment, message) {
-        let caught = null
-        try { action() } catch (error) { caught = error }
-        if (!caught) _fail((message || "expected an error") + " - nothing was thrown")
-        if (fragment && String(caught.message).indexOf(fragment) === -1)
-            _fail((message || "unexpected error") + "\n  expected to contain: " + fragment + "\n  got: " + caught.message)
-        return caught
-    }
-
-    function doesNotThrow(action, message) {
-        try { action() } catch (error) { _fail((message || "unexpected error") + ": " + error.message) }
+            onTriggered: {
+                let result = null;
+                try {
+                    if (condition())
+                        result = "";
+                } catch (error) {
+                    result = "condition threw: " + error.message;
+                }
+                if (result === null && Date.now() > deadline)
+                    result = "timed out: " + (describe ? describe() : "");
+                if (result !== null) {
+                    running = false;
+                    let callback = done;
+                    suite._forget(this);
+                    destroy();
+                    callback(result);
+                }
+            }
+        }
     }
 
     // ── Waiting and running programs (for async_* tests) ─────────────────────
     // Calls done("") as soon as condition() is true, or done("timed out: <what>") after timeoutMs.
     property var _waits: []
-    property Component _waitType: Component {
-        Timer {
-            property var condition
-            property var done
-            property var describe
-            property real deadline: 0
-            interval: 20; repeat: true; running: true
-            onTriggered: {
-                let result = null
-                try { if (condition()) result = "" } catch (error) { result = "condition threw: " + error.message }
-                if (result === null && Date.now() > deadline) result = "timed out: " + (describe ? describe() : "")
-                if (result !== null) { running = false; let callback = done; suite._forget(this); destroy(); callback(result) }
-            }
-        }
-    }
-    function waitUntil(condition, done, timeoutMs, describe) {
-        _keep((_waitType.createObject(null, { condition: condition, done: done, describe: describe || null, deadline: Date.now() + (timeoutMs || 10000) }) as Timer))
-    }
-    // Objects made without a parent belong to the JS engine and would be collected while still waiting: keep them.
-    property var _alive: []
-    function _keep(object) { _alive = _alive.concat([object]) }
-    function _forget(object) { _alive = _alive.filter(function(other) { return other !== object }) }
-
-    // A directory of its own for one test, below the cache root the runner gives every QML run (XDG_CACHE_HOME).
-    property int _directoryCounter: 0
-    function freshDirectory(label) {
-        return Quickshell.env("XDG_CACHE_HOME") + "/" + (label || "t") + "-" + Date.now() + "-" + (++_directoryCounter)
-    }
-
-    property Component _shellType: Component {
-        Process {
-            id: testProcess
-            property var done
-            property string _text: ""
-            property bool _exited: false
-            property bool _streamed: false
-            property int _code: -1
-            function _finish() { if (_exited && _streamed) { let callback = done; suite._forget(this); destroy(); callback(_code, _text) } }
-            stdout: StdioCollector { onStreamFinished: { testProcess._text = text; testProcess._streamed = true; testProcess._finish() } }
-            onExited: code => { _code = code; _exited = true; _finish() }
-        }
-    }
-    // Runs `sh -c script` with the given arguments; done(exitCode, stdout).
-    function shell(script, args, done) {
-        _keep((_shellType.createObject(null, { command: ["sh", "-c", script, "sh"].concat(args || []), done: done, running: true }) as Process))
-    }
 
     // ── Reading source files and extracting QML functions ────────────────────
     // The repository root (the harness is started on one test file under <root>/tests/).
     readonly property string repoRoot: Quickshell.env("TEST_FILE").split("/tests/")[0]
 
-    property Component _viewType: Component { FileView { blockLoading: true } }
+    function _fail(message) {
+        throw new Error(message);
+    }
+    function _forget(object) {
+        _alive = _alive.filter(function (other) {
+            return other !== object;
+        });
+    }
+    function _keep(object) {
+        _alive = _alive.concat([object]);
+    }
+    function check(condition, message) {
+        if (!condition)
+            _fail(message || "check failed");
+    }
+    function doesNotThrow(action, message) {
+        try {
+            action();
+        } catch (error) {
+            _fail((message || "unexpected error") + ": " + error.message);
+        }
+    }
 
-    function readFile(relativePath) {
-        let view = (_viewType.createObject(null, { path: repoRoot + "/" + relativePath }) as FileView)
-        let text = view.text()
-        view.destroy()
-        return text
+    // Compares by value (JSON), so arrays/objects can be compared.
+    function equal(actual, expected, message) {
+        let actualJson = JSON.stringify(actual), expectedJson = JSON.stringify(expected);
+        if (actualJson !== expectedJson)
+            _fail((message || "values differ") + "\n  actual:   " + actualJson + "\n  expected: " + expectedJson);
+    }
+    function freshDirectory(label) {
+        return Quickshell.env("XDG_CACHE_HOME") + "/" + (label || "t") + "-" + Date.now() + "-" + (++_directoryCounter);
     }
 
     // Source of `function name(...) { ... }` found in `text` (brace matched).
     function functionSource(text, name) {
-        let start = text.search(new RegExp("function\\s+" + name + "\\s*\\("))
-        if (start === -1) _fail("function " + name + " not found")
-        let open = text.indexOf("{", text.indexOf(")", start))
-        let depth = 0
+        let start = text.search(new RegExp("function\\s+" + name + "\\s*\\("));
+        if (start === -1)
+            _fail("function " + name + " not found");
+        let open = text.indexOf("{", text.indexOf(")", start));
+        let depth = 0;
         for (let i = open; i < text.length; i++) {
-            if (text[i] === "{") depth++
-            else if (text[i] === "}" && --depth === 0) return text.slice(start, i + 1)
+            if (text[i] === "{")
+                depth++;
+            else if (text[i] === "}" && --depth === 0)
+                return text.slice(start, i + 1);
         }
-        _fail("unbalanced braces in " + name)
+        _fail("unbalanced braces in " + name);
     }
 
     // Compiles a function of a QML file with `scope` ({ identifier: value }) as its free variables, so
     // a test can run the REAL function against the real singletons and stub controls. Assignments to
     // names in `scope` land on the scope object (it is passed as `scope`).
     function loadFunction(relativePath, name, scope) {
-        let keys = Object.keys(scope)
-        let body = functionSource(readFile(relativePath), name)
+        let keys = Object.keys(scope);
+        let body = functionSource(readFile(relativePath), name);
         // identifiers resolve through `with (scope)` so assignments (e.g. editIndex = 3) are visible to the test
-        let factory = Function("scope", "with (scope) { " + body + "; return " + name + " }")
-        return factory(scope)
+        let factory = Function("scope", "with (scope) { " + body + "; return " + name + " }");
+        return factory(scope);
+    }
+    function near(actual, expected, tolerance, message) {
+        if (Math.abs(actual - expected) > (tolerance === undefined ? 1e-9 : tolerance))
+            _fail((message || "numbers differ") + "\n  actual:   " + actual + "\n  expected: " + expected);
+    }
+    function readFile(relativePath) {
+        let view = (_viewType.createObject(null, {
+                path: repoRoot + "/" + relativePath
+            }) as FileView);
+        let text = view.text();
+        view.destroy();
+        return text;
+    }
+    function same(actual, expected, message) {
+        if (actual !== expected)
+            _fail((message || "values are not identical") + "\n  actual:   " + String(actual) + "\n  expected: " + String(expected));
+    }
+    // Runs `sh -c script` with the given arguments; done(exitCode, stdout).
+    function shell(script, args, done) {
+        _keep((_shellType.createObject(null, {
+                command: ["sh", "-c", script, "sh"].concat(args || []),
+                done: done,
+                running: true
+            }) as Process));
+    }
+
+    // Passes when action throws and the error's message contains `fragment`; returns the error.
+    function throws(action, fragment, message) {
+        let caught = null;
+        try {
+            action();
+        } catch (error) {
+            caught = error;
+        }
+        if (!caught)
+            _fail((message || "expected an error") + " - nothing was thrown");
+        if (fragment && String(caught.message).indexOf(fragment) === -1)
+            _fail((message || "unexpected error") + "\n  expected to contain: " + fragment + "\n  got: " + caught.message);
+        return caught;
+    }
+    function waitUntil(condition, done, timeoutMs, describe) {
+        _keep((_waitType.createObject(null, {
+                condition: condition,
+                done: done,
+                describe: describe || null,
+                deadline: Date.now() + (timeoutMs || 10000)
+            }) as Timer));
     }
 }

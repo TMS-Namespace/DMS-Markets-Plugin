@@ -12,6 +12,10 @@ console.log(JSON.stringify(yahoo.parseHistory(text).map((candle) => candle.date 
 for (const zone of ["UTC", "Asia/Kolkata", "America/Sao_Paulo", "Pacific/Kiritimati", "America/St_Johns"]) {
     const result = spawnSync(process.execPath, ["-e", probe], { encoding: "utf8", env: { ...process.env, TZ: zone } });
     assert.strictEqual(result.status, 0, result.stderr);
-    same(JSON.parse(result.stdout), ["2026-01-01 00:00:00", "2026-01-01 12:00:00", "2026-07-01 00:00:00"], `UTC dates under ${zone}`);
+    same(
+        JSON.parse(result.stdout),
+        ["2026-01-01 00:00:00", "2026-01-01 12:00:00", "2026-07-01 00:00:00"],
+        `UTC dates under ${zone}`
+    );
 }
 console.log("Yahoo UTC tests passed");

@@ -21,129 +21,139 @@
 // offscreen test harness cannot render ClippingRectangle, so only a real DMS shows the result.
 
 import QtQuick
+import "../../JS/Contracts/ChartSpan.js" as ChartSpan
+import "../Helpers"
 import qs.Common
 import qs.Widgets
-import "../Helpers"
-import "../../JS/Contracts/ChartSpan.js" as ChartSpan
+
 Canvas {
     id: chart
 
-    Constants { id: constants }
+    property string chartRange: ""
 
     // ── Public API ────────────────────────────────────────────────────────────
-    property var    dataPoints:    []
-    property string chartRange: ""
-    property bool   showRangeLabel: true
-    property string providerAlias: ""     // the provider's three-letter alias (e.g. YHF)
-    property bool   showProviderName: true
-    property bool   isLoading:     false
+    property var dataPoints: []
+    property color fillColor: processor.isPositive ? Qt.rgba(positiveColor.r, positiveColor.g, positiveColor.b, constants.chartFillOpacity) : Qt.rgba(negativeColor.r, negativeColor.g, negativeColor.b, constants.chartFillOpacity)
+    property bool isLoading: false
+
+    // ── Derived colors ────────────────────────────────────────────────────────
+    property color lineColor: processor.isPositive ? positiveColor : negativeColor
+    property color negativeColor: constants.defaultDownColor
 
     // Colors - Widget.qml always overrides these; C.* act as safe fallbacks.
     property color positiveColor: constants.defaultUpColor
-    property color negativeColor: constants.defaultDownColor
-
-    // ── Data processor ────────────────────────────────────────────────────────
-    ChartDataProcessor {
-        id: processor
-        dataPoints: chart.dataPoints
-    }
-
-    // ── Derived colors ────────────────────────────────────────────────────────
-    property color lineColor:         processor.isPositive ? positiveColor : negativeColor
-    property color fillColor:         processor.isPositive
-                                      ? Qt.rgba(positiveColor.r, positiveColor.g, positiveColor.b, constants.chartFillOpacity)
-                                      : Qt.rgba(negativeColor.r, negativeColor.g, negativeColor.b, constants.chartFillOpacity)
+    property string providerAlias: ""     // the provider's three-letter alias (e.g. YHF)
+    property bool showProviderName: true
+    property bool showRangeLabel: true
 
     // ── Rendering ─────────────────────────────────────────────────────────────
     renderStrategy: Canvas.Threaded
 
     onDataPointsChanged: requestPaint()
-    onWidthChanged:      requestPaint()
-    onHeightChanged:     requestPaint()
-
+    onHeightChanged: requestPaint()
     onPaint: {
-        let canvasContext = getContext("2d")
-        canvasContext.reset()
+        let canvasContext = getContext("2d");
+        canvasContext.reset();
 
-        let points = processor.normalizedPoints(width, height, constants.chartPadding)
-        if (points.length < 2) return
+        let points = processor.normalizedPoints(width, height, constants.chartPadding);
+        if (points.length < 2)
+            return;
 
         // ── Filled area ───────────────────────────────────────────────────
         // The fill runs out to the chart's own edges (the line stays inset by the padding), so the card's rounded clip
         // (SymbolRow) cuts its corners; a fill inset by the padding would sit just inside the curve and look square.
-        canvasContext.beginPath()
-        canvasContext.moveTo(0, height)
-        canvasContext.lineTo(0, points[0].y)
-        for (let i = 0; i < points.length; i++) canvasContext.lineTo(points[i].x, points[i].y)
-        canvasContext.lineTo(width, points[points.length - 1].y)
-        canvasContext.lineTo(width, height)
-        canvasContext.closePath()
-        canvasContext.fillStyle = fillColor.toString()
-        canvasContext.fill()
+        canvasContext.beginPath();
+        canvasContext.moveTo(0, height);
+        canvasContext.lineTo(0, points[0].y);
+        for (let i = 0; i < points.length; i++)
+            canvasContext.lineTo(points[i].x, points[i].y);
+        canvasContext.lineTo(width, points[points.length - 1].y);
+        canvasContext.lineTo(width, height);
+        canvasContext.closePath();
+        canvasContext.fillStyle = fillColor.toString();
+        canvasContext.fill();
 
         // ── Line ──────────────────────────────────────────────────────────
-        canvasContext.beginPath()
+        canvasContext.beginPath();
         for (let j = 0; j < points.length; j++) {
-            if (j === 0) canvasContext.moveTo(points[j].x, points[j].y)
-            else         canvasContext.lineTo(points[j].x, points[j].y)
+            if (j === 0)
+                canvasContext.moveTo(points[j].x, points[j].y);
+            else
+                canvasContext.lineTo(points[j].x, points[j].y);
         }
-        canvasContext.strokeStyle = lineColor.toString()
-        canvasContext.lineWidth   = constants.chartLineWidth
-        canvasContext.lineJoin    = "round"
-        canvasContext.stroke()
+        canvasContext.strokeStyle = lineColor.toString();
+        canvasContext.lineWidth = constants.chartLineWidth;
+        canvasContext.lineJoin = "round";
+        canvasContext.stroke();
+    }
+    onWidthChanged: requestPaint()
 
+    Constants {
+        id: constants
+    }
+
+    // ── Data processor ────────────────────────────────────────────────────────
+    ChartDataProcessor {
+        id: processor
+
+        dataPoints: chart.dataPoints
     }
 
     // ── Chart range label (top-left corner) ───────────────────────────────────
     StyledText {
-        visible: chart.showRangeLabel && chart.chartRange !== ""
-                 && processor.closes.length >= 2
-        anchors.left:       parent.left
-        anchors.top:        parent.top
+        anchors.left: parent.left
         anchors.leftMargin: constants.chartLabelLeftMargin
-        anchors.topMargin:  constants.chartLabelTopMargin
-        text:           ChartSpan.shortLabel(chart.chartRange)
+        anchors.top: parent.top
+        anchors.topMargin: constants.chartLabelTopMargin
+        color: Theme.surfaceVariantText
         font.pixelSize: Theme.fontSizeSmall + constants.chartLabelFontSizeDelta
-        color:          Theme.surfaceVariantText
-        opacity:        constants.chartLabelOpacity
+        opacity: constants.chartLabelOpacity
+        text: ChartSpan.shortLabel(chart.chartRange)
+        visible: chart.showRangeLabel && chart.chartRange !== "" && processor.closes.length >= 2
     }
 
     // ── Provider alias label (bottom-left corner) ──────────────────────────────
     StyledText {
-        visible: chart.showProviderName && chart.providerAlias !== ""
-                 && processor.closes.length >= 2
-        anchors.left:         parent.left
-        anchors.bottom:       parent.bottom
-        anchors.leftMargin:   constants.chartLabelLeftMargin
+        anchors.bottom: parent.bottom
         anchors.bottomMargin: constants.chartLabelBottomMargin
-        text:           chart.providerAlias
+        anchors.left: parent.left
+        anchors.leftMargin: constants.chartLabelLeftMargin
+        color: Theme.surfaceVariantText
         font.pixelSize: Theme.fontSizeSmall + constants.chartLabelFontSizeDelta
-        color:          Theme.surfaceVariantText
-        opacity:        constants.chartLabelOpacity
+        opacity: constants.chartLabelOpacity
+        text: chart.providerAlias
+        visible: chart.showProviderName && chart.providerAlias !== "" && processor.closes.length >= 2
     }
 
     // ── Status labels ─────────────────────────────────────────────────────────
     StyledText {
         id: loadingLabel
-        visible: processor.closes.length < 2 && chart.isLoading
+
         anchors.centerIn: parent
-        text:           "Loading…"
+        color: Theme.surfaceVariantText
         font.pixelSize: Theme.fontSizeSmall + constants.chartStatusFontSizeDelta
-        color:          Theme.surfaceVariantText
+        text: "Loading…"
+        visible: processor.closes.length < 2 && chart.isLoading
 
         SequentialAnimation on opacity {
+            loops: Animation.Infinite
             running: loadingLabel.visible
-            loops:   Animation.Infinite
-            NumberAnimation { to: 0.3; duration: constants.chartLoadingAnimMs }
-            NumberAnimation { to: 1.0; duration: constants.chartLoadingAnimMs }
+
+            NumberAnimation {
+                duration: constants.chartLoadingAnimMs
+                to: 0.3
+            }
+            NumberAnimation {
+                duration: constants.chartLoadingAnimMs
+                to: 1.0
+            }
         }
     }
-
     StyledText {
-        visible: processor.closes.length < 2 && !chart.isLoading
         anchors.centerIn: parent
-        text:           "No chart data"
+        color: Theme.surfaceVariantText
         font.pixelSize: Theme.fontSizeSmall + constants.chartStatusFontSizeDelta
-        color:          Theme.surfaceVariantText
+        text: "No chart data"
+        visible: processor.closes.length < 2 && !chart.isLoading
     }
 }

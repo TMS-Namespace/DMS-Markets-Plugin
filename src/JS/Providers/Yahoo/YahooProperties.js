@@ -11,8 +11,7 @@
 .pragma library
 .import "YahooConstants.js" as ProviderConstants
 .import "../../Contracts/Resolution.js" as Resolution
-
-var ResolutionValues = Resolution.Values
+var ResolutionValues = Resolution.Values;
 
 // Return this provider's declared settings and supported data ranges.
 function create() {
@@ -31,16 +30,23 @@ function create() {
         symbolFormatMessage: ProviderConstants.YAHOO_SYMBOL_FORMAT_MESSAGE,
         minPullResolution: ResolutionValues.M1,
         changeResolutions: [ResolutionValues.H1, ResolutionValues.D1, ResolutionValues.W1, ResolutionValues.MO1],
-        priceResolutions: [ResolutionValues.M1, ResolutionValues.M5, ResolutionValues.M15, ResolutionValues.H1,
-            ResolutionValues.D1, ResolutionValues.W1, ResolutionValues.MO1],
+        priceResolutions: [
+            ResolutionValues.M1,
+            ResolutionValues.M5,
+            ResolutionValues.M15,
+            ResolutionValues.H1,
+            ResolutionValues.D1,
+            ResolutionValues.W1,
+            ResolutionValues.MO1
+        ],
         chartLimits: [
-            { resolution: ResolutionValues.M1,  maxHistoryDays: 7 },
-            { resolution: ResolutionValues.M5,  maxHistoryDays: 60 },
+            { resolution: ResolutionValues.M1, maxHistoryDays: 7 },
+            { resolution: ResolutionValues.M5, maxHistoryDays: 60 },
             { resolution: ResolutionValues.M15, maxHistoryDays: 60 },
-            { resolution: ResolutionValues.H1,  maxHistoryDays: 730 },
-            { resolution: ResolutionValues.D1,  maxHistoryDays: 0 },
-            { resolution: ResolutionValues.W1,  maxHistoryDays: 0 },
+            { resolution: ResolutionValues.H1, maxHistoryDays: 730 },
+            { resolution: ResolutionValues.D1, maxHistoryDays: 0 },
+            { resolution: ResolutionValues.W1, maxHistoryDays: 0 },
             { resolution: ResolutionValues.MO1, maxHistoryDays: 0 }
         ]
-    }
+    };
 }

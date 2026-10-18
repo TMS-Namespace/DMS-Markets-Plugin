@@ -7,14 +7,13 @@
 import QtQml
 
 QtObject {
+    property real close: 0
     property string date: ""
-    property string time: ""
-    property real open: 0
+    readonly property bool dateValid: /^\d{4}-\d{2}-\d{2}$/.test(date)
     property real high: 0
     property real low: 0
-    property real close: 0
-    property real volume: 0
-
-    readonly property bool dateValid: /^\d{4}-\d{2}-\d{2}$/.test(date)
+    property real open: 0
+    property string time: ""
     readonly property bool timeValid: /^(\d{2}:\d{2}:\d{2})?$/.test(time)
+    property real volume: 0
 }

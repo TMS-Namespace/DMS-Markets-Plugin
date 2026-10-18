@@ -1,2 +1,9 @@
 import QtQuick
-Item { property string headerText: ""; property string detailsText: ""; property bool showCloseButton: true; property real headerHeight: 40; property real detailsHeight: 20 }
+
+Item {
+    property real detailsHeight: 20
+    property string detailsText: ""
+    property real headerHeight: 40
+    property string headerText: ""
+    property bool showCloseButton: true
+}

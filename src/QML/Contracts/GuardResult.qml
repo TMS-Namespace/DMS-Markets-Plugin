@@ -5,7 +5,7 @@
 import QtQml
 
 QtObject {
+    property var error: null
     property bool ok: false
     property var value: undefined
-    property var error: null
 }

@@ -4,32 +4,33 @@
 // Intended to be returned from the PluginComponent.verticalBarPill property.
 
 import QtQuick
+import "../Helpers"
 import qs.Common
 import qs.Widgets
-import "../Helpers"
 
 Column {
     id: pill
-    Constants { id: constants }
 
     // ── Required bindings (set by Widget.qml) ────────────────────────────────
-    property int    iconSize:   constants.defaultBarIconSize
+    property int iconSize: constants.defaultBarIconSize
     property string shortLabel: "MKT"
 
     spacing: Theme.spacingXS
 
+    Constants {
+        id: constants
+    }
     DankIcon {
+        anchors.horizontalCenter: parent.horizontalCenter
+        color: Theme.primary
         name: "show_chart"
         size: pill.iconSize
-        color: Theme.primary
-        anchors.horizontalCenter: parent.horizontalCenter
     }
-
     StyledText {
-        text: pill.shortLabel
-        font.pixelSize: Theme.fontSizeSmall
-        color: Theme.surfaceText
         anchors.horizontalCenter: parent.horizontalCenter
+        color: Theme.surfaceText
+        font.pixelSize: Theme.fontSizeSmall
         horizontalAlignment: Text.AlignHCenter
+        text: pill.shortLabel
     }
 }

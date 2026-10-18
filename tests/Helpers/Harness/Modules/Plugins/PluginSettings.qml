@@ -2,26 +2,60 @@
 // null parent while it is created); when the plugin service is set, and whenever the service reports changed plugin data,
 // the child controls reload their values; saveValue / loadValue do nothing without a service.
 import QtQuick
+
 Item {
     id: root
+
+    default property list<QtObject> content
     required property string pluginId
     property var pluginService: null
-    default property list<QtObject> content
+
     signal settingChanged
-    implicitHeight: settingsColumn.implicitHeight
+
+    function loadValue(key, defaultValue) {
+        if (pluginService && pluginService.loadPluginData)
+            return pluginService.loadPluginData(pluginId, key, defaultValue);
+        return defaultValue;
+    }
+    function reloadChildValues() {
+        for (let i = 0; i < content.length; i++)
+            if (content[i].loadValue)
+                content[i].loadValue();
+    }
+    function saveValue(key, value) {
+        if (!pluginService)
+            return;
+        if (pluginService.savePluginData) {
+            pluginService.savePluginData(pluginId, key, value);
+            settingChanged();
+        }
+    }
+
     height: implicitHeight
+    implicitHeight: settingsColumn.implicitHeight
+
     onContentChanged: {
         for (let i = 0; i < content.length; i++)
-            if (content[i] instanceof Item) content[i].parent = settingsColumn
+            if (content[i] instanceof Item)
+                content[i].parent = settingsColumn;
     }
-    onPluginServiceChanged: { if (pluginService) reloadChildValues() }
+    onPluginServiceChanged: {
+        if (pluginService)
+            reloadChildValues();
+    }
+
     Connections {
-        target: root.pluginService
+        function onPluginDataChanged(changedPluginId) {
+            if (changedPluginId === root.pluginId)
+                root.reloadChildValues();
+        }
+
         enabled: root.pluginService !== null
-        function onPluginDataChanged(changedPluginId) { if (changedPluginId === root.pluginId) root.reloadChildValues() }
+        target: root.pluginService
     }
-    function reloadChildValues() { for (let i = 0; i < content.length; i++) if (content[i].loadValue) content[i].loadValue() }
-    function saveValue(key, value) { if (!pluginService) return; if (pluginService.savePluginData) { pluginService.savePluginData(pluginId, key, value); settingChanged() } }
-    function loadValue(key, defaultValue) { if (pluginService && pluginService.loadPluginData) return pluginService.loadPluginData(pluginId, key, defaultValue); return defaultValue }
-    Column { id: settingsColumn; width: parent.width }
+    Column {
+        id: settingsColumn
+
+        width: parent.width
+    }
 }

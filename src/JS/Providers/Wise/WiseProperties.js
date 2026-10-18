@@ -11,8 +11,7 @@
 .pragma library
 .import "WiseConstants.js" as ProviderConstants
 .import "../../Contracts/Resolution.js" as Resolution
-
-var ResolutionValues = Resolution.Values
+var ResolutionValues = Resolution.Values;
 
 // Return this provider's declared settings and supported data ranges.
 function create() {
@@ -36,5 +35,5 @@ function create() {
             { resolution: ResolutionValues.H1, maxHistoryDays: ProviderConstants.WISE_HOURLY_MAX_DAYS },
             { resolution: ResolutionValues.D1, maxHistoryDays: ProviderConstants.WISE_DAILY_MAX_DAYS }
         ]
-    }
+    };
 }

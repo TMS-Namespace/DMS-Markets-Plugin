@@ -11,10 +11,13 @@ const root = path.resolve(__dirname, "..");
 
 // List source and test files without traversing symlinked editor imports.
 function collect(directory, suffix) {
-    return fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
-        const file = path.join(directory, entry.name);
-        return entry.isDirectory() ? collect(file, suffix) : entry.name.endsWith(suffix) ? [file] : [];
-    }).sort();
+    return fs
+        .readdirSync(directory, { withFileTypes: true })
+        .flatMap((entry) => {
+            const file = path.join(directory, entry.name);
+            return entry.isDirectory() ? collect(file, suffix) : entry.name.endsWith(suffix) ? [file] : [];
+        })
+        .sort();
 }
 
 // Use the same language server as the editor, or an explicitly supplied Qt installation.
@@ -28,7 +31,9 @@ function findLanguageServer() {
         const result = spawnSync(executable, ["--help"], { encoding: "utf8", timeout: 5000 });
         if (result.status === 0 && /QML languageserver/.test(result.stdout)) return executable;
     }
-    throw new Error("Qt 6 qmlls was not found. Install the Qt QML editor extension or set QMLLS to its executable path.");
+    throw new Error(
+        "Qt 6 qmlls was not found. Install the Qt QML editor extension or set QMLLS to its executable path."
+    );
 }
 
 // QML's .pragma/.import directives are valid library syntax, not ordinary JavaScript expressions.
@@ -42,13 +47,18 @@ function checkJavaScript(files) {
                     if (!/^[ \t]*\.pragma library[ \t]*$/.test(directive)) {
                         const imported = /^[ \t]*\.import "([^"]+)" as \w+[ \t]*$/.exec(directive);
                         if (!imported || !fs.existsSync(path.resolve(path.dirname(file), imported[1])))
-                            throw new SyntaxError(`${path.relative(root, file)}: invalid QML JavaScript directive: ${directive.trim()}`);
+                            throw new SyntaxError(
+                                `${path.relative(root, file)}: invalid QML JavaScript directive: ${directive.trim()}`
+                            );
                     }
                     return directive.replace(/[^\n]/g, " ");
                 });
             }
             new vm.Script(source, { filename: path.relative(root, file) });
-        } catch (error) { failed++; console.error(error.stack); }
+        } catch (error) {
+            failed++;
+            console.error(error.stack);
+        }
     }
     return failed;
 }
@@ -57,11 +67,26 @@ function checkJavaScript(files) {
 function checkQml(executable, files) {
     return new Promise((resolve, reject) => {
         const importPaths = [prepareQmlImports(), ...qmlImportPaths()];
-        const server = spawn(executable, ["--no-cmake-calls", ...importPaths.flatMap((directory) => ["-I", directory])], { cwd: root });
+        const server = spawn(
+            executable,
+            ["--no-cmake-calls", ...importPaths.flatMap((directory) => ["-I", directory])],
+            { cwd: root }
+        );
         const diagnostics = new Map();
         const expected = new Set(files.map((file) => pathToFileURL(file).href));
-        let buffer = Buffer.alloc(0), stderr = "", settled = false, settleTimer;
-        const deadline = setTimeout(() => finish(new Error(`QML diagnostics timed out: ${diagnostics.size}/${files.length} files reported.\n${stderr.slice(-1500)}`)), 90000);
+        let buffer = Buffer.alloc(0),
+            stderr = "",
+            settled = false,
+            settleTimer;
+        const deadline = setTimeout(
+            () =>
+                finish(
+                    new Error(
+                        `QML diagnostics timed out: ${diagnostics.size}/${files.length} files reported.\n${stderr.slice(-1500)}`
+                    )
+                ),
+            90000
+        );
 
         // Frame one JSON-RPC request or response on the language server's standard input.
         function send(message) {
@@ -75,16 +100,22 @@ function checkQml(executable, files) {
         function finish(error) {
             if (settled) return;
             settled = true;
-            clearTimeout(deadline); clearTimeout(settleTimer);
+            clearTimeout(deadline);
+            clearTimeout(settleTimer);
             server.kill();
-            if (error) { reject(error); return; }
+            if (error) {
+                reject(error);
+                return;
+            }
             let count = 0;
             for (const file of files) {
                 for (const diagnostic of diagnostics.get(pathToFileURL(file).href) || []) {
                     if (diagnostic.severity && diagnostic.severity > 2) continue;
                     count++;
                     const location = diagnostic.range.start;
-                    console.error(`${path.relative(root, file)}:${location.line + 1}:${location.character + 1}: ${diagnostic.message.trim()}`);
+                    console.error(
+                        `${path.relative(root, file)}:${location.line + 1}:${location.character + 1}: ${diagnostic.message.trim()}`
+                    );
                 }
             }
             resolve(count);
@@ -93,11 +124,23 @@ function checkQml(executable, files) {
         // Initialize the project, then wait until each document has been analyzed and updates have settled.
         function receive(message) {
             if (message.id === 1 && !message.method) {
-                if (message.error) { finish(new Error(message.error.message)); return; }
+                if (message.error) {
+                    finish(new Error(message.error.message));
+                    return;
+                }
                 send({ method: "initialized", params: {} });
-                for (const file of files) send({ method: "textDocument/didOpen", params: { textDocument: {
-                    uri: pathToFileURL(file).href, languageId: "qml", version: 1, text: fs.readFileSync(file, "utf8")
-                } } });
+                for (const file of files)
+                    send({
+                        method: "textDocument/didOpen",
+                        params: {
+                            textDocument: {
+                                uri: pathToFileURL(file).href,
+                                languageId: "qml",
+                                version: 1,
+                                text: fs.readFileSync(file, "utf8")
+                            }
+                        }
+                    });
             } else if (message.method === "textDocument/publishDiagnostics") {
                 const uri = pathToFileURL(fileURLToPath(message.params.uri)).href;
                 if (!expected.has(uri)) return;
@@ -105,7 +148,8 @@ function checkQml(executable, files) {
                 clearTimeout(settleTimer);
                 if (diagnostics.size === files.length) settleTimer = setTimeout(() => finish(), 2000);
             } else if (message.method && message.id !== undefined) {
-                const result = message.method === "workspace/configuration" ? message.params.items.map(() => null) : null;
+                const result =
+                    message.method === "workspace/configuration" ? message.params.items.map(() => null) : null;
                 send({ id: message.id, result });
             }
         }
@@ -118,19 +162,34 @@ function checkQml(executable, files) {
                     if (end < 0) return;
                     const match = /content-length:\s*(\d+)/i.exec(buffer.subarray(0, end).toString());
                     if (!match) throw new Error("qmlls returned an invalid protocol header");
-                    const length = Number(match[1]), start = end + 4;
+                    const length = Number(match[1]),
+                        start = end + 4;
                     if (buffer.length < start + length) return;
                     const message = JSON.parse(buffer.subarray(start, start + length).toString());
                     buffer = buffer.subarray(start + length);
                     receive(message);
                 }
-            } catch (error) { finish(error); }
+            } catch (error) {
+                finish(error);
+            }
         });
-        server.stderr.on("data", (chunk) => { stderr = (stderr + chunk.toString()).slice(-6000); });
+        server.stderr.on("data", (chunk) => {
+            stderr = (stderr + chunk.toString()).slice(-6000);
+        });
         server.on("error", finish);
-        server.on("exit", (code) => { if (!settled) finish(new Error(`qmlls exited before reporting all diagnostics (${code}).\n${stderr}`)); });
-        send({ id: 1, method: "initialize", params: { processId: process.pid, rootUri: pathToFileURL(root).href,
-            capabilities: {}, workspaceFolders: [{ uri: pathToFileURL(root).href, name: path.basename(root) }] } });
+        server.on("exit", (code) => {
+            if (!settled) finish(new Error(`qmlls exited before reporting all diagnostics (${code}).\n${stderr}`));
+        });
+        send({
+            id: 1,
+            method: "initialize",
+            params: {
+                processId: process.pid,
+                rootUri: pathToFileURL(root).href,
+                capabilities: {},
+                workspaceFolders: [{ uri: pathToFileURL(root).href, name: path.basename(root) }]
+            }
+        });
     });
 }
 
@@ -140,8 +199,15 @@ async function main() {
     const jsFiles = ["src", "tests", "support"].flatMap((directory) => collect(path.join(root, directory), ".js"));
     const syntaxFailures = checkJavaScript(jsFiles);
     const diagnostics = await checkQml(findLanguageServer(), qmlFiles);
-    console.log(`Lint: ${qmlFiles.length} QML files, ${jsFiles.length} JavaScript files; ${diagnostics} QML warnings/errors, ${syntaxFailures} JavaScript syntax errors.`);
+    console.log(
+        `Lint: ${qmlFiles.length} QML files, ${jsFiles.length} JavaScript files; ${diagnostics} QML warnings/errors, ${syntaxFailures} JavaScript syntax errors.`
+    );
     if (diagnostics || syntaxFailures) process.exitCode = 1;
 }
 
-main().catch((error) => { console.error(error.message); process.exitCode = 1; });
+module.exports = { collect, findLanguageServer };
+if (require.main === module)
+    main().catch((error) => {
+        console.error(error.message);
+        process.exitCode = 1;
+    });

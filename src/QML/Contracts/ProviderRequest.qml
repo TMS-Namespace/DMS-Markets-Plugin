@@ -7,8 +7,8 @@
 import QtQml
 
 QtObject {
-    property string url: ""
-    property int tailLines: 0
-    property var command: []
     property int candles: 0
+    property var command: []
+    property int tailLines: 0
+    property string url: ""
 }

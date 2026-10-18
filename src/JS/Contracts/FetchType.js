@@ -5,18 +5,20 @@
 //   FetchType.Values.CHANGE  "change"  the close the price is compared with (refreshed with the change resolution, at most an hour apart)
 
 .pragma library
-
-
 var Values = Object.freeze({
     PRICE: "price",
     GRAPH: "graph",
     CHANGE: "change"
-})
+});
 
-var ORDER = Object.freeze([Values.PRICE, Values.GRAPH, Values.CHANGE])
+var ORDER = Object.freeze([Values.PRICE, Values.GRAPH, Values.CHANGE]);
 
 // Check whether the value belongs to this module's value domain.
-function isValid(value) { return ORDER.indexOf(value) !== -1 }
+function isValid(value) {
+    return ORDER.indexOf(value) !== -1;
+}
 
 // Key of a pull in the "last fetched" map: one entry per symbol and kind of pull.
-function timeKey(uid, fetchType) { return uid + "_" + fetchType }
+function timeKey(uid, fetchType) {
+    return uid + "_" + fetchType;
+}

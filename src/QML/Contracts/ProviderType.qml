@@ -6,5 +6,9 @@
 import QtQml
 
 QtObject {
-    enum Type { Yahoo, Stooq, Wise }
+    enum Type {
+        Yahoo,
+        Stooq,
+        Wise
+    }
 }

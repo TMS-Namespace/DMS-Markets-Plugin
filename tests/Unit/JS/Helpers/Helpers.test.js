@@ -10,8 +10,16 @@ assert.strictEqual(helpers.resolutionToMs("bogus"), 3600000, "unknown resolution
 assert.strictEqual(helpers.resolutionToMs(undefined), 3600000);
 
 // boolValue / pluginDataBool coercion of persisted values
-for (const [input, expected] of [[true, true], ["true", true], [1, true], ["1", true],
-                                 [false, false], ["false", false], [0, false], ["no", false]])
+for (const [input, expected] of [
+    [true, true],
+    ["true", true],
+    [1, true],
+    ["1", true],
+    [false, false],
+    ["false", false],
+    [0, false],
+    ["no", false]
+])
     assert.strictEqual(helpers.boolValue(input, !expected), expected, `boolValue(${input})`);
 assert.strictEqual(helpers.boolValue(undefined, true), true);
 assert.strictEqual(helpers.boolValue("", false), false);
@@ -52,7 +60,16 @@ assert(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.t
 assert.strictEqual(helpers.isUuid(uuid), true);
 const many = new Set(Array.from({ length: 5000 }, () => helpers.generateUuid()));
 assert.strictEqual(many.size, 5000, "generated ids do not collide");
-for (const notUuid of ["", "abc", undefined, null, 5, "g1111111-1111-4111-8111-111111111111", "11111111-1111-4111-8111-11111111111", "EURUSD=X"])
+for (const notUuid of [
+    "",
+    "abc",
+    undefined,
+    null,
+    5,
+    "g1111111-1111-4111-8111-111111111111",
+    "11111111-1111-4111-8111-11111111111",
+    "EURUSD=X"
+])
     assert.strictEqual(helpers.isUuid(notUuid), false, String(notUuid));
 assert.strictEqual(helpers.isUuid("11111111-1111-4111-8111-111111111111"), true);
 assert.strictEqual(helpers.isUuid(uuid.toUpperCase()), false, "ids are lower case");
@@ -64,6 +81,10 @@ assert.strictEqual(helpers.isUuid(uuid.toUpperCase()), false, "ids are lower cas
     assert.strictEqual(helpers.uuidFrom("yahoo|EURUSD=X|0"), first);
     assert.notStrictEqual(helpers.uuidFrom("yahoo|EURUSD=X|1"), first);
     for (let i = 0; i < 200; i++) assert(helpers.isUuid(helpers.uuidFrom(`seed-${i}`)), `seed-${i}`);
-    assert.strictEqual(new Set(Array.from({ length: 500 }, (_, i) => helpers.uuidFrom(`sym|${i}`))).size, 500, "no collisions in 500");
+    assert.strictEqual(
+        new Set(Array.from({ length: 500 }, (_, i) => helpers.uuidFrom(`sym|${i}`))).size,
+        500,
+        "no collisions in 500"
+    );
 }
 console.log("Helpers tests passed");

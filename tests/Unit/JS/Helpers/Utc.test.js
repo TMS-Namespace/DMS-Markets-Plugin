@@ -16,9 +16,11 @@ const forbidden = [
     [/\.toString\(\)\s*\/\/.*date/i, "date toString is local time"]
 ];
 for (const file of [...listFiles(srcRoot, /\.(js|qml)$/)]) {
-    const code = fs.readFileSync(file, "utf8").replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
-    for (const [pattern, why] of forbidden)
-        assert(!pattern.test(code), `${path.relative(srcRoot, file)}: ${why}`);
+    const code = fs
+        .readFileSync(file, "utf8")
+        .replace(/\/\/.*$/gm, "")
+        .replace(/\/\*[\s\S]*?\*\//g, "");
+    for (const [pattern, why] of forbidden) assert(!pattern.test(code), `${path.relative(srcRoot, file)}: ${why}`);
 }
 // The fetcher compares nothing by local time: it only uses epoch milliseconds (Date.now()).
 const fetcher = fs.readFileSync(path.join(srcRoot, "QML/Helpers/MarketDataFetcher.qml"), "utf8");
@@ -42,7 +44,14 @@ const expected = {
     wise: ["2026-01-01 23:30:05", "2026-06-30 00:00:00"]
 };
 const offsets = new Set();
-for (const zone of ["UTC", "Asia/Kolkata", "America/Sao_Paulo", "Pacific/Auckland", "Pacific/Kiritimati", "America/St_Johns"]) {
+for (const zone of [
+    "UTC",
+    "Asia/Kolkata",
+    "America/Sao_Paulo",
+    "Pacific/Auckland",
+    "Pacific/Kiritimati",
+    "America/St_Johns"
+]) {
     const result = spawnSync(process.execPath, ["-e", probe], { encoding: "utf8", env: { ...process.env, TZ: zone } });
     assert.strictEqual(result.status, 0, result.stderr);
     const probeOutput = JSON.parse(result.stdout);
@@ -53,6 +62,9 @@ assert(offsets.size > 3, "the probe really ran under different local time zones"
 
 // ── Contract: documented in the provider interface ───────────────────────────
 const contract = fs.readFileSync(path.join(srcRoot, "JS/Helpers/SeriesRules.js"), "utf8");
-assert(/date\s+"YYYY-MM-DD"\s+UTC/.test(contract) && /time\s+"HH:MM:SS" or ""\s+UTC/.test(contract), "SeriesRules documents UTC candles");
+assert(
+    /date\s+"YYYY-MM-DD"\s+UTC/.test(contract) && /time\s+"HH:MM:SS" or ""\s+UTC/.test(contract),
+    "SeriesRules documents UTC candles"
+);
 
 console.log("UTC tests passed");

@@ -1,2 +1,4 @@
 import QtQuick
-Text { }
+
+Text {
+}

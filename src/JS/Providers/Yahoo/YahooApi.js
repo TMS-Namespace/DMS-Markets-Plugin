@@ -13,13 +13,11 @@
 .import "../../Contracts/ChartSpan.js" as ChartSpan
 .import "../../Helpers/SeriesRules.js" as SeriesRules
 .import "../../Helpers/PriceRules.js" as PriceRules
-
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 // Read an available numeric price and leave missing values invalid.
 function _safeNumber(rawValue) {
-    if (rawValue === undefined || rawValue === null || rawValue === "null" || rawValue === "NaN")
-        return NaN;
+    if (rawValue === undefined || rawValue === null || rawValue === "null" || rawValue === "NaN") return NaN;
     let parsed = parseFloat(rawValue);
     return isNaN(parsed) ? NaN : parsed;
 }
@@ -40,30 +38,46 @@ function _dateParts(epochSeconds) {
 
 // Build a typed error for a setting this provider cannot serve.
 function _unsupported(detail) {
-    return new PluginError.PluginError(PluginError.Code.UNSUPPORTED, "Yahoo Finance can't serve this chart setting.",
-                                       "Yahoo Finance: " + detail);
+    return new PluginError.PluginError(
+        PluginError.Code.UNSUPPORTED,
+        "Yahoo Finance can't serve this chart setting.",
+        "Yahoo Finance: " + detail
+    );
 }
 
 // Encode the symbol and chart parameters into the provider URL.
 function _chartUrl(symbol, range, resolution) {
-    return ProviderConstants.YAHOO_CHART_BASE_URL
-        + encodeURIComponent(symbol)
-        + "?range=" + encodeURIComponent(range)
-        + "&interval=" + encodeURIComponent(resolution)
-        + "&includePrePost=" + ProviderConstants.YAHOO_INCLUDE_PRE_POST
-        + "&events=" + ProviderConstants.YAHOO_EVENTS_PARAM;
+    return (
+        ProviderConstants.YAHOO_CHART_BASE_URL +
+        encodeURIComponent(symbol) +
+        "?range=" +
+        encodeURIComponent(range) +
+        "&interval=" +
+        encodeURIComponent(resolution) +
+        "&includePrePost=" +
+        ProviderConstants.YAHOO_INCLUDE_PRE_POST +
+        "&events=" +
+        ProviderConstants.YAHOO_EVENTS_PARAM
+    );
 }
 
 // Build a typed error for an unreadable provider response.
 function _parseError(detail) {
-    return new PluginError.PluginError(PluginError.Code.PARSE, "Yahoo Finance sent an answer that couldn't be understood.",
-                                       "Yahoo Finance: " + detail);
+    return new PluginError.PluginError(
+        PluginError.Code.PARSE,
+        "Yahoo Finance sent an answer that couldn't be understood.",
+        "Yahoo Finance: " + detail
+    );
 }
 
 // The API's own error message, if the body carries one (chart.error.description).
 function extractApiError(status, body) {
     let parsed;
-    try { parsed = JSON.parse(body); } catch (caughtError) { return ""; }
+    try {
+        parsed = JSON.parse(body);
+    } catch (caughtError) {
+        return "";
+    }
     let error = parsed && parsed.chart && parsed.chart.error;
     if (!error) return "";
     return String(error.description || error.code || "unknown error");
@@ -82,12 +96,15 @@ function _parseChartResponse(responseText, limit) {
 
     let apiError = extractApiError(200, responseText);
     if (apiError)
-        throw new PluginError.PluginError(PluginError.Code.HTTP, "Yahoo Finance: " + apiError, "chart.error: " + apiError);
+        throw new PluginError.PluginError(
+            PluginError.Code.HTTP,
+            "Yahoo Finance: " + apiError,
+            "chart.error: " + apiError
+        );
 
     let result = parsed && parsed.chart && parsed.chart.result && parsed.chart.result[0];
     if (!result) throw _parseError("no chart result in the answer");
-    if (!result.timestamp || !result.indicators || !result.indicators.quote)
-        return [];
+    if (!result.timestamp || !result.indicators || !result.indicators.quote) return [];
 
     let quote = result.indicators.quote[0] || {};
     let timestamps = result.timestamp || [];
@@ -103,19 +120,20 @@ function _parseChartResponse(responseText, limit) {
         let high = _safeNumber(highs[index]);
         let low = _safeNumber(lows[index]);
         let close = _safeNumber(closes[index]);
-        if (isNaN(open) || isNaN(high) || isNaN(low) || isNaN(close))
-            continue;
+        if (isNaN(open) || isNaN(high) || isNaN(low) || isNaN(close)) continue;
 
         let parts = _dateParts(timestamps[index]);
-        results.push(SeriesRules.candle({
-            date: parts.date,
-            time: parts.time,
-            open: open,
-            high: high,
-            low: low,
-            close: close,
-            volume: Math.max(0, parseInt(volumes[index]) || 0)
-        }));
+        results.push(
+            SeriesRules.candle({
+                date: parts.date,
+                time: parts.time,
+                open: open,
+                high: high,
+                low: low,
+                close: close,
+                volume: Math.max(0, parseInt(volumes[index]) || 0)
+            })
+        );
     }
 
     return results.reverse();
@@ -176,14 +194,22 @@ function changeUrl(symbol, resolution) {
     return _chartUrl(symbol, _changeRangeForResolution(resolution), _resolutionParam(resolution));
 }
 // Read the close used as the price change reference.
-function parseChange(responseText) { return _parseChangeReference(responseText); }
+function parseChange(responseText) {
+    return _parseChangeReference(responseText);
+}
 // Build the provider request for the selected chart window.
 function historyUrl(symbol, resolution, span) {
     return _chartUrl(symbol, _historyRangeForSpan(span), _resolutionParam(resolution));
 }
 // Parse the newest requested price candles.
-function parsePrice(responseText, limit) { return _parseChartResponse(responseText, limit); }
+function parsePrice(responseText, limit) {
+    return _parseChartResponse(responseText, limit);
+}
 // Parse the newest requested chart candles.
-function parseHistory(responseText, limit) { return _parseChartResponse(responseText, limit); }
+function parseHistory(responseText, limit) {
+    return _parseChartResponse(responseText, limit);
+}
 // Build the provider browser page for a validated symbol.
-function pageUrl(symbolId) { return ProviderConstants.YAHOO_QUOTE_BASE_URL + encodeURIComponent(symbolId); }
+function pageUrl(symbolId) {
+    return ProviderConstants.YAHOO_QUOTE_BASE_URL + encodeURIComponent(symbolId);
+}

@@ -9,32 +9,33 @@ import qs.Modules.Plugins
 Row {
     id: row
 
-    property string settingKey: ""
-    property string label: ""
-    property string description: ""
     property string defaultColor: ""
+    property string description: ""
+    property string label: ""
+    property string settingKey: ""
+    readonly property real swatchSize: Math.round(Theme.fontSizeMedium * 3.4)
     readonly property string value: input.value
 
-    width: parent ? parent.width : implicitWidth
     spacing: Theme.spacingS
-
-    readonly property real swatchSize: Math.round(Theme.fontSizeMedium * 3.4)
+    width: parent ? parent.width : implicitWidth
 
     StringSetting {
         id: input
-        settingKey: row.settingKey
-        label: row.label
-        description: row.description
-        placeholder: row.defaultColor
+
         defaultValue: row.defaultColor
+        description: row.description
+        label: row.label
+        placeholder: row.defaultColor
+        settingKey: row.settingKey
         width: row.width - row.swatchSize - row.spacing
     }
-
     Rectangle {
-        width: row.swatchSize; height: row.swatchSize
-        radius: Theme.cornerRadius
         anchors.bottom: parent.bottom
+        border.color: Theme.outlineVariant
+        border.width: 1
         color: (input.value || "").trim() !== "" ? input.value.trim() : row.defaultColor
-        border.color: Theme.outlineVariant; border.width: 1
+        height: row.swatchSize
+        radius: Theme.cornerRadius
+        width: row.swatchSize
     }
 }

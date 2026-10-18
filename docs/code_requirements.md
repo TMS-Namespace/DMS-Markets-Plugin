@@ -157,6 +157,16 @@ node support/Lint.js
 node tests/RunAll.js
 ```
 
+To format all QML and JavaScript files, run:
+
+```sh
+npm exec --yes --package=prettier@3.6.2 -- node support/Format.js
+```
+
+Add `--check` to check formatting without changing source files. This uses Qt 6 `qmlls` and downloads
+Prettier as a development tool. Formatting settings live in `.qmlformat.ini` and `.prettierrc.json`;
+QML JavaScript directives are preserved automatically. Run lint and tests afterwards.
+
 Lint checks QML language-server warnings and errors and JavaScript syntax. It requires Node.js, installed
 Qt 6/Quickshell QML modules, and Qt 6 `qmlls`. It finds the Qt QML VS Code extension's language server
 automatically, or you can set `QMLLS` to its executable path. Set `QML_IMPORT_PATH` for a custom QML
