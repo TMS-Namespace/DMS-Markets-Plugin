@@ -31,9 +31,9 @@ Column {
     // Find the nearest host settings page that owns this control.
     // The page this row sits in (the nearest parent that can save and load values), or null.
     function _settings() {
-        var item = root.parent
+        let item = root.parent
         while (item) {
-            if (item.saveValue !== undefined && item.loadValue !== undefined) return item
+            if ("saveValue" in item && "loadValue" in item) return item
             item = item.parent
         }
         return null
@@ -41,7 +41,7 @@ Column {
 
     // Read the saved value after the settings service becomes available.
     function loadValue() {
-        var settings = _settings()
+        let settings = _settings()
         if (settings && settings.pluginService) value = settings.loadValue(settingKey, defaultValue)
     }
 
@@ -58,7 +58,7 @@ Column {
     }
 
     onValueChanged: {
-        var settings = _settings()
+        let settings = _settings()
         if (settings) settings.saveValue(settingKey, value)
     }
 

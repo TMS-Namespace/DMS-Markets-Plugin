@@ -1,4 +1,5 @@
 // TestSuite.qml - base type of every QML test: assertion helpers. Define test_* functions in the root.
+pragma ComponentBehavior: Bound
 import QtQml
 import Quickshell
 import Quickshell.Io
@@ -14,7 +15,7 @@ QtObject {
 
     // Compares by value (JSON), so arrays/objects can be compared.
     function equal(actual, expected, message) {
-        var actualJson = JSON.stringify(actual), expectedJson = JSON.stringify(expected)
+        let actualJson = JSON.stringify(actual), expectedJson = JSON.stringify(expected)
         if (actualJson !== expectedJson) _fail((message || "values differ") + "\n  actual:   " + actualJson + "\n  expected: " + expectedJson)
     }
 
@@ -30,7 +31,7 @@ QtObject {
 
     // Passes when action throws and the error's message contains `fragment`; returns the error.
     function throws(action, fragment, message) {
-        var caught = null
+        let caught = null
         try { action() } catch (error) { caught = error }
         if (!caught) _fail((message || "expected an error") + " - nothing was thrown")
         if (fragment && String(caught.message).indexOf(fragment) === -1)
@@ -53,15 +54,15 @@ QtObject {
             property real deadline: 0
             interval: 20; repeat: true; running: true
             onTriggered: {
-                var result = null
+                let result = null
                 try { if (condition()) result = "" } catch (error) { result = "condition threw: " + error.message }
                 if (result === null && Date.now() > deadline) result = "timed out: " + (describe ? describe() : "")
-                if (result !== null) { running = false; var callback = done; suite._forget(this); destroy(); callback(result) }
+                if (result !== null) { running = false; let callback = done; suite._forget(this); destroy(); callback(result) }
             }
         }
     }
     function waitUntil(condition, done, timeoutMs, describe) {
-        _keep(_waitType.createObject(null, { condition: condition, done: done, describe: describe || null, deadline: Date.now() + (timeoutMs || 10000) }))
+        _keep((_waitType.createObject(null, { condition: condition, done: done, describe: describe || null, deadline: Date.now() + (timeoutMs || 10000) }) as Timer))
     }
     // Objects made without a parent belong to the JS engine and would be collected while still waiting: keep them.
     property var _alive: []
@@ -76,19 +77,20 @@ QtObject {
 
     property Component _shellType: Component {
         Process {
+            id: testProcess
             property var done
             property string _text: ""
             property bool _exited: false
             property bool _streamed: false
             property int _code: -1
-            function _finish() { if (_exited && _streamed) { var callback = done; suite._forget(this); destroy(); callback(_code, _text) } }
-            stdout: StdioCollector { onStreamFinished: { _text = text; _streamed = true; _finish() } }
+            function _finish() { if (_exited && _streamed) { let callback = done; suite._forget(this); destroy(); callback(_code, _text) } }
+            stdout: StdioCollector { onStreamFinished: { testProcess._text = text; testProcess._streamed = true; testProcess._finish() } }
             onExited: code => { _code = code; _exited = true; _finish() }
         }
     }
     // Runs `sh -c script` with the given arguments; done(exitCode, stdout).
     function shell(script, args, done) {
-        _keep(_shellType.createObject(null, { command: ["sh", "-c", script, "sh"].concat(args || []), done: done, running: true }))
+        _keep((_shellType.createObject(null, { command: ["sh", "-c", script, "sh"].concat(args || []), done: done, running: true }) as Process))
     }
 
     // ── Reading source files and extracting QML functions ────────────────────
@@ -98,19 +100,19 @@ QtObject {
     property Component _viewType: Component { FileView { blockLoading: true } }
 
     function readFile(relativePath) {
-        var view = _viewType.createObject(null, { path: repoRoot + "/" + relativePath })
-        var text = view.text()
+        let view = (_viewType.createObject(null, { path: repoRoot + "/" + relativePath }) as FileView)
+        let text = view.text()
         view.destroy()
         return text
     }
 
     // Source of `function name(...) { ... }` found in `text` (brace matched).
     function functionSource(text, name) {
-        var start = text.search(new RegExp("function\\s+" + name + "\\s*\\("))
+        let start = text.search(new RegExp("function\\s+" + name + "\\s*\\("))
         if (start === -1) _fail("function " + name + " not found")
-        var open = text.indexOf("{", text.indexOf(")", start))
-        var depth = 0
-        for (var i = open; i < text.length; i++) {
+        let open = text.indexOf("{", text.indexOf(")", start))
+        let depth = 0
+        for (let i = open; i < text.length; i++) {
             if (text[i] === "{") depth++
             else if (text[i] === "}" && --depth === 0) return text.slice(start, i + 1)
         }
@@ -121,10 +123,10 @@ QtObject {
     // a test can run the REAL function against the real singletons and stub controls. Assignments to
     // names in `scope` land on the scope object (it is passed as `scope`).
     function loadFunction(relativePath, name, scope) {
-        var keys = Object.keys(scope)
-        var body = functionSource(readFile(relativePath), name)
+        let keys = Object.keys(scope)
+        let body = functionSource(readFile(relativePath), name)
         // identifiers resolve through `with (scope)` so assignments (e.g. editIndex = 3) are visible to the test
-        var factory = new Function("scope", "with (scope) { " + body + "; return " + name + " }")
+        let factory = Function("scope", "with (scope) { " + body + "; return " + name + " }")
         return factory(scope)
     }
 }

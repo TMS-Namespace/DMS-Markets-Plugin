@@ -72,7 +72,7 @@ function days(span)  { return isValid(span) ? INFO[span].days : 0 }
 // Upper bound on candles for a (resolution, span) pair, by calendar time.
 // Real series are shorter (weekends/closed hours); this is only a trim limit.
 function pointLimit(resolution, span) {
-    var candleMs = Resolution.ms(resolution)
+    let candleMs = Resolution.ms(resolution)
     if (candleMs <= 0) return 0
     return Math.ceil(days(span) * TimeUnits.DAY_MS / candleMs) + 2
 }

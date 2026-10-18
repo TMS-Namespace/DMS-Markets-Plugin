@@ -1,5 +1,6 @@
 # Build / editor artifacts
-.vscode/
+.vscode/*
+!.vscode/settings.json
 *.swp
 *~
 
@@ -12,3 +13,6 @@ Thumbs.db
 # MarketsSettings.qml
 .codex
 .agents
+
+# Generated editor metadata; rebuilt from the installed Quickshell module by support/Lint.js.
+support/lint-imports/Quickshell/

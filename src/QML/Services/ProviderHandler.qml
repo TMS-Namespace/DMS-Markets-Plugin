@@ -21,8 +21,8 @@
 //   onFinished: (context, response, series) => …   context is the FetchContext you passed, untouched;
 //                                         series = the newest candles (null when the response failed)
 
+pragma ComponentBehavior: Bound
 import QtQuick
-import Quickshell
 import Quickshell.Io
 import "../Contracts"
 import "../../JS/Helpers/Constants.js" as JsConstants
@@ -102,7 +102,7 @@ Item {
 
     // The closest selection this provider serves that is also readable (see SelectionPolicy.clamp).
     function clampSelection(selection) {
-        var fields = SelectionPolicy.clamp(properties, selection)
+        let fields = SelectionPolicy.clamp(properties, selection)
         return selectionType.createObject(null, fields)
     }
 
@@ -150,7 +150,7 @@ Item {
         SelectionPolicy.assertPull(properties, resolution)        // the chart is pulled every `resolution`
         // A chart needs exactly as many candles as its range holds at its resolution: no more are parsed
         // (or, where the API and fetch script allow it, fetched).
-        var candles = ChartSpan.pointLimit(resolution, span)
+        let candles = ChartSpan.pointLimit(resolution, span)
         return _request(api.historyUrl(symbol, resolution, span, properties.credential),
                         properties.tailHistory ? candles : 0, candles)
     }
@@ -158,7 +158,7 @@ Item {
     // What a fetch process produced → ProviderResponse (status, body, or a friendly PluginError).
     // `result` has exitCode, stdout, stderr.
     function interpret(result) {
-        var response = ResponseInterpreter.fromProcess(properties.providerId, properties.name, result, {
+        let response = ResponseInterpreter.fromProcess(properties.providerId, properties.name, result, {
             extractApiError: api.extractApiError,
             credentialSentinel: properties.credentialErrorSentinel,
             authErrorMessage: properties.authErrorMessage
@@ -175,7 +175,7 @@ Item {
     // The reference close (a number) of a successful change response.
     function parseChange(response) {
         ResponseInterpreter.assertOk(response)
-        var reference = api.parseChange(response.body)
+        let reference = api.parseChange(response.body)
         if (typeof reference !== "number" || !isFinite(reference) || reference === 0)
             throw new PluginError.PluginError(PluginError.Code.PARSE, "The provider sent an answer that couldn't be understood.",
                                               properties.providerId + ": unusable previous close '" + reference + "'")
@@ -212,10 +212,10 @@ Item {
 
     // Reject duplicate or excess work before adding a pending call.
     function _submit(request, context, isCurrent) {
-        var call = callType.createObject(null, {
+        let call = callType.createObject(null, {
             key: context.uid + "_" + context.fetchType + "_" + request.url + (context.signature ? "|" + context.signature : ""), group: context.uid,
             command: request.command, candles: request.candles, context: context, isCurrent: isCurrent || null
-        })
+        }) as FetchCall
         if (_keys[call.key]) {                                    // this very call is already in flight
             _log("skipped " + _label(call) + ": already in flight")
             return false
@@ -249,7 +249,7 @@ Item {
 
     // Append a queued job and schedule the next available process slot.
     function _enqueue(job) {
-        var queue = _queue.slice()
+        let queue = _queue.slice()
         queue.push(job)
         _queue = queue
         pumpTimer.restart()
@@ -268,15 +268,15 @@ Item {
         if (_queue.length === 0) return
         if (_activeCount >= JsConstants.MAX_CONCURRENT_FETCHES) return
 
-        var queue = _queue.slice()
-        var job = queue.shift()
+        let queue = _queue.slice()
+        let job = queue.shift()
         _queue = queue
         _activeCount = _activeCount + 1
         _log("started " + _label(job.request) + " (attempt " + (job.attempt + 1) + ")")
 
-        var process
+        let process
         try {
-            process = processComponent.createObject(root, { job: job })
+            process = processComponent.createObject(root, { job: job }) as Process
             process.command = job.request.command
             process.running = true
         } catch (caughtError) {
@@ -290,17 +290,18 @@ Item {
         id: processComponent
 
         Process {
+            id: requestProcess
             property var    job
             property string _buffer: ""
             property string _stderr: ""
 
             stdout: StdioCollector {
-                onStreamFinished: { _buffer = text }
+                onStreamFinished: { requestProcess._buffer = text }
             }
 
             stderr: SplitParser {
                 onRead: line => {
-                    if (_stderr.length < JsConstants.STDERR_MAX_CHARS) _stderr += line + "\n"
+                    if (requestProcess._stderr.length < JsConstants.STDERR_MAX_CHARS) requestProcess._stderr += line + "\n"
                 }
             }
 
@@ -318,16 +319,16 @@ Item {
     // Never throws, always frees the slot, and reports a final result at most once per call
     // (a retry reports nothing yet).
     function _handleFinished(job, exitCode, stdout, stderr) {
-        var request = job.request
-        var finalResponse = null
-        var series = null
-        var retrying = false
-        var current = true
+        let request = job.request
+        let finalResponse = null
+        let series = null
+        let retrying = false
+        let current = true
 
         try {
             current = _isCurrent(request)
             if (current) {
-                var response = interpret({ exitCode: exitCode, stdout: stdout, stderr: stderr })
+                let response = interpret({ exitCode: exitCode, stdout: stdout, stderr: stderr })
                 if (response.ok) {
                     try {
                         series = _parse(request, response)
@@ -363,13 +364,13 @@ Item {
 
     // Turn an exception into a typed failed provider response.
     function _failed(error) {
-        var failure = ResponseInterpreter.failure(properties.providerId, error)
+        let failure = ResponseInterpreter.failure(properties.providerId, error)
         return responseComponent.createObject(null, failure)
     }
 
     // The newest `request.candles` candles of a successful answer (0 = all).
     function _parse(request, response) {
-        var fetchType = request.context.fetchType
+        let fetchType = request.context.fetchType
         if (fetchType === FetchType.Values.CHANGE) return parseChange(response)
         return fetchType === FetchType.Values.PRICE ? parsePrice(response, request.candles) : parseChart(response, request.candles)
     }
@@ -393,9 +394,9 @@ Item {
             _log("retry queue is full: not retrying " + _label(job.request))
             return false
         }
-        for (var i = 0; i < _retryQueue.length; i++)
+        for (let i = 0; i < _retryQueue.length; i++)
             if (_retryQueue[i].request.key === job.request.key) return false
-        var queue = _retryQueue.slice()
+        let queue = _retryQueue.slice()
         job.readyAt = clock() + JsConstants.RETRY_INTERVAL_MS * job.attempt
         queue.push(job)
         queue.sort(function(earlier, later) { return earlier.readyAt - later.readyAt })
@@ -422,8 +423,8 @@ Item {
     function _processRetryQueue() {
         if (_retryQueue.length === 0) return
         if (clock() < Math.max(_retryQueue[0].readyAt, _retryAfter)) { _armRetryTimer(); return }
-        var queue = _retryQueue.slice()
-        var job = queue.shift()
+        let queue = _retryQueue.slice()
+        let job = queue.shift()
         _retryQueue = queue
         _retryAfter = clock() + JsConstants.RETRY_SUBSEQUENT_MS
 
@@ -440,7 +441,7 @@ Item {
     // ── Pending counter (drives the "refreshing…" state) ──────────────────────
     function _changePending(group, delta) {
         if (!group) return
-        var count = Math.max(0, (pending[group] || 0) + delta)
+        let count = Math.max(0, (pending[group] || 0) + delta)
         pending = count === 0 ? Helpers.withoutEntry(pending, group) : Helpers.withEntry(pending, group, count)   // notifies through the property's own pendingChanged()
     }
 }

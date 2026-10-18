@@ -9,6 +9,7 @@ import qs.Widgets
 import "../Helpers"
 
 Row {
+    id: pill
     Constants { id: constants }
 
     // ── Required bindings (set by Widget.qml) ────────────────────────────────
@@ -19,13 +20,13 @@ Row {
 
     DankIcon {
         name: "show_chart"
-        size: iconSize
+        size: pill.iconSize
         color: Theme.primary
         anchors.verticalCenter: parent.verticalCenter
     }
 
     StyledText {
-        text: displayText
+        text: pill.displayText
         font.pixelSize: Theme.fontSizeSmall
         color: Theme.surfaceText
         anchors.verticalCenter: parent.verticalCenter

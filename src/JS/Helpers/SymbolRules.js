@@ -22,10 +22,10 @@ var FORBIDDEN_CHARS = Object.freeze([" ", "\t", "\n", "\r", "\0", "'", "\"", "`"
 function patternProblem(pattern) {
     if (typeof pattern !== "string" || pattern.length < 3 || pattern.charAt(0) !== "^" || pattern.charAt(pattern.length - 1) !== "$")
         return "'symbolPattern' must be an anchored regular expression (^...$)"
-    var regex
+    let regex
     try { regex = new RegExp(pattern) } catch (caughtError) { return "'symbolPattern' is not a valid regular expression" }
-    for (var i = 0; i < FORBIDDEN_CHARS.length; i++) {
-        var character = FORBIDDEN_CHARS[i]
+    for (let i = 0; i < FORBIDDEN_CHARS.length; i++) {
+        let character = FORBIDDEN_CHARS[i]
         if (regex.test(character) || regex.test("A" + character) || regex.test(character + "A") || regex.test("A" + character + "A"))
             return "'symbolPattern' must not allow the character " + JSON.stringify(character)
     }
@@ -64,7 +64,7 @@ function validateName(name) {
 
 // Throws before any request is built from a symbol that is not acceptable.
 function assertValid(rules, symbol) {
-    var verdict = validate(rules, symbol)
+    let verdict = validate(rules, symbol)
     if (!verdict.valid)
         throw new PluginError.PluginError(PluginError.Code.INVALID_SYMBOL, verdict.message,
             rules.name + ": invalid symbol " + JSON.stringify(String(symbol).slice(0, 40)) + ". " + verdict.message)

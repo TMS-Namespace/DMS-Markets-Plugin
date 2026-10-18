@@ -43,10 +43,10 @@ function assertOk(response) {
 
 // Splits stdout into { hasEnvelope, curlExit, status, body }.
 function parseEnvelope(stdout) {
-    var text = stdout === undefined || stdout === null ? "" : String(stdout)
-    var newline = text.indexOf("\n")
-    var firstLine = newline === -1 ? text : text.slice(0, newline)
-    var match = ENVELOPE_PATTERN.exec(firstLine)
+    let text = stdout === undefined || stdout === null ? "" : String(stdout)
+    let newline = text.indexOf("\n")
+    let firstLine = newline === -1 ? text : text.slice(0, newline)
+    let match = ENVELOPE_PATTERN.exec(firstLine)
     if (!match) return { hasEnvelope: false, curlExit: 0, status: 0, body: text }
     return {
         hasEnvelope: true,
@@ -60,13 +60,13 @@ function parseEnvelope(stdout) {
 
 // Collapse whitespace and bound the length of diagnostic text.
 function _short(text, maxLength) {
-    var clean = String(text).replace(/\s+/g, " ").trim()
+    let clean = String(text).replace(/\s+/g, " ").trim()
     return clean.length > maxLength ? clean.slice(0, maxLength - 1) + "…" : clean
 }
 
 // Collect the available process and HTTP failure details.
 function _detailsOf(parts) {
-    var facts = []
+    let facts = []
     if (parts.status) facts.push("HTTP " + parts.status)
     if (parts.curlExit) facts.push("curl exit " + parts.curlExit)
     if (parts.processExit) facts.push("process exit " + parts.processExit)
@@ -88,7 +88,7 @@ var _CURL_SSL      = { 35: true, 51: true, 53: true, 54: true, 58: true, 59: tru
 
 // Classify a curl failure and decide whether retrying may help.
 function _fromCurlExit(name, parts) {
-    var code = parts.curlExit
+    let code = parts.curlExit
     if (_CURL_TIMEOUT[code])
         return _error(PluginError.Code.TIMEOUT, name + " took too long to answer.", parts, true)
     if (_CURL_NETWORK[code])
@@ -102,8 +102,8 @@ function _fromCurlExit(name, parts) {
 
 // Translate an HTTP failure into a friendly typed error.
 function _fromHttpStatus(name, parts, apiMessage) {
-    var status = parts.status
-    var api = apiMessage ? _short(apiMessage, 100) : ""
+    let status = parts.status
+    let api = apiMessage ? _short(apiMessage, 100) : ""
     if (status === 429)
         return _error(PluginError.Code.RATE_LIMITED, name + " is limiting requests right now; it will be tried again later.", parts, true)
     if (status >= 500)
@@ -124,29 +124,29 @@ function _fromHttpStatus(name, parts, apiMessage) {
 //   credentialSentinel / authErrorMessage    provider-declared "bad API key" marker
 // `name` is the provider's display name for messages.
 function fromProcess(providerId, name, result, hooks) {
-    var options = hooks || {}
-    var exitCode = result && typeof result.exitCode === "number" ? result.exitCode : -1
-    var stdout = result && result.stdout !== undefined && result.stdout !== null ? String(result.stdout) : ""
-    var stderr = result && result.stderr ? String(result.stderr).trim() : ""
-    var parts = { stderr: stderr, processExit: exitCode }
+    let options = hooks || {}
+    let exitCode = result && typeof result.exitCode === "number" ? result.exitCode : -1
+    let stdout = result && result.stdout !== undefined && result.stdout !== null ? String(result.stdout) : ""
+    let stderr = result && result.stderr ? String(result.stderr).trim() : ""
+    let parts = { stderr: stderr, processExit: exitCode }
 
     // The wrapper script itself failed (bash/curl missing, killed, …).
     if (exitCode !== 0 && !stdout.length) {
-        var cannotRun = exitCode === 127 || exitCode === 126 || exitCode < 0
+        let cannotRun = exitCode === 127 || exitCode === 126 || exitCode < 0
         return failure(providerId, cannotRun
             ? _error(PluginError.Code.PROCESS, "Couldn't run curl. Make sure curl and bash are installed.", parts, false)
             : _error(PluginError.Code.NETWORK, "The request to " + name + " failed.", parts, false))
     }
 
-    var envelope = parseEnvelope(stdout)
+    let envelope = parseEnvelope(stdout)
     parts.status   = envelope.status
     parts.curlExit = envelope.curlExit
-    var body = envelope.body
+    let body = envelope.body
 
     if (envelope.hasEnvelope) {
         if (envelope.curlExit !== 0) return failure(providerId, _fromCurlExit(name, parts), envelope.status, body)
         if (envelope.status !== 0 && (envelope.status < 200 || envelope.status > 299)) {
-            var apiMessage = options.extractApiError ? options.extractApiError(envelope.status, body) : ""
+            let apiMessage = options.extractApiError ? options.extractApiError(envelope.status, body) : ""
             parts.body = body
             return failure(providerId, _fromHttpStatus(name, parts, apiMessage), envelope.status, body)
         }
@@ -156,7 +156,7 @@ function fromProcess(providerId, name, result, hooks) {
         return failure(providerId, _fromCurlExit(name, parts), 0, body)
     }
 
-    var status = envelope.status || 200
+    let status = envelope.status || 200
     if (options.credentialSentinel
             && body.trim().toLowerCase().indexOf(String(options.credentialSentinel).toLowerCase()) === 0)
         return failure(providerId, _error(PluginError.Code.CREDENTIAL,
@@ -166,7 +166,7 @@ function fromProcess(providerId, name, result, hooks) {
         return failure(providerId, _error(PluginError.Code.NO_DATA, name + " returned an empty answer.", parts, false), status, body)
 
     // Some APIs report errors inside a successful (2xx) answer.
-    var embedded = options.extractApiError ? options.extractApiError(status, body) : ""
+    let embedded = options.extractApiError ? options.extractApiError(status, body) : ""
     if (embedded) {
         parts.body = body
         return failure(providerId, _error(PluginError.Code.HTTP, name + ": " + _short(embedded, 100), parts, false), status, body)

@@ -34,7 +34,7 @@ QtObject {
 
     // Any of: notify, now. Unspecified fields keep their value.
     function configure(options) {
-        var settings = options || {}
+        let settings = options || {}
         if (settings.notify !== undefined)  notifier = settings.notify
         if (settings.now !== undefined)     clock = settings.now
     }
@@ -51,11 +51,11 @@ QtObject {
     //   context  short text added to the details (e.g. the ticker)
     //   category toast category (defaults to the error code)
     function handle(scope, error, options) {
-        var handling = options || {}
-        var made = Policy.recordOf(scope, error, handling.context, clock())
-        var record = _recordType.createObject(null, made.fields)
+        let handling = options || {}
+        let made = Policy.recordOf(scope, error, handling.context, clock())
+        let record = _recordType.createObject(null, made.fields) as ErrorRecord
 
-        var next = recent.slice()
+        let next = recent.slice()
         next.push(record)
         // A symbol may still display an evicted record. Leave its lifetime to JS ownership:
         // it is collected once neither diagnostics nor a symbol holds it.

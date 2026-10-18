@@ -55,8 +55,8 @@ Item {
             DankIcon {
                 name:     "push_pin"
                 size:     constants.configIconSize
-                color:    symbolData.pinned ? Theme.primary : Theme.surfaceContainerHighest
-                rotation: symbolData.pinned ? 0 : constants.unpinnedRotationDeg
+                color:    configRow.symbolData.pinned ? Theme.primary : Theme.surfaceContainerHighest
+                rotation: configRow.symbolData.pinned ? 0 : constants.unpinnedRotationDeg
                 anchors.verticalCenter: parent.verticalCenter
             }
 
@@ -72,12 +72,12 @@ Item {
                 // One line: name | ticker | provider alias | price resolution | chart resolution / range
                 StyledText {
                     text: {
-                        return (symbolData.name || symbolData.ticker || "") + "  |  "
-                               + (symbolData.ticker || "") + "  |  "
-                               + ProvidersManager.aliasOf(symbolData.provider || ProvidersManager.defaultId) + "  |  "
-                               + Resolution.shortLabel(symbolData.priceResolution) + "  |  "
-                               + Resolution.shortLabel(symbolData.chartResolution) + " / "
-                               + ChartSpan.shortLabel(symbolData.chartRange)
+                        return (configRow.symbolData.name || configRow.symbolData.ticker || "") + "  |  "
+                               + (configRow.symbolData.ticker || "") + "  |  "
+                               + ProvidersManager.aliasOf(configRow.symbolData.provider || ProvidersManager.defaultId) + "  |  "
+                               + Resolution.shortLabel(configRow.symbolData.priceResolution) + "  |  "
+                               + Resolution.shortLabel(configRow.symbolData.chartResolution) + " / "
+                               + ChartSpan.shortLabel(configRow.symbolData.chartRange)
                     }
                     font.pixelSize: Theme.fontSizeSmall + constants.configTextFontSizeDelta
                     color:          Theme.surfaceText

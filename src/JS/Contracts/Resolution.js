@@ -51,7 +51,7 @@ function ms(resolution)         { return isValid(resolution) ? INFO[resolution].
 // can't use enum members as keys in ES5, so resolution-keyed tables use this:
 //   Resolution.mapOf([[Resolution.Values.H1, "hourly"], [Resolution.Values.D1, "daily"]])
 function mapOf(pairs) {
-    var resolutionMap = {}
-    for (var i = 0; i < pairs.length; i++) resolutionMap[pairs[i][0]] = pairs[i][1]
+    let resolutionMap = {}
+    for (let i = 0; i < pairs.length; i++) resolutionMap[pairs[i][0]] = pairs[i][1]
     return Object.freeze(resolutionMap)
 }

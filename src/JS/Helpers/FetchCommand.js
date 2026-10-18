@@ -16,7 +16,7 @@
 
 // Build a fetch script that prints its status before the response body.
 function plainScript(tailLines) {
-    var script = ""
+    let script = ""
     script += "set -e\n"
     script += "if command -v ionice >/dev/null 2>&1; then ionice -c" + Constants.PROCESS_IONICE_CLASS + " -p $$ >/dev/null 2>&1 || true; fi\n"
     script += "if command -v renice >/dev/null 2>&1; then renice -n " + Constants.PROCESS_NICE_LEVEL + " -p $$ >/dev/null 2>&1 || true; fi\n"
@@ -42,6 +42,6 @@ function build(url, tailLines, customScript) {
         throw PluginError.internal("a fetch URL must be https, got " + JSON.stringify(url))
     if (typeof tailLines !== "number" || tailLines < 0 || Math.floor(tailLines) !== tailLines)
         throw PluginError.internal("tailLines must be a non-negative integer")
-    var script = customScript || plainScript(tailLines)
+    let script = customScript || plainScript(tailLines)
     return Constants.FETCH_SHELL_COMMAND.concat([script, "markets-fetch", url])
 }

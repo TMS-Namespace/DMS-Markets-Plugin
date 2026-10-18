@@ -12,7 +12,7 @@ TestSuite {
     function test_every_offered_span_is_allowed_and_every_filtered_one_is_blocked() {
         each(function(id, properties) {
             Policy.allowedChartResolutions(properties).forEach(function(resolution) {
-                var spans = Policy.allowedChartSpans(properties, resolution)
+                let spans = Policy.allowedChartSpans(properties, resolution)
                 check(spans.length > 0, id + " " + resolution + " offers spans")
                 spans.forEach(function(span) { check(Rules.isAllowed(resolution, span), id + " " + resolution + "/" + span) })
                 Policy.chartSpans(properties, resolution).filter(function(candidateSpan) { return spans.indexOf(candidateSpan) === -1 }).forEach(function(span) {
@@ -26,7 +26,7 @@ TestSuite {
     }
     function test_defaults_are_servable_and_clean() {
         each(function(id, properties) {
-            var defaults = Policy.defaultSelection(properties)
+            let defaults = Policy.defaultSelection(properties)
             check(Policy.supportsPrice(properties, defaults.priceResolution), id)
             check(Policy.supportsChart(properties, defaults.chartResolution, defaults.chartRange), id)
             same(Rules.evaluate(defaults.chartResolution, defaults.chartRange).level, "ok", id + " default selection is clean")
@@ -37,7 +37,7 @@ TestSuite {
             ;["", "1m", "1h", "1w"].forEach(function(price) {
                 ;["", "1m", "1h", "1w", "1M"].forEach(function(resolution) {
                     ;["", "1D", "1W", "1M", "1Y", "10Y", "15m"].forEach(function(span) {
-                        var selection = Policy.clamp(properties, { priceResolution: price, chartResolution: resolution, chartRange: span })
+                        let selection = Policy.clamp(properties, { priceResolution: price, chartResolution: resolution, chartRange: span })
                         check(Policy.supportsPrice(properties, selection.priceResolution), id + " price")
                         check(Policy.supportsChart(properties, selection.chartResolution, selection.chartRange), id + " chart")
                         check(Rules.isAllowed(selection.chartResolution, selection.chartRange), id + " clamp(" + price + "|" + resolution + "|" + span + ") allowed")
@@ -47,7 +47,7 @@ TestSuite {
         })
     }
     function test_there_is_one_clamp_and_it_moves_unreadable_charts() {
-        var wise = handlerOf("wise").properties
+        let wise = handlerOf("wise").properties
         equal(Policy.clamp(wise, { priceResolution: "1d", changeResolution: "1d", chartResolution: "1d", chartRange: "1Y" }),
               { priceResolution: "1d", changeResolution: "1d", chartResolution: "1d", chartRange: "6M" }, "365 daily candles is moved to an allowed range")
         equal(Policy.clamp(wise, { priceResolution: "1d", changeResolution: "1d", chartResolution: "1d", chartRange: "3M" }),

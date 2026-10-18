@@ -4,7 +4,6 @@
 //   value (read-only)                              the text typed
 import QtQuick
 import qs.Common
-import qs.Widgets
 import qs.Modules.Plugins
 
 Row {

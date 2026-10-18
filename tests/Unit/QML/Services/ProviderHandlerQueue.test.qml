@@ -27,12 +27,12 @@ TestSuite {
         handler.pendingChanged.connect(function() { seen.pendingChanges.push(Object.assign({}, handler.pending)) })
     }
 
-    function context() { return contextType.createObject(null, { uid: "u1", ticker: "BRLPLN", providerId: "wise", fetchType: "price", chartRange: "1M", chartResolution: "1d" }) }
+    function context() { return (contextType.createObject(null, { uid: "u1", ticker: "BRLPLN", providerId: "wise", fetchType: "price", chartRange: "1M", chartResolution: "1d" }) as FetchContext) }
     // A call as plain data: what the handler builds from a ProviderRequest and a FetchContext.
     function request(key, extra) {
-        var fields = { url: key || "price_url", group: "u1", command: ["bash", "-c", "x"], candles: 0 }
-        for (var field in extra) fields[field] = extra[field]
-        fields.context = contextType.createObject(null, { uid: fields.group, ticker: "BRLPLN", providerId: "wise", fetchType: "price", chartRange: "1M", chartResolution: "1d" })
+        let fields = { url: key || "price_url", group: "u1", command: ["bash", "-c", "x"], candles: 0 }
+        for (let field in extra) fields[field] = extra[field]
+        fields.context = (contextType.createObject(null, { uid: fields.group, ticker: "BRLPLN", providerId: "wise", fetchType: "price", chartRange: "1M", chartResolution: "1d" }) as FetchContext)
         fields.key = fields.group + "_price_" + fields.url
         return fields
     }
@@ -41,7 +41,7 @@ TestSuite {
 
     // Runs the oldest queued job as ProviderHandler._pump would, minus the real process.
     function runNext(exitCode, stdout, stderr) {
-        var job = handler._queue[0]
+        let job = handler._queue[0]
         check(!!job, "a job is queued")
         handler._queue = handler._queue.slice(1)
         handler._activeCount += 1
@@ -72,7 +72,7 @@ TestSuite {
         send(request())
         runNext(0, envelope(0, 200, wiseBody))
         same(seen.finished.length, 1)
-        var finished = seen.finished[0]
+        let finished = seen.finished[0]
         same(finished.context.uid, "u1"); same(finished.context.fetchType, "price")
         check(finished.response.ok); same(finished.response.status, 200); same(finished.response.body, wiseBody)
         equal(handler.pending, {}); same(keyCount(), 0)
@@ -80,9 +80,9 @@ TestSuite {
         equal(seen.pendingChanges.map(function(pending) { return pending.u1 || 0 }), [1, 0, 1])
     }
     function test_permanent_failures_are_final_at_once() {
-        var cases = [[envelope(0, 404, "{}"), "notFound"], [envelope(0, 400, "x"), "http"], [envelope(0, 403, "x"), "credential"],
+        let cases = [[envelope(0, 404, "{}"), "notFound"], [envelope(0, 400, "x"), "http"], [envelope(0, 403, "x"), "credential"],
                      [envelope(0, 200, " "), "noData"], [envelope(35, "000"), "network"]]
-        for (var i = 0; i < cases.length; i++) {
+        for (let i = 0; i < cases.length; i++) {
             setup()
             send(request())
             runNext(0, cases[i][0])
@@ -93,8 +93,8 @@ TestSuite {
         }
     }
     function test_process_failures() {
-        var cases = [[127, "process"], [126, "process"], [-1, "process"], [1, "network"]]
-        for (var i = 0; i < cases.length; i++) {
+        let cases = [[127, "process"], [126, "process"], [-1, "process"], [1, "network"]]
+        for (let i = 0; i < cases.length; i++) {
             setup()
             send(request())
             runNext(cases[i][0], "", "bash: curl: command not found")
@@ -105,10 +105,10 @@ TestSuite {
 
     // ── Parsing is bounded by the window the call asked for ──────────────────
     function test_only_the_requested_newest_candles_are_parsed() {
-        var body = JSON.stringify([1, 2, 3, 4, 5].map(function(value) { return { value: value, time: value * 1000 } }))
+        let body = JSON.stringify([1, 2, 3, 4, 5].map(function(value) { return { value: value, time: value * 1000 } }))
         send(request("a", { candles: 3 }))
         runNext(0, envelope(0, 200, body))
-        var series = seen.finished[0].series
+        let series = seen.finished[0].series
         equal(series.map(function(candle) { return candle.close }), [3, 4, 5], "the newest three, oldest first")
         equal(series.map(function(candle) { return candle.open }), [2, 3, 4], "the oldest wanted candle still has its real open")
         setup()
@@ -126,20 +126,20 @@ TestSuite {
 
     // ── Development log (dev mode only, never a URL or credential) ───────────
     function test_the_handler_logs_its_work_in_dev_mode_without_urls_or_credentials() {
-        var lines = []
+        let lines = []
         Logger.configure({ devMode: true, sink: function(level, scope, text) { lines.push(text) } })
         handler.properties.credential = "SECRET-KEY"
         send(request("https://x.test/?apikey=SECRET-KEY"))
         runNext(0, envelope(6, "000"))                          // transient: a retry
         advanceRetry()
         runNext(0, envelope(0, 200, wiseBody))
-        var text = lines.join("\n")
+        let text = lines.join("\n")
         check(/queued BRLPLN price/.test(text), "queued"); check(/retrying BRLPLN price/.test(text), "retry")
         check(/finished BRLPLN price: HTTP 200, 2 candles/.test(text), "result with the candle count")
         check(text.indexOf("SECRET-KEY") === -1 && text.indexOf("x.test") === -1, "no URL and no credential in the log")
     }
     function test_nothing_is_logged_when_dev_mode_is_off() {
-        var lines = []
+        let lines = []
         Logger.configure({ devMode: false, sink: function(level, scope, text) { lines.push(text) } })
         send(request("a")); runNext(0, envelope(0, 200, wiseBody))
         same(lines.length, 0)
@@ -162,7 +162,7 @@ TestSuite {
     }
     function test_a_permanently_failing_provider_is_called_one_plus_max_retries_times() {
         send(request())
-        var attempts = 0
+        let attempts = 0
         for (;;) {
             attempts++
             check(attempts <= max + 1, "never more attempts than the limit allows")
@@ -177,8 +177,8 @@ TestSuite {
         equal(handler.pending, {}); same(keyCount(), 0)
     }
     function test_server_errors_and_rate_limits_are_transient() {
-        var statuses = [429, 500, 502, 503]
-        for (var i = 0; i < statuses.length; i++) {
+        let statuses = [429, 500, 502, 503]
+        for (let i = 0; i < statuses.length; i++) {
             setup()
             send(request("k", { command: ["bash", "-c", "same-command"] }))
             runNext(0, envelope(0, statuses[i], "x"))
@@ -192,7 +192,7 @@ TestSuite {
         function job(key) { return { request: request(key), attempt: 1 } }
         check(handler._scheduleRetry(job("a")))
         check(!handler._scheduleRetry(job("a")), "the same call is never queued twice")
-        for (var i = 0; i < JsConstants.RETRY_QUEUE_MAX * 2; i++) handler._scheduleRetry(job("k" + i))
+        for (let i = 0; i < JsConstants.RETRY_QUEUE_MAX * 2; i++) handler._scheduleRetry(job("k" + i))
         same(handler._retryQueue.length, JsConstants.RETRY_QUEUE_MAX, "hard cap")
         check(!handler._scheduleRetry(job("extra")))
     }
@@ -257,15 +257,15 @@ TestSuite {
 
     // ── A real process, end to end ───────────────────────────────────────────
     function async_runs_a_real_command_and_reports_its_answer(done) {
-        var call = request("real", { candles: 1, command: ["bash", "-c", "printf 'MARKETS-RESPONSE 0 200\\n%s' \"$1\"", "x", JSON.stringify([{ value: 2, time: 1000 }, { value: 3, time: 2000 }])] })
+        let call = request("real", { candles: 1, command: ["bash", "-c", "printf 'MARKETS-RESPONSE 0 200\\n%s' \"$1\"", "x", JSON.stringify([{ value: 2, time: 1000 }, { value: 3, time: 2000 }])] })
         handler.finished.connect(function(context, response, series) {
             done(response.ok && series.length === 1 && series[0].close === 3 && response.status === 200 ? "" : "unexpected response: " + response.body + " " + (response.error && response.error.details))
         })
         send(call)
     }
     function test_new_request_queue_is_bounded_without_leaking_pending_counts() {
-        for (var i = 0; i < JsConstants.FETCH_QUEUE_MAX; i++) check(send(request("request-" + i)))
-        var failure = throws(function() { send(request("overflow")) }, "queue reached its limit")
+        for (let i = 0; i < JsConstants.FETCH_QUEUE_MAX; i++) check(send(request("request-" + i)))
+        let failure = throws(function() { send(request("overflow")) }, "queue reached its limit")
         same(failure.code, "process")
         same(handler._queue.length, JsConstants.FETCH_QUEUE_MAX)
         same(handler.pending.u1, JsConstants.FETCH_QUEUE_MAX)

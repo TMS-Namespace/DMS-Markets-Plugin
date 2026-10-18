@@ -112,7 +112,7 @@ for (const file of qmlFiles) {
 }
 assert.deepStrictEqual(repeating.sort(), ["QML/Helpers/MarketDataFetcher.qml#checkTimer", "QML/Views/SymbolRow.qml#anonymous"],
                        "only the poll timer and the ago tick repeat");
-assert(/id: checkTimer[\s\S]*?running: symbols\.length > 0/.test(fetcher), "polling stops when there are no symbols");
+assert(/id: checkTimer[\s\S]*?running: root\.symbols\.length > 0/.test(fetcher), "polling stops when there are no symbols");
 for (const [source, timers] of [[handlerQml, ["retryTimer", "pumpTimer"]], [fetcher, ["initialGraphTimer"]]])
     for (const timer of timers)
         assert(new RegExp(`id: ${timer}[\\s\\S]*?repeat: false`).test(source), `${timer} is one-shot`);

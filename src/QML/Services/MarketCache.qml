@@ -67,6 +67,7 @@ Item {
     Component {
         id: runType
         Process {
+            id: cacheProcess
             property var   done
             property string _text: ""
             property bool  _exited: false
@@ -75,11 +76,11 @@ Item {
             // Wait for process exit and stdout completion before delivering the result.
             function _finish() {
                 if (!_exited || !_streamed) return
-                var callback = done
+                let callback = done
                 done = null
                 try { if (callback) callback(_code, _text) } finally { destroy() }
             }
-            stdout: StdioCollector { onStreamFinished: { _text = text; _streamed = true; _finish() } }
+            stdout: StdioCollector { onStreamFinished: { cacheProcess._text = text; cacheProcess._streamed = true; cacheProcess._finish() } }
             onExited: code => { _code = code; _exited = true; _finish() }
         }
     }
@@ -99,7 +100,7 @@ Item {
     // Serialize shell work; callbacks can queue more work without starting overlapping processes.
     function _pumpProcesses() {
         if (_processCount > 0 || _processQueue.length === 0) return
-        var job = _processQueue[0]
+        let job = _processQueue[0]
         _processQueue = _processQueue.slice(1)
         _processCount++
         // Release the completed process slot and run its callback.
@@ -109,7 +110,7 @@ Item {
             try { job.callback(code, text) } finally { Qt.callLater(root._pumpProcesses) }
         }
         try {
-            var process = runType.createObject(root, { command: job.command, done: finished, running: true })
+            let process = runType.createObject(root, { command: job.command, done: finished, running: true })
             if (!process) throw PluginError.internal("could not create a cache process")
         } catch (caughtError) {
             Logger.debug("cache", "could not run " + job.command[0] + ": " + String(caughtError && caughtError.message))
@@ -163,13 +164,13 @@ Item {
     // ── Loading ───────────────────────────────────────────────────────────────
     // callback(records): { uid: record } for the symbols that have readable saved data.
     function load(uids, callback) {
-        var wanted = (uids || []).filter(function(uid) {
-            var ok = isValidUid(uid)
+        let wanted = (uids || []).filter(function(uid) {
+            let ok = isValidUid(uid)
             if (!ok) Logger.debug("cache", "not loading '" + String(uid).slice(0, 40) + "': not a symbol uid")
             return ok
         })
-        var records = {}
-        var left = wanted.length
+        let records = {}
+        let left = wanted.length
         if (left === 0) { Qt.callLater(function() { callback(records) }); return }
         busy++
         wanted.forEach(function(uid) {
@@ -183,7 +184,7 @@ Item {
     // The symbol's files, newest first by modification time.
     function _listFiles(uid, callback) {
         // Regular files only (-d: never list a directory's contents), newest first.
-        var script = 'cd "$1" 2>/dev/null && ls -1td -- "$2.json" "$2"-*.json 2>/dev/null | while read -r f; do [ -f "$f" ] && echo "$f"; done; true'
+        let script = 'cd "$1" 2>/dev/null && ls -1td -- "$2.json" "$2"-*.json 2>/dev/null | while read -r f; do [ -f "$f" ] && echo "$f"; done; true'
         _run(["sh", "-c", script, "sh", directory, uid], function(code, text) {
             callback(text.split("\n").filter(function(name) { return name !== "" }))
         })
@@ -217,8 +218,8 @@ Item {
     // callback(record or null). A failed read is tried again; a file that reads but is not a valid record is not.
     function _readFile(uid, name, attempt, callback) {
         busy++
-        var settled = false
-        var reader = null
+        let settled = false
+        let reader = null
         // Finish this file operation once and release its file object.
         function settle(record) {
             if (settled) return
@@ -229,7 +230,7 @@ Item {
         }
         // Parse a loaded cache file and complete the read.
         function loaded() {
-            var record = null
+            let record = null
             try {
                 record = _parseRecord(uid, reader.text())
             } catch (caughtError) {
@@ -260,7 +261,7 @@ Item {
 
     // Require the supported cache version and matching symbol handle.
     function _parseRecord(uid, text) {
-        var record = JSON.parse(text)
+        let record = JSON.parse(text)
         if (!record || typeof record !== "object" || Array.isArray(record)) throw _unusable("not a record")
         if (record.version !== JsConstants.CACHE_FORMAT_VERSION) throw _unusable("format version " + record.version)
         if (record.uid !== uid) throw _unusable("belongs to another symbol")
@@ -270,7 +271,7 @@ Item {
     // ── Saving ────────────────────────────────────────────────────────────────
     function markDirty(uid) {
         if (!isValidUid(uid)) { Logger.debug("cache", "not saving '" + String(uid).slice(0, 40) + "': not a symbol uid"); return }
-        var dirty = Object.assign({}, _dirty)
+        let dirty = Object.assign({}, _dirty)
         dirty[uid] = true
         _dirty = dirty
         _removed = _flag(_removed, uid, false)       // new data after a discard: it is kept
@@ -287,7 +288,7 @@ Item {
 
     // Return a new state map with the requested flag set or removed.
     function _flag(map, uid, on) {
-        var copy = Object.assign({}, map)
+        let copy = Object.assign({}, map)
         if (on) copy[uid] = true; else delete copy[uid]
         return copy
     }
@@ -295,7 +296,7 @@ Item {
     // Snapshot dirty data and begin a bounded write attempt.
     function _startWrite(uid) {
         _dirty = _flag(_dirty, uid, false)
-        var record = null
+        let record = null
         try { record = snapshotOf ? snapshotOf(uid) : null } catch (caughtError) { Logger.debug("cache", "no snapshot of " + uid + ": " + String(caughtError && caughtError.message)) }
         if (!record) return
         _writing = _flag(_writing, uid, true)
@@ -311,8 +312,8 @@ Item {
         _ensureDirectory(function(ready) {
             if (!ready) { _writeFailed(uid, text, name, attempt, fallbacksUsed, "no directory"); return }
             busy++
-            var settled = false
-            var writer = null
+            let settled = false
+            let writer = null
             // Finish this file operation once and release its file object.
             function settle(action) {
                 if (settled) return
@@ -337,7 +338,7 @@ Item {
             Logger.debug("cache", "writing " + name + " failed (attempt " + attempt + "/" + attempts + "): " + reason)
             _later(retryDelayMs, function() { _attemptWrite(uid, text, name, attempt + 1, fallbacksUsed) })
         } else if (fallbacksUsed < maxFallbacks) {
-            var other = fallbackNameOf(uid)
+            let other = fallbackNameOf(uid)
             Logger.debug("cache", name + " cannot be written (" + reason + "): using " + other)
             _attemptWrite(uid, text, other, 1, fallbacksUsed + 1)
         } else {
@@ -353,7 +354,7 @@ Item {
     function _writeSucceeded(uid, name) {
         Logger.debug("cache", "saved " + name)
         // Only the latest update stays: the symbol's other files (an older fallback, a stale primary) go.
-        var script = 'cd "$1" 2>/dev/null || exit 0; for f in "$2".json "$2"-*.json; do [ "$f" = "$3" ] || rm -f -- "$f"; done'
+        let script = 'cd "$1" 2>/dev/null || exit 0; for f in "$2".json "$2"-*.json; do [ "$f" = "$3" ] || rm -f -- "$f"; done'
         _run(["sh", "-c", script, "sh", directory, uid, name], function() {
             _writeEnded(uid)
             written(uid, name)
@@ -373,7 +374,7 @@ Item {
         if (!isValidUid(uid)) return
         _dirty = _flag(_dirty, uid, false)
         if (_writing[uid]) { _removed = _flag(_removed, uid, true); return }   // cleaned when that write ends
-        var script = 'cd "$1" 2>/dev/null || exit 0; rm -f -- "$2".json "$2"-*.json'
+        let script = 'cd "$1" 2>/dev/null || exit 0; rm -f -- "$2".json "$2"-*.json'
         _run(["sh", "-c", script, "sh", directory, uid], function() { Logger.debug("cache", "removed the saved data of " + uid) })
     }
 }

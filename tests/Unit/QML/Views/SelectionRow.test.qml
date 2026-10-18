@@ -36,18 +36,18 @@ TestSuite {
     function teardown() { made.forEach(function(item) { item.destroy() }); made = [] }
 
     function test_the_dropdown_shows_the_default_and_follows_value_set_from_code() {
-        var row = make(pageType).row
+        let row = make(pageType).row
         same(row.dropdown.currentValue, "1 Day")
         row.value = "1w"; same(row.dropdown.currentValue, "1 Week")
         row.value = "1M"; same(row.dropdown.currentValue, "1 Month")
     }
     function test_a_choice_by_the_user_sets_value_and_is_saved() {
-        var page = make(pageType), row = page.row
+        let page = make(pageType), row = page.row
         row.dropdown.choose("1 Week")
         same(row.value, "1w"); same(page.saved._k, "1w")
     }
     function test_after_the_user_picked_an_option_the_dropdown_still_follows_value_set_from_code() {
-        var row = make(pageType).row
+        let row = make(pageType).row
         row.dropdown.choose("1 Month")                                // the user's choice (the real dropdown assigns its text)
         same(row.dropdown.currentValue, "1 Month")
         row.value = "1d"                                              // e.g. a symbol picked in the list
@@ -56,20 +56,20 @@ TestSuite {
         same(row.dropdown.currentValue, "1 Month", "...every time")
     }
     function test_changed_options_keep_the_shown_text_right() {
-        var row = make(pageType).row
+        let row = make(pageType).row
         row.dropdown.choose("1 Week")
         row.options = [{ label: "1 Day", value: "1d" }, { label: "One Week", value: "1w" }]
         same(row.dropdown.currentValue, "One Week")
     }
     function test_it_loads_the_saved_value_when_the_page_asks() {
-        var page = make(pageType)
+        let page = make(pageType)
         page.saved._k = "1M"
         page.row.loadValue()
         same(page.row.value, "1M"); same(page.row.dropdown.currentValue, "1 Month")
     }
     function test_the_plain_binding_of_dms_s_setting_does_lose_the_value_after_a_choice() {
         // Documents WHY SelectionRow exists: this is the behaviour that caused the bug.
-        var plain = make(plainType)
+        let plain = make(plainType)
         plain.dropdown.choose("1 Month")
         plain.value = "1d"
         same(plain.dropdown.currentValue, "1 Month", "the plain binding is gone after the user's choice")

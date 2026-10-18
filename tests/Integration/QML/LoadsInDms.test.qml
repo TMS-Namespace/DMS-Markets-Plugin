@@ -5,7 +5,7 @@ import "../../Helpers"
 
 TestSuite {
     function load(relativePath) {
-        var component = Qt.createComponent("file://" + repoRoot + "/" + relativePath)
+        let component = Qt.createComponent("file://" + repoRoot + "/" + relativePath)
         check(component.status === Component.Ready, relativePath + ": " + component.errorString())
         return component
     }

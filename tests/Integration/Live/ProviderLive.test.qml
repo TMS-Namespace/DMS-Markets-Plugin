@@ -19,9 +19,9 @@ TestSuite {
 
     // One work item per declared request: { label, id, run(context) }.
     function workItems() {
-        var items = []
+        let items = []
         Object.keys(symbols).forEach(function(id) {
-            var handler = handlerOf(id), properties = handler.properties
+            let handler = handlerOf(id), properties = handler.properties
             Policy.priceResolutions(properties).forEach(function(resolution) {
                 items.push({ label: "price " + resolution, id: id, type: "price", run: function(fetchContext) { return handler.fetchPrice(symbols[id], resolution, fetchContext) } })
             })
@@ -35,13 +35,13 @@ TestSuite {
     }
 
     function context(id, index, type) {
-        return contextType.createObject(null, { uid: String(index), ticker: symbols[id], providerId: id, fetchType: type, chartRange: "1M", chartResolution: "1d" })
+        return (contextType.createObject(null, { uid: String(index), ticker: symbols[id], providerId: id, fetchType: type, chartRange: "1M", chartResolution: "1d" }) as FetchContext)
     }
 
     function async_every_declared_request_returns_data(done) {
-        var items = workItems(), index = 0
+        let items = workItems(), index = 0
         function onFinished(fetchContext, response, series) {
-            var item = items[parseInt(fetchContext.uid)]
+            let item = items[parseInt(fetchContext.uid)]
             try {
                 check(response.ok, item.id + " " + item.label + ": " + (response.error && response.error.userMessage))
                 same(response.status, 200, item.id + " " + item.label + ": HTTP status is reported")
@@ -60,7 +60,7 @@ TestSuite {
     property Timer pace: Timer { interval: 300; onTriggered: suite.paceCallback() }   // be gentle with the APIs
 
     function async_real_failure_answers_become_friendly_typed_errors(done) {
-        var seen = {}
+        let seen = {}
         ;["yahoo", "wise"].forEach(function(id) {
             handlerOf(id).maxRetries = 0
             handlerOf(id).finished.connect(function(fetchContext, response) {
@@ -68,7 +68,7 @@ TestSuite {
                 seen[fetchContext.providerId] = response
                 if (Object.keys(seen).length < 2) return
                 try {
-                    var yahooResponse = seen.yahoo, wiseResponse = seen.wise
+                    let yahooResponse = seen.yahoo, wiseResponse = seen.wise
                     check(!yahooResponse.ok, "an unknown Yahoo symbol fails"); same(yahooResponse.status, 404); same(yahooResponse.error.code, "notFound")
                     check(/^Yahoo Finance: /.test(yahooResponse.error.userMessage), yahooResponse.error.userMessage); check(!yahooResponse.error.retryable)
                     check(!wiseResponse.ok, "an unknown currency pair fails"); check(wiseResponse.status >= 400 && wiseResponse.status < 500, "HTTP " + wiseResponse.status); check(!wiseResponse.error.retryable)
@@ -76,8 +76,8 @@ TestSuite {
                 } catch (error) { done(error.message) }
             })
         })
-        handlerOf("yahoo").fetchPrice("ZZZZNOTASYMBOL9", "1d", contextType.createObject(null, { uid: "xy", ticker: "ZZZZNOTASYMBOL9", providerId: "yahoo", fetchType: "price", chartRange: "1M", chartResolution: "1d" }))
-        handlerOf("wise").fetchPrice("XXXYYY", "1d", contextType.createObject(null, { uid: "xw", ticker: "XXXYYY", providerId: "wise", fetchType: "price", chartRange: "1M", chartResolution: "1d" }))
+        handlerOf("yahoo").fetchPrice("ZZZZNOTASYMBOL9", "1d", (contextType.createObject(null, { uid: "xy", ticker: "ZZZZNOTASYMBOL9", providerId: "yahoo", fetchType: "price", chartRange: "1M", chartResolution: "1d" }) as FetchContext))
+        handlerOf("wise").fetchPrice("XXXYYY", "1d", (contextType.createObject(null, { uid: "xw", ticker: "XXXYYY", providerId: "wise", fetchType: "price", chartRange: "1M", chartResolution: "1d" }) as FetchContext))
     }
 
     function test_undeclared_requests_are_refused_before_any_request() {

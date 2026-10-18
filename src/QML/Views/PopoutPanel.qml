@@ -4,6 +4,7 @@
 // custom scroll indicator, and empty-state placeholder.
 // Moved from QML/ to QML/Views/ so all view-layer components live together.
 
+pragma ComponentBehavior: Bound
 import QtQuick
 import qs.Common
 import qs.Widgets
@@ -45,7 +46,7 @@ Item {
 
     // ── Computed ─────────────────────────────────────────────────────────────
     property bool _anyLoading: {
-        for (var key in pendingFetches)
+        for (let key in pendingFetches)
             if (pendingFetches[key] > 0) return true
         return false
     }
@@ -115,6 +116,7 @@ Item {
         boundsBehavior: Flickable.StopAtBounds
 
         delegate: SymbolRow {
+            required property var modelData
             width:         symbolList.width
             symbolData:    modelData
             priceInfo:     panel.priceData[modelData.uid]  || ({})

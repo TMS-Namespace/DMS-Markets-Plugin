@@ -20,7 +20,7 @@ var Reason = Object.freeze({ NONE: "", TOO_BIG: "tooBig", TOO_SMALL: "tooSmall" 
 
 // Calendar candles that fit in the span (providers return fewer for weekends etc.).
 function candleCount(resolution, span) {
-    var candleMs = Resolution.ms(resolution)
+    let candleMs = Resolution.ms(resolution)
     if (candleMs <= 0) return 0
     return ChartSpan.days(span) * TimeUnits.DAY_MS / candleMs
 }
@@ -30,15 +30,15 @@ function _round(value) { return Number(value.toFixed(1)) }
 
 // Returns plain { level, reason, candles, message }; `message` is "" when the level is ok.
 function evaluate(resolution, span) {
-    var candles = candleCount(resolution, span)
-    var level = Level.OK
-    var reason = Reason.NONE
+    let candles = candleCount(resolution, span)
+    let level = Level.OK
+    let reason = Reason.NONE
     if (candles < Constants.CHART_CANDLES_BLOCK_MIN)       { level = Level.BLOCK; reason = Reason.TOO_BIG }
     else if (candles > Constants.CHART_CANDLES_BLOCK_MAX)  { level = Level.BLOCK; reason = Reason.TOO_SMALL }
     else if (candles < Constants.CHART_CANDLES_WARN_MIN)   { level = Level.WARN;  reason = Reason.TOO_BIG }
     else if (candles > Constants.CHART_CANDLES_WARN_MAX)   { level = Level.WARN;  reason = Reason.TOO_SMALL }
 
-    var message = ""
+    let message = ""
     if (level === Level.WARN && reason === Reason.TOO_BIG)
         message = "Note that this resolution is too big for the current chart range (about " + _round(candles)
                   + " candles), prefer a smaller one."

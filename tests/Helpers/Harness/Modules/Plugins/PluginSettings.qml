@@ -11,7 +11,7 @@ Item {
     implicitHeight: settingsColumn.implicitHeight
     height: implicitHeight
     onContentChanged: {
-        for (var i = 0; i < content.length; i++)
+        for (let i = 0; i < content.length; i++)
             if (content[i] instanceof Item) content[i].parent = settingsColumn
     }
     onPluginServiceChanged: { if (pluginService) reloadChildValues() }
@@ -20,7 +20,7 @@ Item {
         enabled: root.pluginService !== null
         function onPluginDataChanged(changedPluginId) { if (changedPluginId === root.pluginId) root.reloadChildValues() }
     }
-    function reloadChildValues() { for (var i = 0; i < content.length; i++) if (content[i].loadValue) content[i].loadValue() }
+    function reloadChildValues() { for (let i = 0; i < content.length; i++) if (content[i].loadValue) content[i].loadValue() }
     function saveValue(key, value) { if (!pluginService) return; if (pluginService.savePluginData) { pluginService.savePluginData(pluginId, key, value); settingChanged() } }
     function loadValue(key, defaultValue) { if (pluginService && pluginService.loadPluginData) return pluginService.loadPluginData(pluginId, key, defaultValue); return defaultValue }
     Column { id: settingsColumn; width: parent.width }

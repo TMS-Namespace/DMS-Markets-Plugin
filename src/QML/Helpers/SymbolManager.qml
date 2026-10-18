@@ -18,8 +18,8 @@ Item {
 
     // ── Computed outputs ─────────────────────────────────────────────────────
     readonly property var pinnedSymbols: {
-        var result = []
-        for (var i = 0; i < symbols.length; i++)
+        let result = []
+        for (let i = 0; i < symbols.length; i++)
             if (symbols[i].pinned) result.push(symbols[i])
         return result
     }
@@ -28,14 +28,14 @@ Item {
         if (pinnedSymbols.length === 0)
             return constants.barDefaultLabel
 
-        var parts = []
-        for (var i = 0; i < pinnedSymbols.length; i++) {
-            var symbol = pinnedSymbols[i]
-            var priceInfo  = priceData[symbol.uid]
+        let parts = []
+        for (let i = 0; i < pinnedSymbols.length; i++) {
+            let symbol = pinnedSymbols[i]
+            let priceInfo  = priceData[symbol.uid]
             if (priceInfo && priceInfo.close !== undefined && !isNaN(priceInfo.close)) {
-                var label = symbol.name + " " + Helpers.formatNumber(priceInfo.close)
+                let label = symbol.name + " " + Helpers.formatNumber(priceInfo.close)
                 if (Helpers.boolValue(symbol.showChangeWhenPinned, false)) {
-                    var change  = priceInfo.change || 0
+                    let change  = priceInfo.change || 0
                     label += " " + (change >= 0 ? "+" : "") + Helpers.formatNumber(change)
                 }
                 parts.push(label)

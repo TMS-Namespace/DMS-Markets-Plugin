@@ -142,6 +142,35 @@ failed, not what any one plugin does.
 - Every bug fix and every rule above gets a test or an audit that would have caught it.
 - Keep the whole suite green before finishing any change.
 
+## 11. Running the checks
+
+From the repository root, run:
+
+```sh
+node support/Lint.js
+node tests/RunAll.js
+```
+
+Lint checks QML language-server warnings and errors and JavaScript syntax. It requires Node.js, installed
+Qt 6/Quickshell QML modules, and Qt 6 `qmlls`. It finds the Qt QML VS Code extension's language server
+automatically, or you can set `QMLLS` to its executable path. Set `QML_IMPORT_PATH` for a custom QML
+installation. No npm packages are required. The test suite requires Quickshell and runs headlessly with
+isolated cache directories and deterministic provider responses. `node tests/RunAll.js --live` additionally
+tests the real providers and requires network access.
+
+The lint command also prepares the editor imports. After a fresh checkout or a Quickshell update, run it
+before opening the editor; `node support/PrepareQmlImports.js` prepares only the imports. Reload the QML
+language server if it was already running. The workspace settings resolve `qs.*` through the same DMS
+interface stand-ins audited by the tests, and Qt/Quickshell through the installed QML directories.
+
+Quickshell has an upstream issue: some versions omit enum information needed by the editor. The lint
+command adds the missing information to a local copy for editor use, keeping warning checks enabled.
+This workaround leaves the installed package and runtime behavior unchanged.
+
+Production JavaScript libraries use QML's `.pragma` and `.import` syntax, so the workspace associates
+them with QML editor mode to avoid false syntax warnings. The lint command checks their directives and
+syntax, but does not yet check for issues such as undefined names or unused variables.
+
 ## 12. Working method
 
 - Decide, then act: when the rule is clear, apply it everywhere rather than in one place.

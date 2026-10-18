@@ -44,20 +44,20 @@ assert(/Connections \{\s*target: fetcher\s*function onSymbolErrorChanged\(uid, f
 assert(/symbolErrors:\s+root\.symbolErrors/.test(widget), "passed to the popup");
 
 // ── Reading the saved symbols: the storage's job (see DataStorage.test.js) ───
-assert(/property var symbols: storage\.readCurrentSymbols\(pluginData\.symbols\)/.test(widget), "damaged data is handled by the storage, not here");
+assert(/property var symbols: dataStorage\.readCurrentSymbols\(pluginData\.symbols\)/.test(widget), "damaged data is handled by the storage, not here");
 assert(!/_readSymbols|symbolsBackup|catch \(e\) \{\s*return \[\]/.test(widget), "no ad-hoc parsing, backup or swallowing in the widget");
 assert(widget.indexOf("_errorHandlerReady") < widget.indexOf("DataStorage {"), "errors are configured before the storage can report any");
 
 // ── Startup order ────────────────────────────────────────────────────────────
 assert(/ProvidersManager\.loadErrors[\s\S]*?ErrorHandler\.handle\("providers"/.test(widget), "providers that failed to load are reported");
-assert(widget.indexOf("ProvidersManager.loadErrors") < widget.lastIndexOf("storage.migrateSavedSymbols(pluginData.symbols)"), "load errors are reported first");
+assert(widget.indexOf("ProvidersManager.loadErrors") < widget.lastIndexOf("dataStorage.migrateSavedSymbols(pluginData.symbols)"), "load errors are reported first");
 const startup = /Component\.onCompleted: \{([\s\S]*?)\n    \}\n/.exec(widget)[1];
 assert(!/JSON\.parse/.test(startup) && !/\btry\b/.test(startup), "no ad-hoc parsing or swallowing at startup");
 
 // ── Saved market data: shown first, saved after ──────────────────────────────
 assert(/_restoreThen\(ready, function\(\) \{ fetcher\.startInitialFetches\(ready\) \}\)/.test(widget), "the first fetch waits for the saved data to be shown");
 assert.strictEqual((widget.match(/fetcher\.startInitialFetches\(/g) || []).length, 1, "there is no other way to start the first fetch");
-assert(/_restoreThen\([\s\S]*?function\(\) \{ fetcher\.fetchNewSymbols\(symbols, previousIds\) \}\)/.test(widget), "new symbols show their saved data before they are fetched");
+assert(/_restoreThen\([\s\S]*?function\(\) \{ fetcher\.fetchNewSymbols\(root\.symbols, previousIds\) \}\)/.test(widget), "new symbols show their saved data before they are fetched");
 assert(/function onSymbolStored\(uid\) \{ cache\.markDirty\(uid\) \}/.test(widget), "new provider data is saved in the background");
 assert(/lastFetchTimes: root\.refreshedTimes/.test(widget), "the popup shows when each symbol was last refreshed successfully, not when a fetch started");
 assert(/previousIds\.forEach\(function\(uid\) \{ if \(currentIds\.indexOf\(uid\) === -1\) cache\.discard\(uid\) \}\)/.test(widget), "a removed symbol (even the last one) loses its saved data");

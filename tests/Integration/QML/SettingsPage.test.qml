@@ -3,6 +3,7 @@
 // can change later (the widget migrates the saved symbols). Nothing of that may produce an error toast, and the list of
 // configured symbols must fill in once the service arrives and follow later data changes.
 import QtQuick
+import qs.Modules.Plugins
 import qs.Services
 import "../../Helpers"
 import "../../../src/QML/Services"
@@ -27,7 +28,7 @@ TestSuite {
             width: 600; height: 800
             asynchronous: false
             property var service: null
-            onLoaded: { item.pluginService = service }      // after loading, as DMS does
+            onLoaded: { (item as PluginSettings).pluginService = service }      // after loading, as DMS does
         }
     }
     property var loader: null
@@ -52,7 +53,7 @@ TestSuite {
     }
     function open(data) {
         service = serviceType.createObject(null, { data: data })
-        loader = loaderType.createObject(null, { service: service, source: "file://" + repoRoot + "/src/QML/Settings.qml" })
+        loader = (loaderType.createObject(null, { service: service, source: "file://" + repoRoot + "/src/QML/Settings.qml" }) as Loader)
         check(loader.status === Loader.Ready, "the page loads: " + loader.status)
         return loader.item
     }
@@ -62,7 +63,7 @@ TestSuite {
     readonly property var current: [{ uid: "11111111-1111-4111-8111-111111111111", ticker: "EURUSD=X", name: "EUR", provider: "yahoo", priceResolution: "1h", chartResolution: "1d", chartRange: "1M", showChangeWhenPinned: false, invert: false, pinned: false }]
 
     function async_symbols_saved_by_an_older_version_are_listed_once_the_service_arrives(done) {
-        var page = open({ symbols: JSON.stringify(older) })
+        let page = open({ symbols: JSON.stringify(older) })
         waitFor(function() { return page.symbolsList.length === 3 }, function(problem) {
             if (problem) { done(problem); return }
             try {
@@ -73,13 +74,13 @@ TestSuite {
         })
     }
     function async_symbols_in_the_current_format_are_listed(done) {
-        var page = open({ symbols: JSON.stringify(current) })
+        let page = open({ symbols: JSON.stringify(current) })
         waitFor(function() { return page.symbolsList.length === 1 }, function(problem) {
             try { if (problem) { done(problem); return } equal(ToastService.errors, [], "no error toast"); done("") } catch (e) { done(e.message) }
         })
     }
     function async_the_list_follows_plugin_data_that_changes_later(done) {
-        var page = open({})
+        let page = open({})
         service.data = { symbols: JSON.stringify(current) }      // e.g. the widget saved, or DMS delivered the data late
         service.pluginDataChanged("markets")
         waitFor(function() { return page.symbolsList.length === 1 }, function(problem) {
@@ -87,9 +88,9 @@ TestSuite {
         })
     }
     function test_nothing_is_reported_while_the_service_is_not_attached_yet() {
-        var component = Qt.createComponent("file://" + repoRoot + "/src/QML/Settings.qml")
+        let component = Qt.createComponent("file://" + repoRoot + "/src/QML/Settings.qml")
         check(component.status === Component.Ready, component.errorString())
-        var page = component.createObject(null, { pluginId: "markets" })      // no service, like the moment after the Loader created it
+        let page = component.createObject(null, { pluginId: "markets" }) as PluginSettings      // no service, like the moment after the Loader created it
         check(page !== null)
         same(page.saveValue("_addProvider", "yahoo"), false, "a control saving before the service exists saves nothing...")
         equal(ToastService.errors, [], "the controls saving their defaults before the service exists is not an error")
@@ -98,8 +99,8 @@ TestSuite {
 
     // What was typed or chosen in the "add a symbol" form last time is not brought back when the page is expanded again.
     function async_the_add_form_always_starts_from_its_defaults(done) {
-        var left = { _addTicker: "EURUSD=X", _addName: "Old", _addProvider: "wise", _addPriceResolution: "1d", _addChartRange: "1Y", _addShowChange: true, _addInvert: true }
-        var page = open(Object.assign({ symbols: JSON.stringify(current) }, left))
+        let left = { _addTicker: "EURUSD=X", _addName: "Old", _addProvider: "wise", _addPriceResolution: "1d", _addChartRange: "1Y", _addShowChange: true, _addInvert: true }
+        let page = open(Object.assign({ symbols: JSON.stringify(current) }, left))
         waitFor(function() { return page._formReset && page.tickerText === "" && page.nameText === "" }, function(problem) {
             if (problem) { done(problem); return }
             // give the deferred reset and DMS's own loads time to settle, then look again
@@ -119,7 +120,7 @@ TestSuite {
 
     // The popup height set before a restart is what the slider shows once the page has its service (not its default).
     function async_the_popup_height_slider_shows_the_saved_value(done) {
-        var page = open({ symbols: JSON.stringify(current), popoutRows: 10 })
+        let page = open({ symbols: JSON.stringify(current), popoutRows: 10 })
         waitFor(function() { return page.popoutRowsValue === 10 }, function(problem) {
             if (problem) { done(problem + " (shows " + page.popoutRowsValue + ")"); return }
             waitFor(function() { return false }, function() {
@@ -145,7 +146,7 @@ TestSuite {
         waitFor(function() { return false }, function() { try { action(); done("") } catch (e) { done(e.message) } })
     }
     function async_picking_a_configured_symbol_sets_every_field_even_after_the_form_was_changed(done) {
-        var page = open({ symbols: JSON.stringify(twoSymbols) })
+        let page = open({ symbols: JSON.stringify(twoSymbols) })
         waitFor(function() { return page.symbolsList.length === 2 && page._formReset }, function(problem) {
             if (problem) { done(problem); return }
             settled(page, done, function() {
@@ -160,7 +161,7 @@ TestSuite {
         })
     }
     function async_every_field_is_set_from_the_symbol_after_changing_each_dropdown_in_turn(done) {
-        var page = open({ symbols: JSON.stringify(twoSymbols) })
+        let page = open({ symbols: JSON.stringify(twoSymbols) })
         waitFor(function() { return page.symbolsList.length === 2 && page._formReset }, function(problem) {
             if (problem) { done(problem); return }
             settled(page, done, function() {
@@ -176,12 +177,12 @@ TestSuite {
 
     // ── The symbol's own settings are locked until there is a valid ticker and name ──
     function async_the_symbol_settings_unlock_with_a_valid_ticker_and_name_and_for_a_picked_symbol(done) {
-        var page = open({ symbols: JSON.stringify(twoSymbols) })
+        let page = open({ symbols: JSON.stringify(twoSymbols) })
         waitFor(function() { return page.symbolsList.length === 2 && page._formReset }, function(problem) {
             if (problem) { done(problem); return }
             settled(page, done, function() {
                 same(page.formUnlocked, false, "an empty form is locked")
-                var base = { provider: "yahoo", priceResolution: "1h", changeResolution: "1d", chartResolution: "1d", chartRange: "1M", showChange: false, invert: false }
+                let base = { provider: "yahoo", priceResolution: "1h", changeResolution: "1d", chartResolution: "1d", chartRange: "1M", showChange: false, invert: false }
                 page.setDraft(Object.assign({ ticker: "EURUSD=X", name: "" }, base));  same(page.formUnlocked, false, "a ticker without a name stays locked")
                 page.setDraft(Object.assign({ ticker: "", name: "EUR" }, base));        same(page.formUnlocked, false, "a name without a ticker stays locked")
                 page.setDraft(Object.assign({ ticker: "NOT A TICKER", name: "EUR" }, base)); same(page.formUnlocked, false, "an invalid ticker stays locked")

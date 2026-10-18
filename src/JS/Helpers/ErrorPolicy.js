@@ -11,8 +11,8 @@
 
 // Build the fields of a handled error without changing notification state.
 function recordOf(scope, error, context, now) {
-    var pluginError = PluginError.from(error)
-    var details = pluginError.details
+    let pluginError = PluginError.from(error)
+    let details = pluginError.details
     if (context) details = context + (details ? ": " + details : "")
     return {
         error: pluginError,
@@ -26,7 +26,7 @@ function notifyKey(record) { return record.scope + "|" + record.code + "|" + rec
 
 // Check whether this failure is outside its notification cooldown.
 function shouldNotify(lastNotified, record, cooldownMs) {
-    var last = lastNotified[notifyKey(record)]
+    let last = lastNotified[notifyKey(record)]
     return last === undefined || record.time - last >= cooldownMs
 }
 

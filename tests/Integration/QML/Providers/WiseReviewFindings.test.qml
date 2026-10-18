@@ -4,16 +4,15 @@ import "../../../../src/QML/Services"
 import "../../../../src/QML/Contracts"
 import "../../../../src/JS/Helpers/SelectionPolicy.js" as Policy
 import "../../../../src/JS/Contracts/ChartSpan.js" as ChartSpan
-import "../../../../src/JS/Helpers/SeriesRules.js" as Series
 import "../../../../src/JS/Contracts/Resolution.js" as Resolution
 
 TestSuite {
     property Component storageType: Component { DataStorage {} }
 
     function handlerOf(id) { return ProvidersManager.requireFromId(id) }
-    Component.onCompleted: { if (!Array.prototype.at) Array.prototype.at = function(i) { return this[i < 0 ? this.length + i : i] } }
+    Component.onCompleted: { if (!Array.prototype.at) Array.prototype.at = function(index) { const array = Array.from(this); return array[index < 0 ? array.length + index : index] } }
     property Component responseType: Component { ProviderResponse {} }
-    function ok(providerId, body, status) { return responseType.createObject(null, { providerId: providerId, ok: true, status: status || 200, body: body }) }
+    function ok(providerId, body, status) { return (responseType.createObject(null, { providerId: providerId, ok: true, status: status || 200, body: body }) as ProviderResponse) }
     function notSame(first, second, message) { check(first !== second, message || "values are identical") }
     function values(options) { return options.map(function(option) { return option.value }) }
 
@@ -99,7 +98,7 @@ TestSuite {
             equal([selection.priceResolution, selection.chartResolution, selection.chartRange], ["1h", "1h", "1W"],
                  "switching to Wise moves every dropdown to a supported value immediately");
             // Symbols already saved with unsupported values are fixed on load, not only when edited and saved.
-            const migrated = storageType.createObject(null).migrate([{ id: "BRLPLN", provider: "wise", priceInterval: "5m", graphInterval: "10Y" }]);
+            const migrated = (storageType.createObject(null) as DataStorage).migrate([{ id: "BRLPLN", provider: "wise", priceInterval: "5m", graphInterval: "10Y" }]);
             same(migrated.changed, true);
             same(migrated.symbols[0].priceResolution, "1h");
             same(migrated.symbols[0].chartRange, "6M");

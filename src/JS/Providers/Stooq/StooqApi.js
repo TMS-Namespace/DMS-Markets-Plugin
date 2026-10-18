@@ -35,7 +35,7 @@ function _appendCredential(url, credential) {
 
 // Build the Stooq fetch script with bounded browser verification.
 function _buildVerifiedFetchCommand(tailLines) {
-    var script = "";
+    let script = "";
     script += "set -e\n";
     script += "if command -v ionice >/dev/null 2>&1; then ionice -c" + Constants.PROCESS_IONICE_CLASS + " -p $$ >/dev/null 2>&1 || true; fi\n";
     script += "if command -v renice >/dev/null 2>&1; then renice -n " + Constants.PROCESS_NICE_LEVEL + " -p $$ >/dev/null 2>&1 || true; fi\n";
@@ -80,9 +80,9 @@ function _buildVerifiedFetchCommand(tailLines) {
 
 // One CSV row → DataPoint, or null for a row without usable numbers (Stooq writes "N/D").
 function _candle(fields, open) {
-    var high = _safeFloat(fields[2]);
-    var low = _safeFloat(fields[3]);
-    var close = _safeFloat(fields[4]);
+    let high = _safeFloat(fields[2]);
+    let low = _safeFloat(fields[3]);
+    let close = _safeFloat(fields[4]);
     if (isNaN(high) || isNaN(low) || isNaN(close)) return null;
     return SeriesRules.candle({
         date: fields[0], time: "", open: open, high: high, low: low, close: close,
@@ -92,17 +92,17 @@ function _candle(fields, open) {
 
 // Only the newest `limit` candles are built (limit 0 = all): the lines are walked from the newest backwards.
 function _parseCsv(responseText, skipNoData, limit) {
-    var lines = responseText.trim().split("\n");
-    var results = [];
-    for (var lineIndex = lines.length - 1; lineIndex >= 0 && !(limit > 0 && results.length >= limit); lineIndex--) {
-        var line = lines[lineIndex].trim();
+    let lines = responseText.trim().split("\n");
+    let results = [];
+    for (let lineIndex = lines.length - 1; lineIndex >= 0 && !(limit > 0 && results.length >= limit); lineIndex--) {
+        let line = lines[lineIndex].trim();
         if (!line) continue;
         if (skipNoData && line === "No data") continue;
-        var fields = line.split(",");
+        let fields = line.split(",");
         if (fields.length < 5) continue;
-        var open = _safeFloat(fields[1]);
+        let open = _safeFloat(fields[1]);
         if (isNaN(open)) continue;           // skip header / invalid rows
-        var candle = _candle(fields, open);
+        let candle = _candle(fields, open);
         if (candle) results.push(candle);
     }
     return results.reverse();
@@ -113,7 +113,7 @@ function _parseCsv(responseText, skipNoData, limit) {
 // /q/d/l/?s=SYMBOL&i=INTERVAL → Date,Open,High,Low,Close[,Volume]. Stooq's former latest-candle
 // endpoint (/q/l/) now returns 404, so the price uses the same downloadable CSV as the chart.
 function _url(symbol, resolution, credential) {
-    var resolutionParam = ProviderConstants.STOOQ_RESOLUTION_MAP[resolution];
+    let resolutionParam = ProviderConstants.STOOQ_RESOLUTION_MAP[resolution];
     if (!resolutionParam) throw new PluginError.PluginError(PluginError.Code.UNSUPPORTED, "Stooq can't serve this chart setting.",
                                                             "Stooq: unsupported resolution '" + resolution + "'");
     return _appendCredential(ProviderConstants.STOOQ_DATA_URL + "?s=" + encodeURIComponent(symbol) + "&i=" + resolutionParam, credential);
@@ -126,7 +126,7 @@ function historyUrl(symbol, resolution, span, credential) { return _url(symbol, 
 function changeUrl(symbol, resolution, credential) { return _url(symbol, resolution, credential); }
 // The close of the period before the newest one.
 function parseChange(responseText) {
-    var candles = _parseCsv(responseText, true, 2);
+    let candles = _parseCsv(responseText, true, 2);
     if (candles.length < 2) throw new PluginError.PluginError(PluginError.Code.PARSE, "Stooq sent an answer that couldn't be understood.",
                                                               "Stooq: no previous close in the answer");
     return candles[0].close;

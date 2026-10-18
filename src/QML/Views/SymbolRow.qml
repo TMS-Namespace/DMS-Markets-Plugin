@@ -40,7 +40,7 @@ Item {
     // ── "X sec ago" refresh timer ─────────────────────────────────────────────
     Timer {
         interval: constants.agoTickMs
-        running:  lastFetchTime > 0
+        running:  symbolRow.lastFetchTime > 0
         repeat:   true
         onTriggered: symbolRow._agoTick++
     }
@@ -110,7 +110,7 @@ Item {
         spacing: constants.symbolColSpacing
 
         StyledText {
-            text:           symbolData.name || symbolData.ticker || "-"
+            text:           symbolRow.symbolData.name || symbolRow.symbolData.ticker || "-"
             font.pixelSize: Theme.fontSizeMedium + constants.symbolNameFontSizeDelta
             font.weight:    Font.Bold
             color:          Theme.surfaceText
@@ -121,7 +121,7 @@ Item {
 
         StyledText {
             visible:        symbolRow.showTicker
-            text:           (symbolData.ticker || "") + " • " + Resolution.shortLabel(symbolData.priceResolution)
+            text:           (symbolRow.symbolData.ticker || "") + " • " + Resolution.shortLabel(symbolRow.symbolData.priceResolution)
             font.pixelSize: Theme.fontSizeSmall + constants.symbolTickerFontSizeDelta
             color:          Theme.surfaceVariantText
             elide:          Text.ElideRight
@@ -130,10 +130,10 @@ Item {
         }
 
         StyledText {
-            visible:        symbolRow.showRefreshedSince && (lastFetchTime > 0 || isLoading)
-            text:           { void _agoTick; return isLoading ? "refreshing…" : _timeAgo(lastFetchTime) }
+            visible:        symbolRow.showRefreshedSince && (symbolRow.lastFetchTime > 0 || symbolRow.isLoading)
+            text:           { void symbolRow._agoTick; return symbolRow.isLoading ? "refreshing…" : symbolRow._timeAgo(symbolRow.lastFetchTime) }
             font.pixelSize: Theme.fontSizeSmall + constants.smallFontSizeDelta
-            color:          isLoading ? Theme.primary : Theme.surfaceVariantText
+            color:          symbolRow.isLoading ? Theme.primary : Theme.surfaceVariantText
         }
     }
 
@@ -148,24 +148,24 @@ Item {
         visible: !symbolRow.priceFailed
 
         StyledText {
-            text:           hasData ? formatNumber(price) : (isLoading ? "Loading…" : "-")
+            text:           symbolRow.hasData ? symbolRow.formatNumber(symbolRow.price) : (symbolRow.isLoading ? "Loading…" : "-")
             font.pixelSize: Theme.fontSizeMedium
             font.weight:    Font.Medium
             color:          symbolRow.stale ? Theme.surfaceVariantText : Theme.surfaceText
         }
 
         StyledText {
-            visible:        hasData && symbolRow.showPriceChange
-            text:           (isPositive ? "+" : "") + formatNumber(change)
+            visible:        symbolRow.hasData && symbolRow.showPriceChange
+            text:           (symbolRow.isPositive ? "+" : "") + symbolRow.formatNumber(symbolRow.change)
             font.pixelSize: Theme.fontSizeSmall + constants.smallFontSizeDelta
-            color:          changeColor
+            color:          symbolRow.changeColor
         }
 
         StyledText {
-            visible:        hasData && symbolRow.showPriceChange
-            text:           "(" + (isPositive ? "+" : "") + changePct.toFixed(2) + "%)"
+            visible:        symbolRow.hasData && symbolRow.showPriceChange
+            text:           "(" + (symbolRow.isPositive ? "+" : "") + symbolRow.changePct.toFixed(2) + "%)"
             font.pixelSize: Theme.fontSizeSmall + constants.smallFontSizeDelta
-            color:          changeColor
+            color:          symbolRow.changeColor
         }
     }
 
@@ -194,10 +194,10 @@ Item {
                 visible:        !symbolRow.priceFailed && !symbolRow.chartFailed
                 dataPoints:     symbolRow.chartData
                 isLoading:      symbolRow.isLoading
-                chartRange:     symbolData.chartRange || ""
+                chartRange:     symbolRow.symbolData.chartRange || ""
                 showRangeLabel: symbolRow.showChartRange
                 showProviderName: symbolRow.showProviderName
-                providerAlias:  ProvidersManager.aliasOf(symbolData.provider || ProvidersManager.defaultId)
+                providerAlias:  ProvidersManager.aliasOf(symbolRow.symbolData.provider || ProvidersManager.defaultId)
                 positiveColor:  symbolRow.upColor
                 negativeColor:  symbolRow.downColor
             }
@@ -240,11 +240,11 @@ Item {
             cursorShape:  Qt.PointingHandCursor
             onClicked: {
                 // A damaged saved symbol raises INVALID_SYMBOL here instead of opening a broken URL.
-                var opened = ErrorHandler.guard("symbol-row", function() {
-                    var url = ProvidersManager.requireFromId(symbolData.provider || ProvidersManager.defaultId)
-                                  .symbolPageUrl(symbolData.ticker || "")
+                let opened = ErrorHandler.guard("symbol-row", function() {
+                    let url = ProvidersManager.requireFromId(symbolRow.symbolData.provider || ProvidersManager.defaultId)
+                                  .symbolPageUrl(symbolRow.symbolData.ticker || "")
                     if (url) Qt.openUrlExternally(url)
-                }, { context: symbolData.ticker })
+                }, { context: symbolRow.symbolData.ticker })
             }
         }
 
@@ -274,8 +274,8 @@ Item {
             IconButton {
                 id: pinButton
                 iconName:     "push_pin"
-                iconColor:    isPinned ? Theme.primary : Theme.surfaceVariantText
-                iconRotation: isPinned ? 0 : constants.unpinnedRotationDeg
+                iconColor:    symbolRow.isPinned ? Theme.primary : Theme.surfaceVariantText
+                iconRotation: symbolRow.isPinned ? 0 : constants.unpinnedRotationDeg
                 onClicked:    symbolRow.togglePin()
             }
 

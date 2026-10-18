@@ -8,13 +8,13 @@ const chart = readSource("QML/Views/PriceChart.qml").replace(/^\s*\/\/.*$/gm, ""
 const { Resolution, ChartSpan, errorMap } = loadShared();
 
 // ── Popup: labels instead of raw ids; the resolution is NOT added here ───────
-assert(/Resolution\.shortLabel\(symbolData\.priceResolution\)/.test(row), "price resolution shown as a label (e.g. 1 hour)");
-assert(/\(symbolData\.ticker \|\| ""\) \+ " • " \+ Resolution\.shortLabel/.test(row), "ticker • resolution, as before");
+assert(/Resolution\.shortLabel\(symbolRow\.symbolData\.priceResolution\)/.test(row), "price resolution shown as a label (e.g. 1 hour)");
+assert(/\(symbolRow\.symbolData\.ticker \|\| ""\) \+ " • " \+ Resolution\.shortLabel/.test(row), "ticker • resolution, as before");
 assert(!/chartResolution/.test(rowCode), "the popup does not show the chart resolution (settings list only)");
 assert(!/\|\|\s*"(1m|5m|15m|1h|1d|1w|1M|1W)"/.test(row), "no range literals as fallbacks");
-assert(/symbolData\.name \|\| symbolData\.ticker/.test(row) && !/symbolData\.id\b/.test(row), "ticker, not id");
-assert(/symbolPageUrl\(symbolData\.ticker \|\| ""\)/.test(row), "the browser URL is built from the ticker");
-assert(/chartRange:\s+symbolData\.chartRange \|\| ""/.test(row), "no hard-coded chart range fallback");
+assert(/symbolRow\.symbolData\.name \|\| symbolRow\.symbolData\.ticker/.test(row) && !/symbolData\.id\b/.test(row), "ticker, not id");
+assert(/symbolPageUrl\(symbolRow\.symbolData\.ticker \|\| ""\)/.test(row), "the browser URL is built from the ticker");
+assert(/chartRange:\s+symbolRow\.symbolData\.chartRange \|\| ""/.test(row), "no hard-coded chart range fallback");
 
 // The chart label shows the range as a label.
 assert(/ChartSpan\.shortLabel\(chart\.chartRange\)/.test(chart), "range label in its compact form, e.g. 1M");
@@ -102,7 +102,7 @@ assert(/property var\s+symbolErrors:\s+\(\{\}\)/.test(popout));
 assert(!/StyledText \{[^}]*text:\s+symbolRow\.errorDetails/.test(row), "technical details stay out of the card");
 
 // Clicking an unusable symbol is reported, not thrown.
-assert(/ErrorHandler\.guard\("symbol-row", function\(\) \{[\s\S]*?requireFromId\(symbolData\.provider \|\| ProvidersManager\.defaultId\)\s*\.symbolPageUrl[\s\S]*?\}, \{ context: symbolData\.ticker \}\)/.test(row));
+assert(/ErrorHandler\.guard\("symbol-row", function\(\) \{[\s\S]*?requireFromId\(symbolRow\.symbolData\.provider \|\| ProvidersManager\.defaultId\)\s*\.symbolPageUrl[\s\S]*?\}, \{ context: symbolRow\.symbolData\.ticker \}\)/.test(row));
 
 // ── Layout constants: one margin around every chart; ticker text sits between the name and the "ago" text ──
 const constants = readSource("QML/Helpers/Constants.qml").replace(/^\s*\/\/.*$/gm, "");

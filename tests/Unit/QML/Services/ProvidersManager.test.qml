@@ -14,7 +14,7 @@ TestSuite {
     }
     function test_it_hands_out_one_handler_per_type_that_exposes_its_type_and_properties() {
         ProvidersManager.types.forEach(function(type) {
-            var handler = ProvidersManager.handlerFor(type)
+            let handler = ProvidersManager.handlerFor(type)
             same(handler.type, type, "the handler exposes its type")
             same(handler.properties.providerId, ProvidersManager.idOf(type), "...and its properties")
             same(ProvidersManager.handlerFor(type), handler, "the same handler every time")
@@ -30,19 +30,19 @@ TestSuite {
         same(ProvidersManager.aliasOf("yahoo"), "YHF"); same(ProvidersManager.aliasOf("wise"), "WIS"); same(ProvidersManager.aliasOf("stooq"), "STK")
         same(ProvidersManager.aliasOf("ghost"), "GHO", "an unknown provider still gets three letters"); same(ProvidersManager.aliasOf(undefined), "")
         ProvidersManager.types.forEach(function(type) { check(/^[A-Z]{3}$/.test(ProvidersManager.handlerFor(type).properties.alias), "every provider has an alias") })
-        var error = throws(function() { ProvidersManager.requireFromId("ghost") }, "ghost")
+        let error = throws(function() { ProvidersManager.requireFromId("ghost") }, "ghost")
         same(error.code, "unknownProvider")
         equal(ProvidersManager.options(), [{ label: "Yahoo Finance", value: "yahoo" }, { label: "Stooq", value: "stooq" }, { label: "Wise", value: "wise" }])
     }
     function test_the_manager_does_no_provider_work_itself() {
-        var source = readFile("src/QML/Services/ProvidersManager.qml")
+        let source = readFile("src/QML/Services/ProvidersManager.qml")
         check(!/priceUrl|historyUrl|parsePrice|parseHistory|\.pageUrl|FetchCommand|ResponseInterpreter|SymbolRules|SelectionPolicy|SymbolMigration|migrateSymbols/.test(source.replace(/\/\/.*$/gm, "")),
               "requests, parsing and checks are the handler's job")
     }
     function test_a_broken_provider_does_not_take_the_others_down() {
-        var good = ProvidersManager.sources[0]
-        function declared(change) { return { create: function() { var properties = good.properties.create(); for (var field in change) properties[field] = change[field]; return properties } } }
-        var broken = [
+        let good = ProvidersManager.sources[0]
+        function declared(change) { return { create: function() { var properties = good.properties.create(); for (let field in change) properties[field] = change[field]; return properties } } }
+        let broken = [
             good,
             { type: ProviderType.Stooq, id: "stooq", name: "Ghost", properties: { create: function() { throw new Error("cannot even declare itself") } }, api: good.api },
             { type: ProviderType.Wise, id: "wise", name: "Wrong id", properties: good.properties, api: good.api },                                  // declares 'yahoo'

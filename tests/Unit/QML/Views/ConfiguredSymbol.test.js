@@ -12,7 +12,7 @@ const catalog = { defaultId: "yahoo", aliasOf: (id) => aliases[id] || String(id)
 const binding = /Column \{\s*anchors\.verticalCenter: parent\.verticalCenter[\s\S]*?StyledText \{\s*text: \{([\s\S]*?)\n                    \}\n/.exec(view);
 assert(binding, "details binding found");
 function details(symbolData) {
-    const context = vm.createContext({ symbolData, ProvidersManager: catalog, Resolution, ChartSpan, Helpers: helpers });
+    const context = vm.createContext({ symbolData, configRow: { symbolData }, ProvidersManager: catalog, Resolution, ChartSpan, Helpers: helpers });
     return vm.runInContext(`(function() {${binding[1]}})()`, context);
 }
 assert.strictEqual(
@@ -34,9 +34,9 @@ assert(!/font\.weight/.test(info), "same format for every part");
 
 // Labels, not raw ids, and no range fallbacks.
 for (const raw of ['"1M"', '"1h"', '"1d"']) assert(!view.includes(`|| ${raw}`), `no ${raw} fallback`);
-assert(/Resolution\.shortLabel\(symbolData\.priceResolution\)/.test(view) && /Resolution\.shortLabel\(symbolData\.chartResolution\)/.test(view));
-assert(/ChartSpan\.shortLabel\(symbolData\.chartRange\)/.test(view) && /ProvidersManager\.aliasOf\(/.test(view), "compact forms and the provider alias");
+assert(/Resolution\.shortLabel\(configRow\.symbolData\.priceResolution\)/.test(view) && /Resolution\.shortLabel\(configRow\.symbolData\.chartResolution\)/.test(view));
+assert(/ChartSpan\.shortLabel\(configRow\.symbolData\.chartRange\)/.test(view) && /ProvidersManager\.aliasOf\(/.test(view), "compact forms and the provider alias");
 assert(!/ProvidersManager\.nameOf/.test(view), "the long provider name does not fit one line");
-assert(/symbolData\.name \|\| symbolData\.ticker/.test(view) && !/symbolData\.id\b/.test(view));
+assert(/configRow\.symbolData\.name \|\| configRow\.symbolData\.ticker/.test(view) && !/configRow\.symbolData\.id\b/.test(view));
 
 console.log("ConfiguredSymbol tests passed");

@@ -6,6 +6,7 @@
 // - Add/edit symbol form
 // - Configured symbols list (via ConfiguredSymbol component)
 
+pragma ComponentBehavior: Bound
 import QtQuick
 import qs.Common
 import qs.Services
@@ -130,7 +131,7 @@ PluginSettings {
     // (e.g. after switching provider, or when loading an old saved symbol).
     function syncSelections() {
         if (!selectedHandler) return
-        var selection = selectedHandler.clampSelection({
+        let selection = selectedHandler.clampSelection({
             priceResolution: priceResolutionSelect.value, changeResolution: changeResolutionSelect.value, chartResolution: chartResolutionSelect.value, chartRange: chartRangeSelect.value })
         if (priceResolutionSelect.value !== selection.priceResolution)         priceResolutionSelect.value = selection.priceResolution
         if (changeResolutionSelect.value !== selection.changeResolution)       changeResolutionSelect.value = selection.changeResolution
@@ -189,14 +190,14 @@ PluginSettings {
         settingKey: "upColor"
         label: "Up / Positive Color"
         description: "Hex color for positive changes (e.g., " + constants.defaultUpColor + ")"
-        defaultColor: constants.defaultUpColor
+        defaultColor: constants.defaultUpColor.toString()
     }
 
     ColorSettingRow {
         settingKey: "downColor"
         label: "Down / Negative Color"
         description: "Hex color for negative changes (e.g., " + constants.defaultDownColor + ")"
-        defaultColor: constants.defaultDownColor
+        defaultColor: constants.defaultDownColor.toString()
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -318,6 +319,7 @@ PluginSettings {
     Repeater {
         model: root.providerLoadErrors
         delegate: StyledText {
+            required property var modelData
             width: parent.width
             text: modelData.userMessage
             font.pixelSize: Theme.fontSizeSmall
@@ -424,7 +426,7 @@ PluginSettings {
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
-                        var provider = root.selectedProvider
+                        let provider = root.selectedProvider
                         if (provider.symbolSearchUrl) Qt.openUrlExternally(provider.symbolSearchUrl)
                     }
                 }
@@ -586,7 +588,7 @@ PluginSettings {
                 radius: Theme.cornerRadius
 
                 property bool canAdd: {
-                    var ticker      = (tickerInput.value || "").trim()
+                    let ticker      = (tickerInput.value || "").trim()
                     return root.tickerValidation.valid && root.nameValidation.valid && !root.selectedProviderDisabled
                 }
 
@@ -665,6 +667,8 @@ PluginSettings {
         model: root.symbolsList
 
         delegate: ConfiguredSymbol {
+            required property var modelData
+            required property int index
             width: root.width
             symbolData: modelData
             isEditing:  root.editIndex === index
@@ -686,26 +690,26 @@ PluginSettings {
 
     // Validate the form and reject duplicates before saving the symbol.
     function addOrUpdateSymbol() {
-        var ticker = (tickerInput.value || "").trim()
-        var name   = (nameInput.value || "").trim()
+        let ticker = (tickerInput.value || "").trim()
+        let name   = (nameInput.value || "").trim()
         if (!ticker || !name) return
 
         // Blocking: the display name must be short and made of allowed characters.
-        var nameVerdict = SymbolRules.validateName(name)
+        let nameVerdict = SymbolRules.validateName(name)
         if (!nameVerdict.valid) {
             ToastService.showError("Markets", nameVerdict.message)
             return
         }
 
         // Blocking: the symbol must match the provider's declared format and length.
-        var validation = ProvidersManager.requireFromId(providerSelect.value || ProvidersManager.defaultId).validateSymbol(ticker)
+        let validation = ProvidersManager.requireFromId(providerSelect.value || ProvidersManager.defaultId).validateSymbol(ticker)
         if (!validation.valid) {
             ToastService.showError("Markets", validation.message)
             return
         }
 
         // Duplicate check (skip the entry being edited)
-        for (var symbolIndex = 0; symbolIndex < symbolsList.length; symbolIndex++) {
+        for (let symbolIndex = 0; symbolIndex < symbolsList.length; symbolIndex++) {
             if (symbolIndex === editIndex) continue
             if (symbolsList[symbolIndex].ticker === ticker) {
                 ToastService.showError("Markets", "'" + ticker + "' is already added")
@@ -718,22 +722,22 @@ PluginSettings {
 
     // Build a current-format symbol and report a successful save.
     function doSaveSymbol(ticker, name) {
-        var provider   = providerSelect.value || ProvidersManager.defaultId
+        let provider   = providerSelect.value || ProvidersManager.defaultId
 
         // Blocking validation: never save a resolution that is far too big/small for the range.
-        var handler  = ProvidersManager.requireFromId(provider)
-        var status = handler.chartRangeStatus(chartResolutionSelect.value, chartRangeSelect.value)
+        let handler  = ProvidersManager.requireFromId(provider)
+        let status = handler.chartRangeStatus(chartResolutionSelect.value, chartRangeSelect.value)
         if (status.level === "block") {
             ToastService.showError("Markets", status.message)
             return
         }
-        var selection        = handler.clampSelection({
+        let selection        = handler.clampSelection({
             priceResolution: priceResolutionSelect.value, changeResolution: changeResolutionSelect.value, chartResolution: chartResolutionSelect.value, chartRange: chartRangeSelect.value })
-        var showChange = Helpers.boolValue(showChangeToggle.value, false)
-        var invert     = Helpers.boolValue(invertToggle.value, false)
+        let showChange = Helpers.boolValue(showChangeToggle.value, false)
+        let invert     = Helpers.boolValue(invertToggle.value, false)
 
         // A new symbol gets its own uid; the storage refuses anything that is not a valid SavedSymbol.
-        var entry = {
+        let entry = {
             uid:                  Helpers.generateUuid(),
             ticker:               ticker,
             name:                 name,
@@ -750,7 +754,7 @@ PluginSettings {
         // Editing keeps the symbol's uid and pinned state (the storage does that); success is
         // only announced once the list is really saved.
         Logger.debug("settings", (editIndex >= 0 ? "updating " : "adding ") + ticker + " (" + provider + ")")
-        var outcome = storage.upsertSymbol(symbolsList, entry, editIndex)
+        let outcome = storage.upsertSymbol(symbolsList, entry, editIndex)
         if (!outcome.saved) return
         ToastService.showInfo("Markets", (outcome.updated ? "Updated " : "Added ") + name + " (" + ticker + ")")
         Qt.callLater(clearForm)
@@ -772,7 +776,7 @@ PluginSettings {
     // Reset the form to the default provider and refresh the saved list.
     function clearForm() {
         editIndex = -1
-        var defaultProvider = ProvidersManager.defaultId
+        let defaultProvider = ProvidersManager.defaultId
         setDraft(SymbolDraft.empty(defaultProvider, ProvidersManager.requireFromId(defaultProvider).defaultSelection()))
         refreshSymbolsList()
     }
@@ -780,8 +784,8 @@ PluginSettings {
     // Shows a draft in the form (old or unsupported values snapped to what the provider offers; a symbol of a
     // provider that is not available keeps its values) and keeps it saved.
     function setDraft(draft) {
-        var handler = ProvidersManager.handlerFromId(draft.provider)
-        var selection = handler ? handler.clampSelection(draft) : draft
+        let handler = ProvidersManager.handlerFromId(draft.provider)
+        let selection = handler ? handler.clampSelection(draft) : draft
 
         tickerInput.value = draft.ticker
         nameInput.value = draft.name
@@ -803,7 +807,7 @@ PluginSettings {
     // Persist the edited symbol flags without replacing its other settings.
     function saveEditedSymbolFlags() {
         if (editIndex < 0 || editIndex >= symbolsList.length) return
-        var saved = storage.updateSymbolAt(symbolsList, editIndex, {
+        let saved = storage.updateSymbolAt(symbolsList, editIndex, {
             showChangeWhenPinned: Helpers.boolValue(showChangeToggle.value, false),
             invert:               Helpers.boolValue(invertToggle.value, false)
         })
@@ -812,9 +816,9 @@ PluginSettings {
 
     // Remove the selected entry and update the active edit position.
     function removeSymbolAt(symbolIndex) {
-        var removed = storage.removeSymbolAt(symbolsList, symbolIndex)
+        let removed = storage.removeSymbolAt(symbolsList, symbolIndex)
         if (!removed) return
-        var wasEditing = (editIndex === symbolIndex)
+        let wasEditing = (editIndex === symbolIndex)
         if (editIndex > symbolIndex) editIndex--
         ToastService.showInfo("Markets", "Removed " + (removed.name || removed.ticker))
         if (wasEditing) Qt.callLater(clearForm)
@@ -823,7 +827,7 @@ PluginSettings {
 
     // Persist a reorder and keep the edit position on the same symbol.
     function moveSymbol(symbolIndex, direction) {
-        var targetIndex = symbolIndex + direction
+        let targetIndex = symbolIndex + direction
         if (!storage.moveSymbol(symbolsList, symbolIndex, direction)) return
         if (editIndex === symbolIndex) editIndex = targetIndex
         else if (editIndex === targetIndex) editIndex = symbolIndex

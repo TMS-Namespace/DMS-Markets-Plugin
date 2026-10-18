@@ -11,7 +11,7 @@ TestSuite {
         doesNotThrow(function() {})
     }
     function test_failures_are_reported() {
-        var thrown = throws(function() { check(false, "nope") }, "nope")
+        let thrown = throws(function() { check(false, "nope") }, "nope")
         check(thrown instanceof Error)
         throws(function() { equal(1, 2) }, "values differ")
         throws(function() { same(1, "1") }, "not identical")

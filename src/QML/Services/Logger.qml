@@ -21,7 +21,7 @@ QtObject {
 
     // Any of: devMode, sink. Unspecified fields keep their value.
     function configure(settings) {
-        var changes = settings || {}
+        let changes = settings || {}
         if (changes.devMode !== undefined) devMode = !!changes.devMode
         if (changes.sink !== undefined)    sink = changes.sink
     }

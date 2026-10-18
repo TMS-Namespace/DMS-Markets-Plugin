@@ -19,23 +19,23 @@ ShellRoot {
     }
 
     function run() {
-        var file = Quickshell.env("TEST_FILE")
-        var component = Qt.createComponent("file://" + file)
+        let file = Quickshell.env("TEST_FILE")
+        let component = Qt.createComponent("file://" + file)
         if (component.status !== Component.Ready) {
             console.warn("T:LOAD-ERROR " + component.errorString())
             console.warn("T:SUMMARY passed=0 failed=1")
             Qt.quit()
             return
         }
-        var suite = component.createObject(root)
+        let suite = component.createObject(root)
         if (!suite) {
             console.warn("T:LOAD-ERROR could not create the suite")
             console.warn("T:SUMMARY passed=0 failed=1")
             Qt.quit()
             return
         }
-        var names = []
-        for (var key in suite)
+        let names = []
+        for (let key in suite)
             if ((key.indexOf("test_") === 0 || key.indexOf("async_") === 0) && typeof suite[key] === "function") names.push(key)
         names.sort()
         if (names.length === 0) fail("(no tests)", "the suite defines no test_* functions")
@@ -60,8 +60,8 @@ ShellRoot {
     // processes); they time out after 15 seconds.
     function runNext(index) {
         if (index >= testNames.length) { finish(); return }
-        var name = testNames[index]
-        var suite = suiteObject
+        let name = testNames[index]
+        let suite = suiteObject
         try {
             if (typeof suite.setup === "function") suite.setup()
             if (name.indexOf("async_") === 0) {
@@ -83,7 +83,7 @@ ShellRoot {
         if (index !== currentIndex || currentDone) return
         currentDone = true
         asyncTimeout.stop()
-        var name = testNames[index]
+        let name = testNames[index]
         if (error) fail(name, String(error)); else pass(name)
         Qt.callLater(function() { root.runNext(index + 1) })
     }

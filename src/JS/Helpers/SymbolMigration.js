@@ -45,19 +45,19 @@ var _FLAGS = ["showChangeWhenPinned", "invert", "pinned"]
 
 // Convert one saved symbol to the current field names and handle format.
 function upgrade(raw, defaultProvider, position) {
-    var copy = Helpers.copyOf(raw)
-    var changed = false
+    let copy = Helpers.copyOf(raw)
+    let changed = false
 
-    for (var legacy in LEGACY_FIELDS) {
+    for (let legacy in LEGACY_FIELDS) {
         if (!(legacy in copy)) continue
-        var current = LEGACY_FIELDS[legacy]
+        let current = LEGACY_FIELDS[legacy]
         if (copy[current] === undefined) copy[current] = copy[legacy]
         delete copy[legacy]
         changed = true
     }
 
     // A range that was really a candle size, and symbols saved before chart resolution existed.
-    var legacyRange = LEGACY_RANGES[copy.chartRange]
+    let legacyRange = LEGACY_RANGES[copy.chartRange]
     if (legacyRange) {
         copy.chartRange = legacyRange.span
         if (!Resolution.isValid(copy.chartResolution)) copy.chartResolution = legacyRange.resolution
@@ -77,8 +77,8 @@ function upgrade(raw, defaultProvider, position) {
         changed = true
     }
     if (typeof copy.name !== "string" && typeof copy.ticker === "string") { copy.name = copy.ticker; changed = true }
-    for (var i = 0; i < _FLAGS.length; i++) {
-        var normalised = Helpers.boolValue(copy[_FLAGS[i]], false)
+    for (let i = 0; i < _FLAGS.length; i++) {
+        let normalised = Helpers.boolValue(copy[_FLAGS[i]], false)
         if (copy[_FLAGS[i]] !== normalised) { copy[_FLAGS[i]] = normalised; changed = true }
     }
     return { symbol: changed ? copy : raw, changed: changed }
@@ -86,15 +86,15 @@ function upgrade(raw, defaultProvider, position) {
 
 // Upgrade each saved symbol and clamp its selection to provider capabilities.
 function migrate(list, defaultProvider, rulesOf) {
-    var changed = false
-    var symbols = (list || []).map(function(raw, position) {
-        var upgraded = upgrade(raw, defaultProvider, position)
-        var symbol = upgraded.symbol
-        var symbolChanged = upgraded.changed
+    let changed = false
+    let symbols = (list || []).map(function(raw, position) {
+        let upgraded = upgrade(raw, defaultProvider, position)
+        let symbol = upgraded.symbol
+        let symbolChanged = upgraded.changed
 
-        var rules = rulesOf(symbol.provider || defaultProvider)
+        let rules = rulesOf(symbol.provider || defaultProvider)
         if (rules) {
-            var selection = SelectionPolicy.clamp(rules, symbol)
+            let selection = SelectionPolicy.clamp(rules, symbol)
             if (symbol.priceResolution !== selection.priceResolution
                     || symbol.changeResolution !== selection.changeResolution
                     || symbol.chartResolution !== selection.chartResolution
@@ -118,9 +118,9 @@ function deobfuscate(encoded) {
     if (!encoded) return ""
     // Hex-encoded XOR format: even-length string of hex digits
     if (/^[0-9a-fA-F]+$/.test(encoded) && encoded.length % 2 === 0) {
-        var key = Constants.CREDENTIAL_OBF_SEED
-        var plain = ""
-        for (var i = 0; i < encoded.length; i += Constants.HEX_BYTE_WIDTH)
+        let key = Constants.CREDENTIAL_OBF_SEED
+        let plain = ""
+        for (let i = 0; i < encoded.length; i += Constants.HEX_BYTE_WIDTH)
             plain += String.fromCharCode(parseInt(encoded.substring(i, i + Constants.HEX_BYTE_WIDTH), 16) ^ key.charCodeAt((i / Constants.HEX_BYTE_WIDTH) % key.length))
         return plain
     }
@@ -130,8 +130,8 @@ function deobfuscate(encoded) {
 
 // Read the renamed price-change flag while preserving an older saved preference.
 function showPriceChangeValue(data) {
-    var saved = data || {}
-    var value = saved[Constants.STORAGE_SHOW_PRICE_CHANGE_KEY] !== undefined
+    let saved = data || {}
+    let value = saved[Constants.STORAGE_SHOW_PRICE_CHANGE_KEY] !== undefined
                 ? saved[Constants.STORAGE_SHOW_PRICE_CHANGE_KEY] : saved[Constants.STORAGE_LEGACY_SHOW_PRICE_RANGE_KEY]
     return Helpers.pluginDataBool(value)
 }

@@ -3,7 +3,6 @@ import "../../../Helpers"
 import "../../../../src/QML/Helpers"
 import "../../../../src/QML/Contracts"
 import "../../../../src/QML/Services"
-import "../../../../src/QML/Services"
 import "../../../../src/JS/Contracts/PluginError.js" as PluginError
 import "../../../../src/JS/Contracts/ChartSpan.js" as ChartSpan
 
@@ -36,7 +35,7 @@ TestSuite {
     }
     function make(symbols, times) {
         if (fetcher) fetcher.destroy()
-        fetcher = fetcherType.createObject(null, { symbols: symbols, lastFetchTimes: times || ({}) })
+        fetcher = (fetcherType.createObject(null, { symbols: symbols, lastFetchTimes: times || ({}) }) as MarketDataFetcher)
         fetcher.priceDataReady.connect(function(priceData) { received.price = priceData })
         fetcher.graphDataReady.connect(function(graphData) { received.graph = graphData })
         fetcher.fetchTimesUpdated.connect(function(times) { received.times = times })
@@ -48,21 +47,21 @@ TestSuite {
     // What ProviderHandler hands over: the newest `limit` candles of a successful answer; an unreadable
     // answer arrives as a failed response instead.
     function seriesOf(providerId, fetchType, response, limit) {
-        var handler = ProvidersManager.requireFromId(providerId)
+        let handler = ProvidersManager.requireFromId(providerId)
         if (fetchType === "change") return handler.parseChange(response)
         return fetchType === "price" ? handler.parsePrice(response, limit) : handler.parseChart(response, limit)
     }
     function store(uid, fetchType, response, limit) { fetcher._store(uid, "wise", fetchType, seriesOf("wise", fetchType, response, limit)) }
     function respond(fetchContext, response, limit) {
-        var series = null
+        let series = null
         if (response.ok) {
             try { series = seriesOf(fetchContext.providerId, fetchContext.fetchType, response, limit) } catch (error) { response = failed(error) }
         }
         fetcher._onResponse(fetchContext, response, series)
     }
-    function ok(body) { return responseType.createObject(null, { providerId: "wise", ok: true, status: 200, body: body }) }
-    function failed(error) { return responseType.createObject(null, { providerId: "wise", ok: false, error: error }) }
-    function context(fetchType, uid) { return contextType.createObject(null, { uid: uid || "u-wise", ticker: "BRLPLN", providerId: "wise", fetchType: fetchType || "price", chartRange: "1M", chartResolution: "1d" }) }
+    function ok(body) { return (responseType.createObject(null, { providerId: "wise", ok: true, status: 200, body: body }) as ProviderResponse) }
+    function failed(error) { return (responseType.createObject(null, { providerId: "wise", ok: false, error: error }) as ProviderResponse) }
+    function context(fetchType, uid) { return (contextType.createObject(null, { uid: uid || "u-wise", ticker: "BRLPLN", providerId: "wise", fetchType: fetchType || "price", chartRange: "1M", chartResolution: "1d" }) as FetchContext) }
     function rows(values, step, start) {
         return JSON.stringify(values.map(function(value, i) { return { value: value, time: (start || Date.UTC(2026, 0, 1)) + i * step } }))
     }
@@ -73,16 +72,16 @@ TestSuite {
     function pulledAll(symbols, times) {
         make(symbols, times)
         fetcher._checkAndFetch()
-        var result = []
-        for (var key in received.times) if (received.times[key] !== (times[key] || 0)) result.push(key)
+        let result = []
+        for (let key in received.times) if (received.times[key] !== (times[key] || 0)) result.push(key)
         return result.sort()
     }
     // Price and chart pulls only (the change pull has its own tests).
     function pulled(symbols, times) { return pulledAll(symbols, times).filter(function(key) { return key.slice(-7) !== "_change" }) }
     function test_the_change_is_pulled_on_its_own_cadence() {
-        var now = Date.now()
-        var symbol = { uid: "u-c", ticker: "BRLPLN", provider: "wise", priceResolution: "1h", changeResolution: "1d", chartResolution: "1d", chartRange: "1M" }
-        var fresh = { "u-c_price": now, "u-c_graph": now, "u-c_change": now - 59 * minute }
+        let now = Date.now()
+        let symbol = { uid: "u-c", ticker: "BRLPLN", provider: "wise", priceResolution: "1h", changeResolution: "1d", chartResolution: "1d", chartRange: "1M" }
+        let fresh = { "u-c_price": now, "u-c_graph": now, "u-c_change": now - 59 * minute }
         equal(pulledAll([symbol], fresh), [], "a daily change is re-read hourly, not before")
         fresh = { "u-c_price": now, "u-c_graph": now, "u-c_change": now - hour }
         equal(pulledAll([symbol], fresh), ["u-c_change"], "…and is due after an hour")
@@ -92,8 +91,8 @@ TestSuite {
         equal(pulled([wise], {}), ["u-wise_graph", "u-wise_price"])
     }
     function test_nothing_is_due_before_a_resolution_elapses() {
-        var now = Date.now()
-        var times = { "u-wise_price": now - 59 * minute, "u-wise_graph": now - 59 * minute }
+        let now = Date.now()
+        let times = { "u-wise_price": now - 59 * minute, "u-wise_graph": now - 59 * minute }
         equal(pulled([wise], times), [])
         times = { "u-wise_price": now - hour, "u-wise_graph": now - hour }
         equal(pulled([wise], times), ["u-wise_price"], "hourly price is due after an hour, the daily chart is not")
@@ -101,14 +100,14 @@ TestSuite {
         equal(pulled([wise], times), ["u-wise_graph", "u-wise_price"], "the daily chart is due after a day")
     }
     function test_cadences_are_independent() {
-        var now = Date.now()
+        let now = Date.now()
         equal(pulled([fine], { "u-fine_price": now - minute, "u-fine_graph": now - minute }), ["u-fine_price"], "a 1m price over a 1h chart")
         equal(pulled([fine], { "u-fine_price": now - hour, "u-fine_graph": now - hour }), ["u-fine_graph", "u-fine_price"])
-        var slow = { uid: "u-slow", ticker: "EURUSD=X", provider: "yahoo", priceResolution: "1d", chartResolution: "15m", chartRange: "1D" }
+        let slow = { uid: "u-slow", ticker: "EURUSD=X", provider: "yahoo", priceResolution: "1d", chartResolution: "15m", chartRange: "1D" }
         equal(pulled([slow], { "u-slow_price": now - 15 * minute, "u-slow_graph": now - 15 * minute }), ["u-slow_graph"], "a 15m chart refreshes while a daily price waits")
     }
     function test_symbols_without_uid_are_skipped_and_untouched_times_kept() {
-        var now = Date.now()
+        let now = Date.now()
         make([wise, fine, { ticker: "NOUID", provider: "yahoo" }], { "u-wise_price": now, "u-wise_graph": now })
         fetcher._checkAndFetch()
         same(received.times["u-wise_price"], now, "fresh ones are left alone")
@@ -116,7 +115,7 @@ TestSuite {
         check(Object.keys(received.times).every(function(key) { return key.indexOf("NOUID") === -1 }))
     }
     function test_old_saved_ranges_are_clamped_before_scheduling() {
-        var selection = fetcher._selectionFor({ provider: "wise", priceResolution: "5m", chartRange: "10Y" })
+        let selection = fetcher._selectionFor({ provider: "wise", priceResolution: "5m", chartRange: "10Y" })
         same(selection.priceResolution, "1h")
     }
 
@@ -127,8 +126,8 @@ TestSuite {
         same(received.status.length, 0)
     }
     function test_requests_that_cannot_be_made_are_reported_for_the_card() {
-        var bads = ["BRL PLN; rm -rf /", "", "$(id)"]
-        for (var i = 0; i < bads.length; i++) {
+        let bads = ["BRL PLN; rm -rf /", "", "$(id)"]
+        for (let i = 0; i < bads.length; i++) {
             setup()
             fetcher.doFetch({ uid: "u-wise", ticker: bads[i], provider: "wise", priceResolution: "1h", chartResolution: "1d", chartRange: "1M" }, "price")
             same(received.pending.length, 0, "not submitted")
@@ -215,8 +214,8 @@ TestSuite {
         store("u1", "price", ok(live)); fetcher.priceData = received.price; fetcher.refreshedTimes = received.refreshed
         store("u1", "graph", ok(rows([1, 2, 3], day)), 3); fetcher.graphData = received.graph; fetcher.refreshedTimes = received.refreshed
         store("u1", "change", ok(rows([1, 3], hour))); fetcher.refreshedTimes = received.refreshed
-        var snapshot = fetcher.snapshotOf("u1")
-        var text = JSON.stringify(snapshot)                                  // plain data: it survives a round trip unchanged
+        let snapshot = fetcher.snapshotOf("u1")
+        let text = JSON.stringify(snapshot)                                  // plain data: it survives a round trip unchanged
         equal(JSON.parse(text), snapshot)
         same(snapshot.price.close, 4); same(snapshot.reference, 1); same(snapshot.graph.length, 3)
         equal(Object.keys(snapshot.price).sort(), ["changePercent", "change", "close", "date", "high", "low", "open", "time"].sort())
@@ -243,7 +242,7 @@ TestSuite {
         same(received.price, null); same(received.graph, null); same(received.refreshed, null)
     }
     function test_only_the_valid_parts_of_a_record_are_used() {
-        var badPrices = [null, "x", {}, { open: 1, high: 1, low: 1, close: "2", date: "d", time: "t", change: 0, changePercent: 0 },
+        let badPrices = [null, "x", {}, { open: 1, high: 1, low: 1, close: "2", date: "d", time: "t", change: 0, changePercent: 0 },
                          { open: 1, high: 1, low: 1, close: -1, date: "d", time: "t", change: 0, changePercent: 0 },
                          { open: 1, high: 1, low: 1, close: NaN, date: "d", time: "t", change: 0, changePercent: 0 },
                          { open: 1, high: 1, low: 1, close: 2, date: 5, time: "t", change: 0, changePercent: 0 }]
@@ -253,7 +252,7 @@ TestSuite {
             same(received.price, null, "bad price #" + index + " is not shown")
             same(received.graph.u1.length, 2, "…the good chart still is")
         })
-        var badCharts = [null, [], "x", [{}], [{ date: "2026-01-01", time: "", open: 1, high: 1, low: 1, close: "1", volume: 0 }],
+        let badCharts = [null, [], "x", [{}], [{ date: "2026-01-01", time: "", open: 1, high: 1, low: 1, close: "1", volume: 0 }],
                          [{ date: "yesterday", time: "", open: 1, high: 1, low: 1, close: 1, volume: 0 }], [{ date: "2026-01-01", time: "late", open: 1, high: 1, low: 1, close: 1, volume: 0 }], [null]]
         badCharts.forEach(function(graph, index) {
             setup()
@@ -275,7 +274,7 @@ TestSuite {
         store("u1", "price", ok(live)); fetcher.priceData = received.price
         store("u1", "graph", ok(rows([1, 2, 3], day)), 3); fetcher.graphData = received.graph
         fetcher.refreshedTimes = received.refreshed
-        var freshTime = received.refreshed["u1_price"]
+        let freshTime = received.refreshed["u1_price"]
         same(fetcher.restore("u1", savedRecord(), signature), false)
         same(received.price.u1.close, 4, "the live price stays")
         same(received.graph.u1.length, 3, "the live chart stays")
@@ -298,7 +297,7 @@ TestSuite {
         })
     }
     function test_chart_holds_exactly_the_window_it_asked_for_and_is_stamped() {
-        var values = []; for (var i = 0; i < 80; i++) values.push(1 + i / 100)
+        let values = []; for (let i = 0; i < 80; i++) values.push(1 + i / 100)
         store("u1", "graph", ok(rows(values, day)), ChartSpan.pointLimit("1d", "1M"))
         same(received.graph.u1.length, ChartSpan.pointLimit("1d", "1M"), "only the candles the window needs were processed")
         same(received.graph.u1[received.graph.u1.length - 1].close, 1.79, "the newest candle is kept")
@@ -306,7 +305,7 @@ TestSuite {
     }
     function test_inversion_is_looked_up_by_uid_and_keeps_candles_consistent() {
         store("u2", "price", ok(live))
-        var price = received.price.u2
+        let price = received.price.u2
         same(price.close, 0.25, "close inverted"); same(price.open, 0.5, "open inverted")
         same(price.high, 0.5); same(price.low, 0.25); same(price.change, -0.25)
         check(price.high >= price.low && price.high >= price.open && price.high >= price.close && price.low <= price.open && price.low <= price.close)
@@ -317,7 +316,7 @@ TestSuite {
         throws(function() { store("u1", "graph", ok("not json")) }, "not valid JSON")
         throws(function() { store("u1", "price", ok("not json")) }, "not valid JSON")
         same(received.graph, null, "the chart data is left alone")
-        var thrown = throws(function() { store("u1", "graph", ok("[]")) }, "")
+        let thrown = throws(function() { store("u1", "graph", ok("[]")) }, "")
         same(thrown.code, "noData"); same(thrown.userMessage, "Wise has no chart data for this symbol.")
         thrown = throws(function() { store("u1", "price", ok("[]")) }, "")
         same(thrown.userMessage, "Wise has no price for this symbol.")
@@ -331,12 +330,12 @@ TestSuite {
         equal(received.status.map(function(status) { return [status[0], status[1], status[2]] }), [["u-wise", "price", null]])
     }
     function test_failed_responses_become_the_symbols_error() {
-        var cases = [
+        let cases = [
             [new PluginError.PluginError("network", "Can't reach Wise. Check your internet connection.", "curl exit 6", { retryable: true }), "network", "Can't reach Wise."],
             [new PluginError.PluginError("notFound", "Yahoo Finance: No data found, symbol may be delisted", "HTTP 404", { status: 404 }), "notFound", "No data found"],
             [new PluginError.PluginError("timeout", "Wise took too long to answer."), "timeout", "took too long"]
         ]
-        for (var i = 0; i < cases.length; i++) {
+        for (let i = 0; i < cases.length; i++) {
             setup()
             respond(context("graph"), failed(cases[i][0]))
             same(received.status.length, 1, cases[i][1] + ": reported once")
@@ -361,7 +360,7 @@ TestSuite {
     function test_unexpected_errors_are_reported_without_leaking_internals() {
         respond(context("price", "u-wise"), ok(live))   // known symbol, fine
         received.status = []
-        respond(contextType.createObject(null, { uid: "u-wise", ticker: "X", providerId: "ghost", fetchType: "price", chartRange: "1M", chartResolution: "1d" }), ok(live))
+        respond((contextType.createObject(null, { uid: "u-wise", ticker: "X", providerId: "ghost", fetchType: "price", chartRange: "1M", chartResolution: "1d" }) as FetchContext), ok(live))
         same(received.status.length, 1); same(received.status[0][2].code, "unknownProvider")
     }
     function test_dev_mode_logging_only_when_enabled() {
@@ -387,11 +386,11 @@ TestSuite {
         same(received.times.keep, 1)
     }
     function test_responses_for_edited_symbols_are_ignored() {
-        var original = Object.assign({}, wise)
+        let original = Object.assign({}, wise)
         make([original])
         fetcher.doFetch(original, "price")
-        var handler = ProvidersManager.requireFromId("wise")
-        var oldContext = handler._queue[0].request.context
+        let handler = ProvidersManager.requireFromId("wise")
+        let oldContext = handler._queue[0].request.context
         fetcher.symbols = [Object.assign({}, original, { ticker: "EURUSD" })]
         check(!fetcher._isLive(oldContext), "a request for the previous ticker is obsolete")
         respond(oldContext, ok(live), 2)
@@ -401,7 +400,7 @@ TestSuite {
     }
     function test_removed_symbols_do_not_receive_other_widgets_responses() {
         fetcher.doFetch(wise, "price")
-        var callContext = ProvidersManager.requireFromId("wise")._queue[0].request.context
+        let callContext = ProvidersManager.requireFromId("wise")._queue[0].request.context
         fetcher.symbols = []
         respond(callContext, ok(live), 2)
         same(received.price, null)
@@ -410,9 +409,9 @@ TestSuite {
     function test_inversion_edits_allow_a_replacement_request_with_the_same_url() {
         make([wise])
         fetcher.doFetch(wise, "price")
-        var handler = ProvidersManager.requireFromId("wise")
-        var oldContext = handler._queue[0].request.context
-        var inverted = Object.assign({}, wise, { invert: true })
+        let handler = ProvidersManager.requireFromId("wise")
+        let oldContext = handler._queue[0].request.context
+        let inverted = Object.assign({}, wise, { invert: true })
         fetcher.symbols = [inverted]
         fetcher.doFetch(inverted, "price")
         same(handler._queue.length, 2, "the old configuration must not suppress its replacement")

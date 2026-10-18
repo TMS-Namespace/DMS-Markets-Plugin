@@ -34,7 +34,7 @@ TestSuite {
             refreshedAt: { price: 1000, change: 1000, graph: 1000 } }, extra || {})
     }
     function make(extra) {
-        cache = cacheType.createObject(null, Object.assign({ directory: freshDirectory("cache"), snapshotOf: function(uid) { return current[uid] || null } }, extra || {}))
+        cache = (cacheType.createObject(null, Object.assign({ directory: freshDirectory("cache"), snapshotOf: function(uid) { return current[uid] || null } }, extra || {})) as MarketCache)
         return cache
     }
     function logged(fragment) { return logs.some(function(line) { return line.indexOf(fragment) !== -1 }) }
@@ -52,7 +52,7 @@ TestSuite {
             check(!cache.isValidUid(bad), "refused: " + bad)
         })
         same(cache.fileNameOf(uidA), uidA + ".json")
-        var fallback = cache.fallbackNameOf(uidA)
+        let fallback = cache.fallbackNameOf(uidA)
         check(new RegExp("^" + uidA + "-[0-9]+\\.json$").test(fallback), fallback)
         check(cache.fallbackNameOf(uidA) !== cache.fallbackNameOf(uidA) || cache.fallbackNameOf(uidA) !== cache.fallbackNameOf(uidA), "random suffixes")
     }
@@ -70,7 +70,7 @@ TestSuite {
     function async_a_symbol_without_a_file_just_starts_empty_and_nothing_is_reported(done) {
         make()
         cache.load([uidA, uidB], function(records) {
-            var problems = []
+            let problems = []
             if (Object.keys(records).length !== 0) problems.push("records: " + JSON.stringify(records))
             if (!logged("no saved data for " + uidA)) problems.push("the first run is not logged")
             if (ErrorHandler.recent.length !== 0) problems.push("an error was reported")
@@ -91,13 +91,13 @@ TestSuite {
     function async_what_is_written_is_read_back_with_when_it_was_fetched(done) {
         make()
         current[uidA] = record(101)
-        var begun = Date.now()
+        let begun = Date.now()
         cache.markDirty(uidA)
         waitUntil(function() { return cache._dirty[uidA] === undefined && idle() }, function(problem) {
             if (problem) { done(problem); return }
             cache.load([uidA], function(records) {
-                var saved = records[uidA]
-                var problems = []
+                let saved = records[uidA]
+                let problems = []
                 if (!saved) { done("nothing was read back"); return }
                 if (saved.version !== 1 || saved.uid !== uidA) problems.push("version/uid")
                 if (!(saved.savedAt >= begun)) problems.push("savedAt")
@@ -134,7 +134,7 @@ TestSuite {
                     if (problem) { done(problem); return }
                     files(function(names) {
                         read(uidA + ".json", function(text) {
-                            var saved = JSON.parse(text)
+                            let saved = JSON.parse(text)
                             done(names.length === 1 && saved.price.close === 2 ? "" : "files " + names + ", close " + saved.price.close)
                         })
                     })
@@ -143,10 +143,10 @@ TestSuite {
         })
     }
     function async_updates_within_the_delay_are_one_write_of_the_latest_data(done) {
-        var snapshots = 0
+        let snapshots = 0
         make({ flushDelayMs: 60, snapshotOf: function(uid) { snapshots++; return record(snapshots) } })
-        for (var i = 0; i < 6; i++) cache.markDirty(uidA)
-        var writes = 0
+        for (let i = 0; i < 6; i++) cache.markDirty(uidA)
+        let writes = 0
         cache.written.connect(function() { writes++ })
         waitUntil(function() { return writes >= 1 && idle() }, function(problem) {
             if (problem) { done(problem); return }
@@ -154,7 +154,7 @@ TestSuite {
         }, 5000)
     }
     function async_an_update_during_a_write_is_written_after_it_not_lost(done) {
-        var calls = 0
+        let calls = 0
         make({ snapshotOf: function(uid) { calls++; return record(calls) } })
         cache.markDirty(uidA)
         cache.flushNow()                                               // the first write starts now…
@@ -200,11 +200,11 @@ TestSuite {
     }
     function async_damaged_or_foreign_files_are_never_an_error(done) {
         make()
-        var bad = [["{ no", "invalid"], ["[1,2]", "not a record"], ["null", "not a record"], [JSON.stringify({ version: 99, uid: uidA }), "format version 99"],
+        let bad = [["{ no", "invalid"], ["[1,2]", "not a record"], ["null", "not a record"], [JSON.stringify({ version: 99, uid: uidA }), "format version 99"],
                    [JSON.stringify({ version: 1, uid: uidB }), "belongs to another symbol"], ["", "invalid"]]
-        var remaining = bad.length, problems = []
+        let remaining = bad.length, problems = []
         bad.forEach(function(entry, index) {
-            var uid = "c" + index + "cccccc-3333-4333-8333-333333333333"
+            let uid = "c" + index + "cccccc-3333-4333-8333-333333333333"
             seed(uid + ".json", entry[0], 5, function() {
                 cache.load([uid], function(records) {
                     if (records[uid]) problems.push("accepted " + entry[0])
@@ -240,12 +240,12 @@ TestSuite {
         make({ attempts: 2 })
         blockPrimary(function() {
             current[uidA] = record(5)
-            var name = ""
+            let name = ""
             cache.written.connect(function(uid, fileName) { name = fileName })
             cache.markDirty(uidA)
             waitUntil(function() { return name !== "" && idle() }, function(problem) {
                 if (problem) { done(problem); return }
-                var problems = []
+                let problems = []
                 if (!new RegExp("^" + uidA + "-[0-9]+\\.json$").test(name)) problems.push("name " + name)
                 if (loggedCount("writing " + uidA + ".json failed (attempt") !== 1) problems.push("not retried: " + loggedCount("failed (attempt"))
                 if (!logged("cannot be written")) problems.push("no fallback logged")
@@ -271,7 +271,7 @@ TestSuite {
                     waitUntil(idle, function(problem) {
                         if (problem) { done(problem); return }
                         files(function(names) {
-                            var suffixed = names.filter(function(name) { return name !== uidA + ".json" })
+                            let suffixed = names.filter(function(name) { return name !== uidA + ".json" })
                             cache.load([uidA], function(records) {
                                 done(suffixed.length === 1 && suffixed[0] === second && records[uidA].price.close === 2 ? "" : "files " + names + ", read " + JSON.stringify(records[uidA] && records[uidA].price))
                             })
@@ -286,18 +286,18 @@ TestSuite {
         make({ attempts: 2, maxFallbacks: 1 })
         shell('rm -rf -- "$1"; : > "$1"', [cache.directory], function() {
             current[uidA] = record(1)
-            var gaveUp = false
+            let gaveUp = false
             cache.writeGaveUp.connect(function() { gaveUp = true })
             cache.markDirty(uidA)
             waitUntil(function() { return gaveUp && idle() }, function(problem) {
                 if (problem) { done(problem); return }
-                var problems = []
+                let problems = []
                 if (ErrorHandler.recent.length !== 1 || ErrorHandler.recent[0].code !== "storage") problems.push("not recorded: " + JSON.stringify(ErrorHandler.recent))
                 if (logs.some(function(line) { return line.indexOf("TOAST") === 0 })) problems.push("the user was bothered with a toast")
                 if (cache._writing[uidA]) problems.push("the symbol stays marked as writing")
                 // …and a later update is tried again from scratch.
                 shell('rm -f -- "$1"', [cache.directory], function() {
-                    var ok = false
+                    let ok = false
                     cache.written.connect(function() { ok = true })
                     cache.markDirty(uidA)
                     waitUntil(function() { return ok && idle() }, function(problem2) { done(problem2 || problems.join("; ")) }, 5000)
@@ -339,7 +339,7 @@ TestSuite {
     }
     function async_new_data_after_a_removal_during_a_write_is_kept(done) {
         // The symbol's settings changed while its old data was being written: the old file goes, the new data stays.
-        var calls = 0
+        let calls = 0
         make({ snapshotOf: function(uid) { calls++; return record(calls === 1 ? 1 : 77) } })
         current[uidA] = record(1)
         cache.markDirty(uidA)
@@ -364,9 +364,9 @@ TestSuite {
     }
     function async_shell_work_is_serial_and_bounded(done) {
         make()
-        var completed = 0, refused = 0, highestActive = 0
+        let completed = 0, refused = 0, highestActive = 0
         cache._processCountChanged.connect(function() { highestActive = Math.max(highestActive, cache._processCount) })
-        for (var i = 0; i < JsConstants.CACHE_PROCESS_QUEUE_MAX + 2; i++) {
+        for (let i = 0; i < JsConstants.CACHE_PROCESS_QUEUE_MAX + 2; i++) {
             cache._run(["bash", "-c", "printf ready"], function(code, text) {
                 completed++
                 if (code !== 0) refused++

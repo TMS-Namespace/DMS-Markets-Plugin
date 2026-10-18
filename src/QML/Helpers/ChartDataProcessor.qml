@@ -14,10 +14,10 @@ Item {
 
     // ── Derived close-prices (invalid entries dropped) ────────────────────────
     readonly property var closes: {
-        var validCloses = []
-        for (var i = 0; i < dataPoints.length; i++) {
-            var point = dataPoints[i]
-            var closeValue = point ? point.close : undefined
+        let validCloses = []
+        for (let i = 0; i < dataPoints.length; i++) {
+            let point = dataPoints[i]
+            let closeValue = point ? point.close : undefined
             if (typeof closeValue === "number" && isFinite(closeValue)) validCloses.push(closeValue)
         }
         return validCloses
@@ -32,15 +32,15 @@ Item {
     // ── Range ─────────────────────────────────────────────────────────────────
     readonly property real minValue: {
         if (closes.length === 0) return 0
-        var lowest = closes[0]
-        for (var i = 1; i < closes.length; i++) if (closes[i] < lowest) lowest = closes[i]
+        let lowest = closes[0]
+        for (let i = 1; i < closes.length; i++) if (closes[i] < lowest) lowest = closes[i]
         return lowest
     }
 
     readonly property real maxValue: {
         if (closes.length === 0) return 1
-        var highest = closes[0]
-        for (var i = 1; i < closes.length; i++) if (closes[i] > highest) highest = closes[i]
+        let highest = closes[0]
+        for (let i = 1; i < closes.length; i++) if (closes[i] > highest) highest = closes[i]
         return highest
     }
 
@@ -51,10 +51,10 @@ Item {
     // canvas dimensions and padding. Returns [] when fewer than 2 closes.
     function normalizedPoints(canvasWidth, canvasHeight, padding) {
         if (closes.length < 2) return []
-        var points = []
-        var drawableWidth  = canvasWidth  - padding * 2
-        var drawableHeight  = canvasHeight - padding * 2
-        for (var i = 0; i < closes.length; i++) {
+        let points = []
+        let drawableWidth  = canvasWidth  - padding * 2
+        let drawableHeight  = canvasHeight - padding * 2
+        for (let i = 0; i < closes.length; i++) {
             points.push({
                 x: padding + (i / (closes.length - 1)) * drawableWidth,
                 y: padding + (1 - (closes[i] - minValue) / valueRange) * drawableHeight

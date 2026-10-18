@@ -5,14 +5,13 @@ import "../../../../src/QML/Contracts"
 import "../../../../src/JS/Helpers/SelectionPolicy.js" as Policy
 import "../../../../src/JS/Contracts/ChartSpan.js" as ChartSpan
 import "../../../../src/JS/Helpers/SeriesRules.js" as Series
-import "../../../../src/JS/Contracts/Resolution.js" as Resolution
 import "../../../../src/JS/Providers/Yahoo/YahooConstants.js" as YahooConstants
 
 TestSuite {
     function handlerOf(id) { return ProvidersManager.requireFromId(id) }
-    Component.onCompleted: { if (!Array.prototype.at) Array.prototype.at = function(i) { return this[i < 0 ? this.length + i : i] } }
+    Component.onCompleted: { if (!Array.prototype.at) Array.prototype.at = function(index) { const array = Array.from(this); return array[index < 0 ? array.length + index : index] } }
     property Component responseType: Component { ProviderResponse {} }
-    function ok(providerId, body, status) { return responseType.createObject(null, { providerId: providerId, ok: true, status: status || 200, body: body }) }
+    function ok(providerId, body, status) { return (responseType.createObject(null, { providerId: providerId, ok: true, status: status || 200, body: body }) as ProviderResponse) }
     function notSame(first, second, message) { check(first !== second, message || "values are identical") }
     function values(options) { return options.map(function(option) { return option.value }) }
 

@@ -57,7 +57,7 @@ Item {
             Logger.debug("storage", "saved '" + key + "'")
             return true
         } catch (caughtError) {
-            var error = PluginError.isPluginError(caughtError) ? caughtError
+            let error = PluginError.isPluginError(caughtError) ? caughtError
                 : new PluginError.PluginError(PluginError.Code.STORAGE, "Your changes couldn't be saved.", String(caughtError && caughtError.message))
             ErrorHandler.handle("storage", error, { context: key })
             return false
@@ -67,7 +67,7 @@ Item {
     // One write to the plugin data, tried up to JsConstants.STORAGE_SAVE_ATTEMPTS times (a write can fail for a moment, e.g. while
     // the settings file is being replaced). A write that reports `false` is a failure too. Throws the last failure.
     function _write(key, value) {
-        for (var attempt = 1; ; attempt++) {
+        for (let attempt = 1; ; attempt++) {
             try {
                 if (pluginService.savePluginData(pluginId, key, value) === false)
                     throw new PluginError.PluginError(PluginError.Code.STORAGE, "Your changes couldn't be saved.", "the plugin service refused to save '" + key + "'")
@@ -84,7 +84,7 @@ Item {
     // up, and reads as an empty list only after that.
     function readSymbols(raw, deferBackup) {
         try {
-            var parsed = _parseSymbols(raw)
+            let parsed = _parseSymbols(raw)
             Logger.debug("storage", "read " + parsed.length + " saved symbols")
             return parsed
         } catch (caughtError) {
@@ -102,14 +102,14 @@ Item {
     // objects is a STORAGE error (never read as "no symbols", which would let damaged data be overwritten unnoticed).
     function _parseSymbols(raw) {
         if (raw === undefined || raw === null || raw === "") return []
-        var parsed
+        let parsed
         try {
             parsed = typeof raw === "string" ? JSON.parse(raw) : raw
         } catch (caughtError) {
             throw _unreadableSymbols("symbols is not valid JSON: " + caughtError.message, caughtError)
         }
         if (!Array.isArray(parsed)) throw _unreadableSymbols("symbols is not a list")
-        for (var i = 0; i < parsed.length; i++)
+        for (let i = 0; i < parsed.length; i++)
             if (!parsed[i] || typeof parsed[i] !== "object" || Array.isArray(parsed[i]))
                 throw _unreadableSymbols("symbols[" + i + "] is not an object")
         return parsed
@@ -142,15 +142,15 @@ Item {
         interval: 0
         repeat: false
         onTriggered: {
-            var original = _unbackedSymbols
-            if (original !== null && _backup(original) && _unbackedSymbols === original)
-                _unbackedSymbols = null
+            let original = root._unbackedSymbols
+            if (original !== null && _backup(original) && root._unbackedSymbols === original)
+                root._unbackedSymbols = null
         }
     }
 
     // Return current-format values without writing while a QML binding is being evaluated.
     function readCurrentSymbols(raw) {
-        var parsed = readSymbols(raw, true)
+        let parsed = readSymbols(raw, true)
         try {
             return _migrationOf(parsed).symbols
         } catch (caughtError) {
@@ -162,7 +162,7 @@ Item {
     // Apply legacy compatibility only at the storage boundary.
     function _migrationOf(list) {
         return SymbolMigration.migrate(list, ProvidersManager.defaultId, function(providerId) {
-            var handler = ProvidersManager.handlerFromId(providerId)
+            let handler = ProvidersManager.handlerFromId(providerId)
             return handler ? handler.properties : null
         })
     }
@@ -181,7 +181,7 @@ Item {
     // changed. Returns { symbols, changed, saved }; a failing migration is reported and the list
     // is returned unchanged.
     function migrate(list) {
-        var result
+        let result
         try {
             result = _migrationOf(list)
         } catch (caughtError) {
@@ -204,8 +204,8 @@ Item {
 
     // Persist a toggled pin flag without mutating the displayed list.
     function togglePin(list, uid) {
-        var copy = _copy(list)
-        for (var i = 0; i < copy.length; i++) {
+        let copy = _copy(list)
+        for (let i = 0; i < copy.length; i++) {
             if (copy[i].uid === uid) {
                 copy[i].pinned = !copy[i].pinned
                 return saveSymbols(copy)
@@ -216,7 +216,7 @@ Item {
 
     // Remove the symbol through the checked storage boundary.
     function removeSymbol(list, uid) {
-        var copy = list.filter(function(symbol) { return symbol.uid !== uid })
+        let copy = list.filter(function(symbol) { return symbol.uid !== uid })
         if (copy.length === list.length) {
             Logger.debug("storage", "remove: no symbol " + uid)
             return false
@@ -227,17 +227,17 @@ Item {
     // Removes by position; returns the removed symbol, or null when nothing was removed / saved.
     function removeSymbolAt(list, index) {
         if (index < 0 || index >= list.length) return null
-        var copy = _copy(list)
-        var removed = copy.splice(index, 1)[0]
+        let copy = _copy(list)
+        let removed = copy.splice(index, 1)[0]
         return saveSymbols(copy) ? removed : null
     }
 
     // Persist a reorder and keep the edit position on the same symbol.
     function moveSymbol(list, index, direction) {
-        var target = index + direction
+        let target = index + direction
         if (index < 0 || index >= list.length || target < 0 || target >= list.length) return false
-        var copy = _copy(list)
-        var moved = copy[index]
+        let copy = _copy(list)
+        let moved = copy[index]
         copy[index] = copy[target]
         copy[target] = moved
         return saveSymbols(copy)
@@ -247,19 +247,19 @@ Item {
     // Returns { saved, updated }.
     function upsertSymbol(list, entry, editIndex) {
         // Nothing malformed is written: the entry must be a valid SavedSymbol.
-        var candidate = savedSymbolType.createObject(null)
+        let candidate = savedSymbolType.createObject(null)
         SymbolRules.SAVED_FIELDS.forEach(function(field) {
             if (entry[field] !== undefined) candidate[field] = entry[field]
         })
-        var valid = SymbolRules.isValidSavedSymbol(candidate)
+        let valid = SymbolRules.isValidSavedSymbol(candidate)
         candidate.destroy()
         if (!valid) {
             ErrorHandler.handle("storage", new PluginError.PluginError(PluginError.Code.STORAGE, "A saved symbol is damaged.",
                                 "the symbol to save is not valid"), { context: "saving a symbol" })
             return { saved: false, updated: false }
         }
-        var copy = _copy(list)
-        var updating = editIndex >= 0 && editIndex < copy.length
+        let copy = _copy(list)
+        let updating = editIndex >= 0 && editIndex < copy.length
         if (updating) {
             entry.pinned = copy[editIndex].pinned
             entry.uid    = copy[editIndex].uid || entry.uid
@@ -273,8 +273,8 @@ Item {
     // Changes some fields of the symbol at `index` (e.g. the per-symbol toggles).
     function updateSymbolAt(list, index, fields) {
         if (index < 0 || index >= list.length) return false
-        var copy = _copy(list)
-        for (var key in fields) copy[index][key] = fields[key]
+        let copy = _copy(list)
+        for (let key in fields) copy[index][key] = fields[key]
         return saveSymbols(copy)
     }
 
@@ -284,8 +284,8 @@ Item {
 
     // Saves every field of a draft; true when all were saved.
     function saveDraft(draft) {
-        var allSaved = true
-        for (var field in JsConstants.DRAFT_KEYS)
+        let allSaved = true
+        for (let field in JsConstants.DRAFT_KEYS)
             if (!saveDraftField(field, draft[field])) allSaved = false
         return allSaved
     }
@@ -294,9 +294,9 @@ Item {
     // { providerId: credential } for the providers that need one, de-obfuscated. `data` is the
     // plugin data map (the widget's `pluginData`).
     function readCredentials(data) {
-        var result = {}
+        let result = {}
         ProvidersManager.types.forEach(function(type) {
-            var provider = ProvidersManager.handlerFor(type).properties
+            let provider = ProvidersManager.handlerFor(type).properties
             if (provider.requiresCredential) {
                 result[provider.providerId] = SymbolMigration.deobfuscate((data && data[provider.credentialSettingKey]) || "")
                 Logger.debug("storage", "credential for " + provider.providerId + ": " + (result[provider.providerId] ? "present" : "missing"))
@@ -313,7 +313,7 @@ Item {
 
     // Persist a display-setting upgrade when the migration module supplies one.
     function migrateSettings(data) {
-        var change = SymbolMigration.settingsChange(data)
+        let change = SymbolMigration.settingsChange(data)
         if (!change) return false
         Logger.debug("storage", "migrating the saved price-change display setting")
         return save(change.key, change.value)

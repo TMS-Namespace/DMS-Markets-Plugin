@@ -12,9 +12,9 @@ function isValidCredential(properties, credential) {
     if (!properties) return true
     if (properties.disabled) return false
     if (!properties.requiresCredential) return true
-    var value = (credential || "").trim()
-    var minLength = properties.credentialMinLength || 1
-    var maxLength = properties.credentialMaxLength || 0
+    let value = (credential || "").trim()
+    let minLength = properties.credentialMinLength || 1
+    let maxLength = properties.credentialMaxLength || 0
     if (value.length < minLength) return false
     if (maxLength > 0 && value.length > maxLength) return false
     return true
@@ -38,7 +38,7 @@ function _assertResolutions(id, values, minimumMs, disabled, change) {
     values.forEach(function(resolution, index) {
         if (!Resolution.isValid(resolution)) _fail(id, "unknown resolution '" + resolution + "'")
         if (values.indexOf(resolution) !== index) _fail(id, "duplicate resolution '" + resolution + "'")
-        var refreshMs = change ? Math.min(Resolution.ms(resolution), Resolution.ms(Resolution.Values.H1)) : Resolution.ms(resolution)
+        let refreshMs = change ? Math.min(Resolution.ms(resolution), Resolution.ms(Resolution.Values.H1)) : Resolution.ms(resolution)
         if (!disabled && refreshMs < minimumMs) _fail(id, "resolution '" + resolution + "' requires polling below minPullResolution")
     })
 }
@@ -51,7 +51,7 @@ function assertDeclaration(id, declared, api) {
         if (typeof declared[key] !== "string" || declared[key] === "") _fail(id, "'" + key + "' must be a non-empty string")
     })
     if (!/^[A-Z]{3}$/.test(declared.alias)) _fail(id, "'alias' must be exactly three capital letters, e.g. YHF")
-    var problem = SymbolRules.patternProblem(declared.symbolPattern)
+    let problem = SymbolRules.patternProblem(declared.symbolPattern)
     if (problem) _fail(id, problem)
     if (!(declared.symbolMinLength >= 1) || !(declared.symbolMaxLength >= declared.symbolMinLength))
         _fail(id, "symbol lengths must satisfy 1 <= min <= max")
@@ -61,14 +61,14 @@ function assertDeclaration(id, declared, api) {
     if (!Array.isArray(declared.changeResolutions) || declared.changeResolutions.length === 0) _fail(id, "'changeResolutions' must be a non-empty list")
     _assertResolutions(id, declared.changeResolutions, Resolution.ms(declared.minPullResolution), declared.disabled, true)
     if (!Array.isArray(declared.chartLimits) || declared.chartLimits.length === 0) _fail(id, "'chartLimits' must be a non-empty list")
-    var seen = {}
+    let seen = {}
     declared.chartLimits.forEach(function(limit) {
         if (!limit || !Resolution.isValid(limit.resolution)) _fail(id, "unknown chart resolution in 'chartLimits'")
         if (seen[limit.resolution]) _fail(id, "chart resolution '" + limit.resolution + "' is declared twice")
         if (!declared.disabled && Resolution.ms(limit.resolution) < Resolution.ms(declared.minPullResolution))
             _fail(id, "chart resolution requires polling below minPullResolution")
         seen[limit.resolution] = true
-        var days = limit.maxHistoryDays === undefined ? 0 : limit.maxHistoryDays
+        let days = limit.maxHistoryDays === undefined ? 0 : limit.maxHistoryDays
         if (typeof days !== "number" || !isFinite(days) || !(days >= 0)) _fail(id, "'maxHistoryDays' of '" + limit.resolution + "' must be a number >= 0")
     })
     if (declared.requiresCredential && (typeof declared.credentialSettingKey !== "string" || declared.credentialSettingKey === ""))

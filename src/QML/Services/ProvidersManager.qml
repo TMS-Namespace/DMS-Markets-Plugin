@@ -46,31 +46,31 @@ QtObject {
 
     // (Re)starts every source with fresh handlers; used at start-up and by tests.
     function reload(list) {
-        for (var previousType in handlers) handlers[previousType].destroy()
-        var started = {}, failed = []
+        for (let previousType in handlers) handlers[previousType].destroy()
+        let started = {}, failed = []
         list.forEach(function(source) {
             try {
-                var declared = source.properties.create()
+                let declared = source.properties.create()
                 ProviderRules.assertDeclaration(source.id, declared, source.api)
-                var properties = _propertiesType.createObject(null)
-                for (var key in declared) {
+                let properties = _propertiesType.createObject(null) as ProviderProperties
+                for (let key in declared) {
                     if (!(key in properties))
                         throw new PluginError.PluginError(PluginError.Code.PROVIDER_CONFIG, "A data provider is misconfigured and was not loaded.",
                                                           "Provider '" + source.id + "': unknown property '" + key + "' in its declaration")
                     properties[key] = declared[key]
                 }
-                var handler = _handlerType.createObject(null, { type: source.type, properties: properties })
+                let handler = _handlerType.createObject(null, { type: source.type, properties: properties }) as ProviderHandler
                 handler.api = source.api         // assigned, not passed to createObject: that would flatten the module's functions away
                 started[source.type] = handler
                 Logger.debug("providers", "started " + source.id + " (" + properties.name + ")")
             } catch (caughtError) {
                 Logger.debug("providers", "could not start " + source.id + ": " + String(caughtError && caughtError.message))
-                var error = PluginError.from(caughtError, PluginError.Code.PROVIDER_CONFIG)
+                let error = PluginError.from(caughtError, PluginError.Code.PROVIDER_CONFIG)
                 failed.push(_loadErrorType.createObject(null, { id: source.id, name: source.name, error: error,
                     userMessage: source.name + " couldn't be loaded and is unavailable. " + error.userMessage }))
             }
         })
-        var ids = {}
+        let ids = {}
         list.forEach(function(source) { ids[source.type] = source.id })
         _ids = ids                       // assigned whole, so bindings that read it update
         handlers = started
@@ -87,7 +87,7 @@ QtObject {
 
     // Saved symbols hold the provider as text: the type for it, or -1 when it is not a supported provider.
     function typeOf(id) {
-        for (var type in _ids) if (_ids[type] === id) return Number(type)
+        for (let type in _ids) if (_ids[type] === id) return Number(type)
         return -1
     }
     // Convert a provider type into its persisted text identifier.
@@ -97,7 +97,7 @@ QtObject {
 
     // Like handlerFromId, but a provider that is not available is an error (UNKNOWN_PROVIDER).
     function requireFromId(id) {
-        var handler = handlerFromId(id)
+        let handler = handlerFromId(id)
         if (!handler)
             throw new PluginError.PluginError(PluginError.Code.UNKNOWN_PROVIDER, "This data provider isn't available.", "Unknown provider '" + id + "'")
         return handler

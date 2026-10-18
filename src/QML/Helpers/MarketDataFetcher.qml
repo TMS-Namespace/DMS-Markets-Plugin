@@ -78,9 +78,9 @@ Item {
 
     // Combine pending request counts from all provider handlers.
     function _publishPending() {
-        var total = {}
+        let total = {}
         _connected.forEach(function(handler) {
-            for (var uid in handler.pending) total[uid] = (total[uid] || 0) + handler.pending[uid]
+            for (let uid in handler.pending) total[uid] = (total[uid] || 0) + handler.pending[uid]
         })
         pendingFetchesUpdated(total)
     }
@@ -99,15 +99,15 @@ Item {
     Timer {
         id: checkTimer
         interval: JsConstants.POLL_INTERVAL_MS
-        running: symbols.length > 0
+        running: root.symbols.length > 0
         repeat: true
         onTriggered: _checkAndFetch()
     }
 
     // Apply the current credentials through each provider facade.
     function _syncProviderCredentials() {
-        for (var providerId in providerCredentials) {
-            var handler = ProvidersManager.handlerFromId(providerId)
+        for (let providerId in providerCredentials) {
+            let handler = ProvidersManager.handlerFromId(providerId)
             if (handler) handler.setCredential(providerCredentials[providerId])
             Logger.debug("fetcher", "credential for " + providerId + ": " + (providerCredentials[providerId] ? "set" : "empty"))
         }
@@ -115,27 +115,27 @@ Item {
 
     // Each pull is due once its own resolution has elapsed since the last one.
     function _checkAndFetch() {
-        var now      = Date.now()
-        var newTimes = Helpers.copyOf(lastFetchTimes)
+        let now      = Date.now()
+        let newTimes = Helpers.copyOf(lastFetchTimes)
 
-        for (var i = 0; i < symbols.length; i++) {
-            var symbol = symbols[i]
+        for (let i = 0; i < symbols.length; i++) {
+            let symbol = symbols[i]
             if (!symbol.uid) continue
 
-            var selection           = _selectionFor(symbol)
-            var priceKey      = FetchType.timeKey(symbol.uid, FetchType.Values.PRICE)
+            let selection           = _selectionFor(symbol)
+            let priceKey      = FetchType.timeKey(symbol.uid, FetchType.Values.PRICE)
             if (now - (newTimes[priceKey] || 0) >= Helpers.resolutionToMs(selection.priceResolution)) {
                 doFetch(symbol, FetchType.Values.PRICE, selection)
                 newTimes[priceKey] = now
             }
 
-            var changeKey     = FetchType.timeKey(symbol.uid, FetchType.Values.CHANGE)
+            let changeKey     = FetchType.timeKey(symbol.uid, FetchType.Values.CHANGE)
             if (now - (newTimes[changeKey] || 0) >= SelectionPolicy.changeRefreshMs(selection.changeResolution)) {
                 doFetch(symbol, FetchType.Values.CHANGE, selection)
                 newTimes[changeKey] = now
             }
 
-            var graphKey      = FetchType.timeKey(symbol.uid, FetchType.Values.GRAPH)
+            let graphKey      = FetchType.timeKey(symbol.uid, FetchType.Values.GRAPH)
             if (now - (newTimes[graphKey] || 0) >= Helpers.resolutionToMs(selection.chartResolution)) {
                 doFetch(symbol, FetchType.Values.GRAPH, selection)
                 newTimes[graphKey] = now
@@ -147,20 +147,20 @@ Item {
     // Saved symbols are migrated on load (see DataStorage.migrate); this is the same
     // resolution applied defensively to any symbol not yet migrated.
     function _selectionFor(symbol) {
-        var handler = ProvidersManager.handlerFromId(symbol.provider || ProvidersManager.defaultId)
+        let handler = ProvidersManager.handlerFromId(symbol.provider || ProvidersManager.defaultId)
         return handler ? handler.clampSelection(symbol) : symbol   // an unavailable provider is reported by doFetch
     }
 
     // Recheck at delivery too: shared handlers can report calls started by another widget.
     function _isLive(callContext) {
-        var symbol = _findSymbol(callContext.uid)
+        let symbol = _findSymbol(callContext.uid)
         return symbol !== null && (!callContext.signature
                 || callContext.signature === Helpers.symbolFetchSignature(symbol, ProvidersManager.defaultId))
     }
 
     // Find the current saved symbol by its internal handle.
     function _findSymbol(uid) {
-        for (var i = 0; i < symbols.length; i++)
+        for (let i = 0; i < symbols.length; i++)
             if (symbols[i].uid === uid) return symbols[i]
         return null
     }
@@ -173,15 +173,15 @@ Item {
             return
         }
         Logger.debug("fetcher", "fetch " + symbol.ticker + " " + fetchType)
-        var providerId = symbol.provider || ProvidersManager.defaultId
-        var selection = knownSelection || _selectionFor(symbol)
+        let providerId = symbol.provider || ProvidersManager.defaultId
+        let selection = knownSelection || _selectionFor(symbol)
 
         // A request that cannot be made (provider unavailable or disabled, credential missing, symbol or
         // selection not acceptable) is not silently dropped: the reason goes to the symbol's card.
         // A `false` result means this very call is already in flight: nothing to do.
         try {
-            var handler = ProvidersManager.requireFromId(providerId)
-            var context = contextType.createObject(null, { uid: symbol.uid, ticker: symbol.ticker, providerId: providerId, fetchType: fetchType,
+            let handler = ProvidersManager.requireFromId(providerId)
+            let context = contextType.createObject(null, { uid: symbol.uid, ticker: symbol.ticker, providerId: providerId, fetchType: fetchType,
                                                            chartRange: selection.chartRange, chartResolution: selection.chartResolution,
                                                            signature: Helpers.symbolFetchSignature(symbol, ProvidersManager.defaultId) })
             if (fetchType === FetchType.Values.PRICE)
@@ -218,13 +218,13 @@ Item {
     // the user must act on (credentials) also raise a toast; the rest are shown on the card.
     // A failed change pull is only logged: the price still shows, with the change of its own candle.
     function _reportSymbolError(uid, fetchType, error) {
-        var symbol = _findSymbol(uid)
-        var wrapped = PluginError.from(error)
+        let symbol = _findSymbol(uid)
+        let wrapped = PluginError.from(error)
         if (fetchType === FetchType.Values.CHANGE) {
             ErrorHandler.handle("fetcher", wrapped, { context: (symbol ? symbol.ticker : uid) + " " + fetchType, notify: false })
             return
         }
-        var record = ErrorHandler.handle("fetcher", wrapped, {
+        let record = ErrorHandler.handle("fetcher", wrapped, {
             context: symbol ? symbol.ticker + " " + fetchType : fetchType,
             notify: wrapped.code === PluginError.Code.CREDENTIAL
         })
@@ -235,8 +235,8 @@ Item {
     // `series` holds the newest candles the pull asked for, so nothing is trimmed here.
     // Throws PluginError (NO_DATA) for an answer without any candle.
     function _store(symbolId, providerName, fetchType, series) {
-        var invert = Helpers.isInverted(symbols, symbolId)
-        var name   = ProvidersManager.nameOf(providerName)
+        let invert = Helpers.isInverted(symbols, symbolId)
+        let name   = ProvidersManager.nameOf(providerName)
 
         if (fetchType === FetchType.Values.PRICE) {
             if (series.length === 0)
@@ -244,8 +244,8 @@ Item {
 
             // The newest candle, together with the one before it (see PriceRules), as 1/x when the symbol asks for it,
             // becomes the price shown.
-            var latest = series[series.length - 1]
-            var previous = series.length > 1 ? series[series.length - 2] : null
+            let latest = series[series.length - 1]
+            let previous = series.length > 1 ? series[series.length - 2] : null
             if (invert) {
                 latest = SeriesRules.transform(latest, Helpers.inv)
                 if (previous) previous = SeriesRules.transform(previous, Helpers.inv)
@@ -257,7 +257,7 @@ Item {
         } else if (fetchType === FetchType.Values.CHANGE) {
             // `series` is the reference close (a number). The price shown so far is measured against it.
             _references = Helpers.withEntry(_references, symbolId, series)
-            var shown = priceData[symbolId]
+            let shown = priceData[symbolId]
             if (shown)
                 priceDataReady(Helpers.withEntry(priceData, symbolId, priceType.createObject(null, PriceRules.priceFrom(shown, null, _referenceOf(symbolId, invert)))))
             Logger.debug("fetcher", "stored change reference of " + symbolId + ": " + series)
@@ -267,11 +267,11 @@ Item {
                 throw new PluginError.PluginError(PluginError.Code.NO_DATA, name + " has no chart data for this symbol.", "empty history answer")
 
             graphDataReady(Helpers.withEntry(graphData, symbolId, series.map(function(candle) {
-                return pointType.createObject(null, invert ? SeriesRules.transform(candle, Helpers.inv) : candle)
+                return pointType.createObject(null, invert ? SeriesRules.transform(candle, Helpers.inv) : candle) as DataPoint
             })))
             Logger.debug("fetcher", "stored " + series.length + " chart candles of " + symbolId + (invert ? " (inverted)" : ""))
         }
-        var now = Date.now()
+        let now = Date.now()
         fetchTimesUpdated(Helpers.withEntry(lastFetchTimes, FetchType.timeKey(symbolId, fetchType), now))   // this pull is now fresh
         refreshedTimesUpdated(Helpers.withEntry(refreshedTimes, FetchType.timeKey(symbolId, fetchType), now))
         symbolStored(symbolId)
@@ -280,18 +280,18 @@ Item {
 
     // The stored reference close of a symbol, inverted like its prices when the symbol is; null if none yet.
     function _referenceOf(symbolId, invert) {
-        var reference = _references[symbolId]
+        let reference = _references[symbolId]
         if (typeof reference !== "number") return null
         return invert ? Helpers.inv(reference) : reference
     }
 
     // Drops everything held for a symbol (its settings changed: what it shows would be wrong until the next answer).
     function forget(uid) {
-        var timeKeys = [FetchType.Values.PRICE, FetchType.Values.CHANGE, FetchType.Values.GRAPH].map(function(fetchType) { return FetchType.timeKey(uid, fetchType) })
+        let timeKeys = [FetchType.Values.PRICE, FetchType.Values.CHANGE, FetchType.Values.GRAPH].map(function(fetchType) { return FetchType.timeKey(uid, fetchType) })
         if (priceData[uid] !== undefined) priceDataReady(Helpers.withoutEntry(priceData, uid))
         if (graphData[uid] !== undefined) graphDataReady(Helpers.withoutEntry(graphData, uid))
         _references = Helpers.withoutEntry(_references, uid)
-        var refreshed = refreshedTimes
+        let refreshed = refreshedTimes
         timeKeys.forEach(function(key) { if (refreshed[key] !== undefined) refreshed = Helpers.withoutEntry(refreshed, key) })
         if (refreshed !== refreshedTimes) refreshedTimesUpdated(refreshed)
     }
@@ -303,16 +303,16 @@ Item {
 
     // Copy the requested fields into plain snapshot data.
     function _plain(object, fields) {
-        var plain = {}
+        let plain = {}
         fields.forEach(function(field) { plain[field] = object[field] })
         return plain
     }
 
     // Capture the latest price, reference, chart and successful fetch times.
     function snapshotOf(uid) {
-        var price = priceData[uid], graph = graphData[uid]
+        let price = priceData[uid], graph = graphData[uid]
         if (!price && !graph) return null
-        var reference = _references[uid]
+        let reference = _references[uid]
         return {
             price: price ? _plain(price, _priceFields) : null,
             reference: typeof reference === "number" ? reference : null,
@@ -331,8 +331,8 @@ Item {
     // A saved price, or null when it is not a complete, sane one.
     function _restoredPrice(saved) {
         if (!saved || typeof saved !== "object") return null
-        var numbers = ["open", "high", "low", "close", "change", "changePercent"]
-        for (var i = 0; i < numbers.length; i++) if (!_isNumber(saved[numbers[i]])) return null
+        let numbers = ["open", "high", "low", "close", "change", "changePercent"]
+        for (let i = 0; i < numbers.length; i++) if (!_isNumber(saved[numbers[i]])) return null
         if (typeof saved.date !== "string" || typeof saved.time !== "string" || !(saved.close > 0)) return null
         return priceType.createObject(null, _plain(saved, _priceFields))
     }
@@ -340,12 +340,12 @@ Item {
     // A saved chart, or null when it is not a non-empty list of valid candles.
     function _restoredChart(saved) {
         if (!Array.isArray(saved) || saved.length === 0) return null
-        var points = []
-        for (var i = 0; i < saved.length; i++) {
-            var candle = saved[i]
+        let points = []
+        for (let i = 0; i < saved.length; i++) {
+            let candle = saved[i]
             if (!candle || typeof candle !== "object") return null
-            for (var j = 2; j < root._candleFields.length; j++) if (!_isNumber(candle[root._candleFields[j]])) return null
-            var point = pointType.createObject(null, _plain(candle, _candleFields))
+            for (let j = 2; j < root._candleFields.length; j++) if (!_isNumber(candle[root._candleFields[j]])) return null
+            let point = pointType.createObject(null, _plain(candle, _candleFields)) as DataPoint
             if (!point.dateValid || !point.timeValid) return null
             points.push(point)
         }
@@ -361,23 +361,23 @@ Item {
                 Logger.debug("fetcher", "saved data of " + uid + " ignored: " + (record ? "the symbol's settings changed" : "none"))
                 return false
             }
-            var restored = false
-            var refreshed = Helpers.copyOf(refreshedTimes)
-            var saved = record.refreshedAt || {}
-            var price = priceData[uid] ? null : _restoredPrice(record.price)
+            let restored = false
+            let refreshed = Helpers.copyOf(refreshedTimes)
+            let saved = record.refreshedAt || {}
+            let price = priceData[uid] ? null : _restoredPrice(record.price)
             if (price) {
                 priceDataReady(Helpers.withEntry(priceData, uid, price))
                 restored = true
                 if (_isNumber(record.reference) && record.reference !== 0 && _references[uid] === undefined)
                     _references = Helpers.withEntry(_references, uid, record.reference)
             }
-            var chart = graphData[uid] ? null : _restoredChart(record.graph)
+            let chart = graphData[uid] ? null : _restoredChart(record.graph)
             if (chart) {
                 graphDataReady(Helpers.withEntry(graphData, uid, chart))
                 restored = true
             }
             ;[FetchType.Values.PRICE, FetchType.Values.CHANGE, FetchType.Values.GRAPH].forEach(function(fetchType) {
-                var key = FetchType.timeKey(uid, fetchType)
+                let key = FetchType.timeKey(uid, fetchType)
                 if (_isNumber(saved[fetchType]) && saved[fetchType] > 0 && !refreshed[key]) refreshed[key] = saved[fetchType]
             })
             if (restored) refreshedTimesUpdated(refreshed)
@@ -392,7 +392,7 @@ Item {
     // ── Public: force-refresh a single symbol ─────────────────────────────────
     function forceRefreshSymbol(uid) {
         Logger.debug("fetcher", "refresh " + uid)
-        var symbol = _findSymbol(uid)
+        let symbol = _findSymbol(uid)
         if (!symbol) return
         doFetch(symbol, FetchType.Values.PRICE)
         doFetch(symbol, FetchType.Values.CHANGE)
@@ -402,7 +402,7 @@ Item {
     // ── Public: force-refresh every symbol ────────────────────────────────────
     function forceRefreshAll() {
         Logger.debug("fetcher", "refresh all " + symbols.length + " symbols")
-        for (var i = 0; i < symbols.length; i++) {
+        for (let i = 0; i < symbols.length; i++) {
             doFetch(symbols[i], FetchType.Values.PRICE)
             doFetch(symbols[i], FetchType.Values.CHANGE)
             doFetch(symbols[i], FetchType.Values.GRAPH)
@@ -422,8 +422,8 @@ Item {
     // Start the next staggered initial chart request.
     function _processInitialGraphQueue() {
         if (_initialGraphQueue.length === 0) return
-        var remaining = _initialGraphQueue.slice()
-        var symbol    = remaining.shift()
+        let remaining = _initialGraphQueue.slice()
+        let symbol    = remaining.shift()
         _initialGraphQueue = remaining
         doFetch(symbol, FetchType.Values.GRAPH)
         if (remaining.length > 0) initialGraphTimer.restart()
@@ -432,11 +432,11 @@ Item {
     // ── Public: kick off all initial fetches ──────────────────────────────────
     function startInitialFetches(symbolList) {
         Logger.debug("fetcher", "initial fetches for " + symbolList.length + " symbols")
-        var now      = Date.now()
-        var newTimes = {}
-        var queue    = []
-        for (var i = 0; i < symbolList.length; i++) {
-            var symbol = symbolList[i]
+        let now      = Date.now()
+        let newTimes = {}
+        let queue    = []
+        for (let i = 0; i < symbolList.length; i++) {
+            let symbol = symbolList[i]
             doFetch(symbol, FetchType.Values.PRICE)
             doFetch(symbol, FetchType.Values.CHANGE)
             newTimes[FetchType.timeKey(symbol.uid, FetchType.Values.PRICE)] = now
@@ -452,12 +452,12 @@ Item {
 
     // ── Public: fetch newly-added symbols ─────────────────────────────────────
     function fetchNewSymbols(newSymbolList, knownIds) {
-        var now      = Date.now()
-        var newTimes = Helpers.copyOf(lastFetchTimes)
-        var hasNew   = false
+        let now      = Date.now()
+        let newTimes = Helpers.copyOf(lastFetchTimes)
+        let hasNew   = false
 
-        for (var i = 0; i < newSymbolList.length; i++) {
-            var symbol = newSymbolList[i]
+        for (let i = 0; i < newSymbolList.length; i++) {
+            let symbol = newSymbolList[i]
             if (knownIds.indexOf(symbol.uid) === -1) {
                 doFetch(symbol, FetchType.Values.PRICE)
                 doFetch(symbol, FetchType.Values.CHANGE)

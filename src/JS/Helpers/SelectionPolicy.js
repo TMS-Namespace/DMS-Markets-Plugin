@@ -19,8 +19,8 @@
 
 // Copy the provider chart limits into a plain JavaScript array.
 function _limits(properties) {
-    var declared = properties.chartLimits, limits = []
-    for (var i = 0; i < declared.length; i++) limits.push(declared[i])
+    let declared = properties.chartLimits, limits = []
+    for (let i = 0; i < declared.length; i++) limits.push(declared[i])
     return limits
 }
 
@@ -33,10 +33,10 @@ function _sorted(values, order) {
 function _nearest(candidates, wanted, order) {
     if (candidates.length === 0) return ""
     if (candidates.indexOf(wanted) !== -1) return wanted
-    var target = order.indexOf(wanted)
-    var best = candidates[0], bestDistance = Infinity
-    for (var i = 0; i < candidates.length; i++) {
-        var distance = Math.abs(order.indexOf(candidates[i]) - target)
+    let target = order.indexOf(wanted)
+    let best = candidates[0], bestDistance = Infinity
+    for (let i = 0; i < candidates.length; i++) {
+        let distance = Math.abs(order.indexOf(candidates[i]) - target)
         if (distance < bestDistance) { best = candidates[i]; bestDistance = distance }
     }
     return best
@@ -56,8 +56,8 @@ function chartResolutions(properties) {
 
 // Longest history (days) the provider serves for a chart resolution; 0 means no limit.
 function historyLimitDays(properties, resolution) {
-    var limits = _limits(properties)
-    for (var i = 0; i < limits.length; i++)
+    let limits = _limits(properties)
+    for (let i = 0; i < limits.length; i++)
         if (limits[i].resolution === resolution) return Number(limits[i].maxHistoryDays) || 0
     return 0
 }
@@ -65,7 +65,7 @@ function historyLimitDays(properties, resolution) {
 // Spans within the provider's history limit for `resolution`; [] for an unsupported resolution.
 function chartSpans(properties, resolution) {
     if (chartResolutions(properties).indexOf(resolution) === -1) return []
-    var limit = historyLimitDays(properties, resolution)
+    let limit = historyLimitDays(properties, resolution)
     return ChartSpan.ORDER.filter(function(span) { return limit <= 0 || ChartSpan.days(span) <= limit })
 }
 
@@ -121,7 +121,7 @@ function assertChange(properties, resolution) {
 
 // Reject chart resolutions and spans outside the declared limits.
 function assertChart(properties, resolution, span) {
-    var spans = chartSpans(properties, resolution)
+    let spans = chartSpans(properties, resolution)
     if (spans.length === 0)
         throw new PluginError.PluginError(PluginError.Code.UNSUPPORTED,
             properties.name + " doesn't offer " + Resolution.label(resolution) + " chart candles.",
@@ -146,9 +146,9 @@ function assertPull(properties, resolution) {
 
 // First resolution at or above one hour, else the coarsest available.
 function _atLeastAnHour(candidates) {
-    var sorted = _sorted(candidates, Resolution.ORDER)
-    var minimumMs = Resolution.ms(Resolution.Values.H1)
-    for (var i = 0; i < sorted.length; i++)
+    let sorted = _sorted(candidates, Resolution.ORDER)
+    let minimumMs = Resolution.ms(Resolution.Values.H1)
+    for (let i = 0; i < sorted.length; i++)
         if (Resolution.ms(sorted[i]) >= minimumMs) return sorted[i]
     return sorted[sorted.length - 1]
 }
@@ -163,19 +163,19 @@ function defaultChangeResolution(properties) {
 
 // Choose a supported chart resolution with a readable range.
 function defaultChartResolution(properties) {
-    var allowed = allowedChartResolutions(properties)
+    let allowed = allowedChartResolutions(properties)
     return _nearest(allowed.length > 0 ? allowed : chartResolutions(properties), Constants.DEFAULT_CHART_RESOLUTION, Resolution.ORDER)
 }
 
 // Choose a readable chart range closest to the shared default.
 function defaultChartSpan(properties, resolution) {
-    var allowed = allowedChartSpans(properties, resolution)
+    let allowed = allowedChartSpans(properties, resolution)
     return _nearest(allowed.length > 0 ? allowed : chartSpans(properties, resolution), Constants.DEFAULT_CHART_SPAN, ChartSpan.ORDER)
 }
 
 // Build the provider default selection from its supported choices.
 function defaultSelection(properties) {
-    var resolution = defaultChartResolution(properties)
+    let resolution = defaultChartResolution(properties)
     return { priceResolution: defaultPriceResolution(properties), changeResolution: defaultChangeResolution(properties), chartResolution: resolution, chartRange: defaultChartSpan(properties, resolution) }
 }
 
@@ -186,19 +186,19 @@ function defaultSelection(properties) {
 // and before every fetch. `selection` carries values in the current format; anything missing or unknown
 // falls back to the provider's default for that part.
 function clamp(properties, selection) {
-    var defaults = defaultSelection(properties)
-    var price = Resolution.isValid(selection.priceResolution) ? selection.priceResolution : defaults.priceResolution
-    var priceFinal = _nearest(priceResolutions(properties), price, Resolution.ORDER)
-    var change = Resolution.isValid(selection.changeResolution) ? selection.changeResolution : defaults.changeResolution
-    var changeFinal = _nearest(changeResolutions(properties), change, Resolution.ORDER)
+    let defaults = defaultSelection(properties)
+    let price = Resolution.isValid(selection.priceResolution) ? selection.priceResolution : defaults.priceResolution
+    let priceFinal = _nearest(priceResolutions(properties), price, Resolution.ORDER)
+    let change = Resolution.isValid(selection.changeResolution) ? selection.changeResolution : defaults.changeResolution
+    let changeFinal = _nearest(changeResolutions(properties), change, Resolution.ORDER)
     if (!ChartSpan.isValid(selection.chartRange) && !Resolution.isValid(selection.chartResolution))
         return { priceResolution: priceFinal, changeResolution: changeFinal, chartResolution: defaults.chartResolution, chartRange: defaults.chartRange }
 
-    var wantedResolution = Resolution.isValid(selection.chartResolution) ? selection.chartResolution : defaults.chartResolution
-    var allowed = allowedChartResolutions(properties)
-    var resolution = _nearest(allowed.length > 0 ? allowed : chartResolutions(properties), wantedResolution, Resolution.ORDER)
-    var spans = allowedChartSpans(properties, resolution)
+    let wantedResolution = Resolution.isValid(selection.chartResolution) ? selection.chartResolution : defaults.chartResolution
+    let allowed = allowedChartResolutions(properties)
+    let resolution = _nearest(allowed.length > 0 ? allowed : chartResolutions(properties), wantedResolution, Resolution.ORDER)
+    let spans = allowedChartSpans(properties, resolution)
     if (spans.length === 0) spans = chartSpans(properties, resolution)
-    var wantedSpan = ChartSpan.isValid(selection.chartRange) ? selection.chartRange : defaults.chartRange
+    let wantedSpan = ChartSpan.isValid(selection.chartRange) ? selection.chartRange : defaults.chartRange
     return { priceResolution: priceFinal, changeResolution: changeFinal, chartResolution: resolution, chartRange: _nearest(spans, wantedSpan, ChartSpan.ORDER) }
 }

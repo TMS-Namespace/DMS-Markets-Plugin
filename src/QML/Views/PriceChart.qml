@@ -62,10 +62,10 @@ Canvas {
     onHeightChanged:     requestPaint()
 
     onPaint: {
-        var canvasContext = getContext("2d")
+        let canvasContext = getContext("2d")
         canvasContext.reset()
 
-        var points = processor.normalizedPoints(width, height, constants.chartPadding)
+        let points = processor.normalizedPoints(width, height, constants.chartPadding)
         if (points.length < 2) return
 
         // ── Filled area ───────────────────────────────────────────────────
@@ -74,7 +74,7 @@ Canvas {
         canvasContext.beginPath()
         canvasContext.moveTo(0, height)
         canvasContext.lineTo(0, points[0].y)
-        for (var i = 0; i < points.length; i++) canvasContext.lineTo(points[i].x, points[i].y)
+        for (let i = 0; i < points.length; i++) canvasContext.lineTo(points[i].x, points[i].y)
         canvasContext.lineTo(width, points[points.length - 1].y)
         canvasContext.lineTo(width, height)
         canvasContext.closePath()
@@ -83,7 +83,7 @@ Canvas {
 
         // ── Line ──────────────────────────────────────────────────────────
         canvasContext.beginPath()
-        for (var j = 0; j < points.length; j++) {
+        for (let j = 0; j < points.length; j++) {
             if (j === 0) canvasContext.moveTo(points[j].x, points[j].y)
             else         canvasContext.lineTo(points[j].x, points[j].y)
         }

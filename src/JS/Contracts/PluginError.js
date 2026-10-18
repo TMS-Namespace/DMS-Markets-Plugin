@@ -37,7 +37,7 @@ var _GENERIC_MESSAGE = "Something went wrong."
 
 // fields: { status?: number (HTTP status), retryable?: boolean, cause?: any }
 function PluginError(code, userMessage, details, fields) {
-    var extra = fields || {}
+    let extra = fields || {}
     this.name        = "PluginError"
     this.code        = code || Code.UNKNOWN
     this.userMessage = userMessage || _GENERIC_MESSAGE
@@ -65,7 +65,7 @@ function isPluginError(value) {
 // detail and get the generic user message: raw exception text is never shown to users.
 function from(value, fallbackCode) {
     if (isPluginError(value)) return value
-    var detail = value && value.message !== undefined ? String(value.message) : String(value)
+    let detail = value && value.message !== undefined ? String(value.message) : String(value)
     return new PluginError(fallbackCode || Code.UNKNOWN, _GENERIC_MESSAGE, detail, { cause: value })
 }
 

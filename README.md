@@ -60,7 +60,7 @@ Currently supported providers:
 
 ## Version History
 
-- v1.0.5 :
+- v2.0.0 :
   - New data provider: `Wise`, covering exotic pairs `Yahoo Finance` does not offer. No credentials required, thx for [brunofin](https://github.com/brunofin).
   - New per-symbol `Change Resolution` setting, to adjust the shown change is in what range.
   - New `Chart Resolution` that can be set per symbol (before chart resolution was same as price resolution).

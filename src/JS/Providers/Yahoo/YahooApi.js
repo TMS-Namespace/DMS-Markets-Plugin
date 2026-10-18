@@ -20,7 +20,7 @@
 function _safeNumber(rawValue) {
     if (rawValue === undefined || rawValue === null || rawValue === "null" || rawValue === "NaN")
         return NaN;
-    var parsed = parseFloat(rawValue);
+    let parsed = parseFloat(rawValue);
     return isNaN(parsed) ? NaN : parsed;
 }
 
@@ -31,7 +31,7 @@ function _pad2(value) {
 
 // Convert an epoch timestamp to UTC date and time fields.
 function _dateParts(epochSeconds) {
-    var date = new Date(epochSeconds * Constants.SECOND_MS);
+    let date = new Date(epochSeconds * Constants.SECOND_MS);
     return {
         date: date.getUTCFullYear() + "-" + _pad2(date.getUTCMonth() + 1) + "-" + _pad2(date.getUTCDate()),
         time: _pad2(date.getUTCHours()) + ":" + _pad2(date.getUTCMinutes()) + ":" + _pad2(date.getUTCSeconds())
@@ -62,9 +62,9 @@ function _parseError(detail) {
 
 // The API's own error message, if the body carries one (chart.error.description).
 function extractApiError(status, body) {
-    var parsed;
+    let parsed;
     try { parsed = JSON.parse(body); } catch (caughtError) { return ""; }
-    var error = parsed && parsed.chart && parsed.chart.error;
+    let error = parsed && parsed.chart && parsed.chart.error;
     if (!error) return "";
     return String(error.description || error.code || "unknown error");
 }
@@ -73,40 +73,40 @@ function extractApiError(status, body) {
 // valid answer without usable candles (the caller reports that as "no data").
 // Only the newest `limit` candles are built (limit 0 = all): the rows are walked from the newest backwards.
 function _parseChartResponse(responseText, limit) {
-    var parsed;
+    let parsed;
     try {
         parsed = JSON.parse(responseText);
     } catch (caughtError) {
         throw _parseError("not valid JSON (" + caughtError.message + ")");
     }
 
-    var apiError = extractApiError(200, responseText);
+    let apiError = extractApiError(200, responseText);
     if (apiError)
         throw new PluginError.PluginError(PluginError.Code.HTTP, "Yahoo Finance: " + apiError, "chart.error: " + apiError);
 
-    var result = parsed && parsed.chart && parsed.chart.result && parsed.chart.result[0];
+    let result = parsed && parsed.chart && parsed.chart.result && parsed.chart.result[0];
     if (!result) throw _parseError("no chart result in the answer");
     if (!result.timestamp || !result.indicators || !result.indicators.quote)
         return [];
 
-    var quote = result.indicators.quote[0] || {};
-    var timestamps = result.timestamp || [];
-    var opens = quote.open || [];
-    var highs = quote.high || [];
-    var lows = quote.low || [];
-    var closes = quote.close || [];
-    var volumes = quote.volume || [];
-    var results = [];
+    let quote = result.indicators.quote[0] || {};
+    let timestamps = result.timestamp || [];
+    let opens = quote.open || [];
+    let highs = quote.high || [];
+    let lows = quote.low || [];
+    let closes = quote.close || [];
+    let volumes = quote.volume || [];
+    let results = [];
 
-    for (var index = timestamps.length - 1; index >= 0 && !(limit > 0 && results.length >= limit); index--) {
-        var open = _safeNumber(opens[index]);
-        var high = _safeNumber(highs[index]);
-        var low = _safeNumber(lows[index]);
-        var close = _safeNumber(closes[index]);
+    for (let index = timestamps.length - 1; index >= 0 && !(limit > 0 && results.length >= limit); index--) {
+        let open = _safeNumber(opens[index]);
+        let high = _safeNumber(highs[index]);
+        let low = _safeNumber(lows[index]);
+        let close = _safeNumber(closes[index]);
         if (isNaN(open) || isNaN(high) || isNaN(low) || isNaN(close))
             continue;
 
-        var parts = _dateParts(timestamps[index]);
+        let parts = _dateParts(timestamps[index]);
         results.push(SeriesRules.candle({
             date: parts.date,
             time: parts.time,
@@ -123,14 +123,14 @@ function _parseChartResponse(responseText, limit) {
 
 // Select the request window needed for the latest price candles.
 function _priceRangeForResolution(resolution) {
-    var range = ProviderConstants.YAHOO_PRICE_RANGE_BY_RESOLUTION[resolution];
+    let range = ProviderConstants.YAHOO_PRICE_RANGE_BY_RESOLUTION[resolution];
     if (!range) throw _unsupported("no price range for resolution '" + resolution + "'");
     return range;
 }
 
 // Select a window that includes the previous change period.
 function _changeRangeForResolution(resolution) {
-    var range = ProviderConstants.YAHOO_CHANGE_RANGE_BY_RESOLUTION[resolution];
+    let range = ProviderConstants.YAHOO_CHANGE_RANGE_BY_RESOLUTION[resolution];
     if (!range) throw _unsupported("no change range for resolution '" + resolution + "'");
     return range;
 }
@@ -139,12 +139,12 @@ function _changeRangeForResolution(resolution) {
 // Yahoo ends intraday answers with a flat "live" row, which is not a period of its own.
 // An answer with a single period carries that previous close in `meta.chartPreviousClose`.
 function _parseChangeReference(responseText) {
-    var candles = _parseChartResponse(responseText, 0);
+    let candles = _parseChartResponse(responseText, 0);
     if (candles.length >= 2 && PriceRules.isSnapshot(candles[candles.length - 1])) candles.pop();
     if (candles.length >= 2) return candles[candles.length - 2].close;
-    var parsed = JSON.parse(responseText);
-    var meta = parsed.chart.result[0].meta || {};
-    var reference = _safeNumber(meta.chartPreviousClose);
+    let parsed = JSON.parse(responseText);
+    let meta = parsed.chart.result[0].meta || {};
+    let reference = _safeNumber(meta.chartPreviousClose);
     if (isNaN(reference)) reference = _safeNumber(meta.previousClose);
     if (isNaN(reference)) throw _parseError("no previous close in the answer");
     return reference;
@@ -152,15 +152,15 @@ function _parseChangeReference(responseText) {
 
 // Select the smallest API window covering the requested chart range.
 function _historyRangeForSpan(span) {
-    var days = ChartSpan.days(span);
-    for (var i = 0; i < ProviderConstants.YAHOO_RANGES.length; i++)
+    let days = ChartSpan.days(span);
+    for (let i = 0; i < ProviderConstants.YAHOO_RANGES.length; i++)
         if (ProviderConstants.YAHOO_RANGES[i].days >= days) return ProviderConstants.YAHOO_RANGES[i].range;
     throw _unsupported("no history range for span '" + span + "'");
 }
 
 // Translate an internal resolution into the provider API parameter.
 function _resolutionParam(resolution) {
-    var param = ProviderConstants.YAHOO_RESOLUTION_MAP[resolution];
+    let param = ProviderConstants.YAHOO_RESOLUTION_MAP[resolution];
     if (!param) throw _unsupported("unsupported resolution '" + resolution + "'");
     return param;
 }

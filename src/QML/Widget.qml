@@ -9,11 +9,10 @@
 // Symbol management and bar-text computation live in QML/Helpers/SymbolManager.qml.
 // UI-only components live in QML/Views/.
 
+pragma ComponentBehavior: Bound
 import QtQuick
-import Quickshell
 import qs.Common
 import qs.Services
-import qs.Widgets
 import qs.Modules.Plugins
 import "../JS/Helpers/Helpers.js" as Helpers
 import "../JS/Helpers/SymbolErrorMap.js" as SymbolErrors
@@ -32,22 +31,22 @@ PluginComponent {
 
     // ── Settings-driven display properties ────────────────────────────────────
     property color upColor: {
-        var savedColor = (pluginData.upColor || "").trim()
+        let savedColor = (pluginData.upColor || "").trim()
         return savedColor !== "" ? savedColor : constants.defaultUpColor
     }
     property color downColor: {
-        var savedColor = (pluginData.downColor || "").trim()
+        let savedColor = (pluginData.downColor || "").trim()
         return savedColor !== "" ? savedColor : constants.defaultDownColor
     }
 
     property bool showTicker:         Helpers.pluginDataBool(pluginData.showTicker)
-    property bool showPriceChange:    storage.readShowPriceChange(pluginData)
+    property bool showPriceChange:    dataStorage.readShowPriceChange(pluginData)
     property bool showChartRange:     Helpers.pluginDataBool(pluginData.showChartRange)
     property bool showProviderName:   Helpers.pluginDataBool(pluginData.showProviderName)
     property bool showRefreshedSince: Helpers.pluginDataBool(pluginData.showRefreshedSince)
 
     property int popoutRows: {
-        var requestedRows = parseInt(pluginData.popoutRows || constants.defaultPopoutRows)
+        let requestedRows = parseInt(pluginData.popoutRows || constants.defaultPopoutRows)
         return (isNaN(requestedRows) || requestedRows < 1) ? constants.defaultPopoutRows : requestedRows
     }
 
@@ -77,7 +76,7 @@ PluginComponent {
     // All reading and writing of plugin data goes through DataStorage (checked, reported
     // saves; damaged data is backed up rather than discarded).
     DataStorage {
-        id: storage
+        id: dataStorage
         pluginId:      root.pluginId
         pluginService: root.pluginService
     }
@@ -90,24 +89,24 @@ PluginComponent {
         id: cache
         directory: root.cacheDirectory !== "" ? root.cacheDirectory : cache.defaultDirectory
         snapshotOf: function(uid) {
-            var snapshot = fetcher.snapshotOf(uid)
-            var symbol = root.symbols.filter(function(candidate) { return candidate.uid === uid })[0]
+            let snapshot = fetcher.snapshotOf(uid)
+            let symbol = root.symbols.filter(function(candidate) { return candidate.uid === uid })[0]
             if (!snapshot || !symbol) return null
             snapshot.signature = root._symbolFetchSignature(symbol)
             return snapshot
         }
     }
 
-    property var symbols: storage.readCurrentSymbols(pluginData.symbols)
+    property var symbols: dataStorage.readCurrentSymbols(pluginData.symbols)
 
-    property var providerCredentials: storage.readCredentials(pluginData)
+    property var providerCredentials: dataStorage.readCredentials(pluginData)
     property string _lastProviderCredentialsSignature: ""
 
     property bool canFetchAnySymbol: {
         if (symbols.length === 0) return false
-        for (var i = 0; i < symbols.length; i++) {
-            var providerId = symbols[i].provider || ProvidersManager.defaultId
-            var handler = ProvidersManager.handlerFromId(providerId)
+        for (let i = 0; i < symbols.length; i++) {
+            let providerId = symbols[i].provider || ProvidersManager.defaultId
+            let handler = ProvidersManager.handlerFromId(providerId)
             if (handler && handler.isValidCredential(providerCredentials[providerId] || ""))
                 return true
         }
@@ -117,7 +116,7 @@ PluginComponent {
     onCanFetchAnySymbolChanged: setVisibilityOverride(canFetchAnySymbol)
     onProviderCredentialsChanged: {
         Logger.debug("widget", "provider credentials changed")
-        var signature = _providerCredentialsSignature(providerCredentials)
+        let signature = _providerCredentialsSignature(providerCredentials)
         if (_initialized && signature !== _lastProviderCredentialsSignature)
             fetcher.forceRefreshAll()
         _lastProviderCredentialsSignature = signature
@@ -149,7 +148,7 @@ PluginComponent {
 
     SymbolManager {
         id: symbolManager
-        storage:       storage
+        storage:       dataStorage
         symbols:       root.symbols
         priceData:     root.priceData
     }
@@ -161,9 +160,9 @@ PluginComponent {
 
     // Compare credential settings without changing provider state.
     function _providerCredentialsSignature(credentials) {
-        var ids = ProvidersManager.types.map(function(type) { return ProvidersManager.idOf(type) }).sort()
-        var parts = []
-        for (var i = 0; i < ids.length; i++)
+        let ids = ProvidersManager.types.map(function(type) { return ProvidersManager.idOf(type) }).sort()
+        let parts = []
+        for (let i = 0; i < ids.length; i++)
             parts.push(ids[i] + "=" + (credentials[ids[i]] || ""))
         return parts.join("|")
     }
@@ -175,18 +174,18 @@ PluginComponent {
 
     // Index the requested configuration by each symbol handle.
     function _symbolFetchSignatureMap(symbolList) {
-        var result = {}
-        for (var i = 0; i < symbolList.length; i++)
+        let result = {}
+        for (let i = 0; i < symbolList.length; i++)
             result[symbolList[i].uid] = _symbolFetchSignature(symbolList[i])
         return result
     }
 
     // Shows the saved data of the given symbols (asynchronously read), then calls `proceed`.
     function _restoreThen(symbolList, proceed) {
-        var uids = symbolList.map(function(symbol) { return symbol.uid })
-        var signatures = _symbolFetchSignatureMap(symbolList)
+        let uids = symbolList.map(function(symbol) { return symbol.uid })
+        let signatures = _symbolFetchSignatureMap(symbolList)
         cache.load(uids, function(records) {
-            var currentSignatures = root._symbolFetchSignatureMap(root.symbols)
+            let currentSignatures = root._symbolFetchSignatureMap(root.symbols)
             uids.forEach(function(uid) {
                 if (records[uid] && currentSignatures[uid] === signatures[uid])
                     fetcher.restore(uid, records[uid], signatures[uid])
@@ -200,20 +199,20 @@ PluginComponent {
         interval: JsConstants.SYMBOL_WATCH_DELAY_MS
         repeat: false
         onTriggered: {
-            var currentIds = symbols.map(function(symbol) { return symbol.uid })
-            var currentSignatures = _symbolFetchSignatureMap(symbols)
-            var previousIds = _knownSymbolIds
+            let currentIds = root.symbols.map(function(symbol) { return symbol.uid })
+            let currentSignatures = _symbolFetchSignatureMap(root.symbols)
+            let previousIds = root._knownSymbolIds
             // New symbols show their saved data first, then are fetched.
-            _restoreThen(symbols.filter(function(symbol) { return !!symbol.uid && previousIds.indexOf(symbol.uid) === -1 }),
-                         function() { fetcher.fetchNewSymbols(symbols, previousIds) })
+            _restoreThen(root.symbols.filter(function(symbol) { return !!symbol.uid && previousIds.indexOf(symbol.uid) === -1 }),
+                         function() { fetcher.fetchNewSymbols(root.symbols, previousIds) })
             // A removed symbol's saved data goes with it. (DMS starts with an empty list, but then nothing is known yet,
             // so there is nothing to compare with: only symbols this widget already knew can be removed.)
             previousIds.forEach(function(uid) { if (currentIds.indexOf(uid) === -1) cache.discard(uid) })
-            Logger.debug("widget", "checking " + symbols.length + " symbols for new or changed ones")
-            for (var i = 0; i < symbols.length; i++) {
-                var symbol = symbols[i]
-                if (_knownSymbolIds.indexOf(symbol.uid) !== -1
-                        && _knownSymbolFetchSignatures[symbol.uid] !== currentSignatures[symbol.uid]) {
+            Logger.debug("widget", "checking " + root.symbols.length + " symbols for new or changed ones")
+            for (let i = 0; i < root.symbols.length; i++) {
+                let symbol = root.symbols[i]
+                if (root._knownSymbolIds.indexOf(symbol.uid) !== -1
+                        && root._knownSymbolFetchSignatures[symbol.uid] !== currentSignatures[symbol.uid]) {
                     Logger.debug("widget", symbol.ticker + " changed: refreshing")
                     // What was fetched (and saved) for the old settings would be wrong now: gone until the new answer.
                     fetcher.forget(symbol.uid)
@@ -221,8 +220,8 @@ PluginComponent {
                     fetcher.forceRefreshSymbol(symbol.uid)
                 }
             }
-            _knownSymbolIds = currentIds
-            _knownSymbolFetchSignatures = currentSignatures
+            root._knownSymbolIds = currentIds
+            root._knownSymbolFetchSignatures = currentSignatures
         }
     }
 
@@ -241,22 +240,22 @@ PluginComponent {
         id: migrationTimer
         interval: 0
         repeat: false
-        onTriggered: storage.migrateSavedSymbols(pluginData.symbols)
+        onTriggered: dataStorage.migrateSavedSymbols(root.pluginData.symbols)
     }
 
     Component.onCompleted: {
         // Providers that failed to load are reported once; the others keep working.
-        var loadErrors = ProvidersManager.loadErrors
-        for (var errorIndex = 0; errorIndex < loadErrors.length; errorIndex++)
+        let loadErrors = ProvidersManager.loadErrors
+        for (let errorIndex = 0; errorIndex < loadErrors.length; errorIndex++)
             ErrorHandler.handle("providers", loadErrors[errorIndex].error, { context: loadErrors[errorIndex].name })
         // Migration may assign uids and rewrite ranges. Saving the migrated list makes DMS deliver it through
         // pluginData again: right away (inside this very call) or later. Neither case may be waited for, so
         // the symbols that already carry a uid are started now, and any that arrive later are picked up by
         // the symbol watcher as new symbols.
-        storage.migrateSavedSymbols(pluginData.symbols)
-        storage.migrateSettings(pluginData)
+        dataStorage.migrateSavedSymbols(pluginData.symbols)
+        dataStorage.migrateSettings(pluginData)
         setVisibilityOverride(canFetchAnySymbol)
-        var ready = symbols.filter(function(symbol) { return !!symbol.uid })
+        let ready = symbols.filter(function(symbol) { return !!symbol.uid })
         _knownSymbolIds = ready.map(function(symbol) { return symbol.uid })
         _knownSymbolFetchSignatures = _symbolFetchSignatureMap(ready)
         _lastProviderCredentialsSignature = _providerCredentialsSignature(providerCredentials)
@@ -346,8 +345,8 @@ PluginComponent {
 
     popoutWidth:  constants.popoutWidth
     popoutHeight: {
-        var visible   = Math.min(popoutRows, symbols.length)
-        var totalRows = visible > 0 ? visible : popoutRows
+        let visible   = Math.min(popoutRows, symbols.length)
+        let totalRows = visible > 0 ? visible : popoutRows
         return Math.max(constants.popoutMinHeight,
                         totalRows * constants.rowHeight
                         + (totalRows - 1) * Theme.spacingS

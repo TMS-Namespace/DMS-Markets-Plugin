@@ -42,9 +42,9 @@ TestSuite {
         ProvidersManager.reload(ProvidersManager.sources)
     }
     function start(savedSymbols, extraData) {
-        var data = Object.assign({ symbols: JSON.stringify(savedSymbols) }, extraData || {})
+        let data = Object.assign({ symbols: JSON.stringify(savedSymbols) }, extraData || {})
         service = serviceType.createObject(null, { data: data })
-        var component = Qt.createComponent("file://" + repoRoot + "/src/QML/Widget.qml")
+        let component = Qt.createComponent("file://" + repoRoot + "/src/QML/Widget.qml")
         check(component.status === Component.Ready, component.errorString())
         widget = component.createObject(null, { pluginId: "markets", pluginService: service, pluginData: Qt.binding(function() { return service.data }) })
         check(widget !== null, "the widget was created")
@@ -61,7 +61,7 @@ TestSuite {
         start(legacySymbols)
         waitFor(allLoaded, function(problem) {
             if (problem) { done(problem); return }
-            var saved = JSON.parse(service.data.symbols)
+            let saved = JSON.parse(service.data.symbols)
             try {
                 check(saved.every(function(symbol) { return symbol.uid && symbol.ticker && symbol.priceResolution && symbol.chartResolution && symbol.chartRange }), "the migrated list was saved")
                 equal(saved.map(function(symbol) { return symbol.ticker }), ["EURUSD=X", "BRLPLN"])
@@ -81,12 +81,12 @@ TestSuite {
     function async_older_symbols_that_arrive_after_startup_are_migrated_and_load(done) {
         start([])
         equal(widget.symbols, [])
-        var delivered = legacySymbols.concat([{ id: "^GSPC", name: "S&P", provider: "yahoo", priceInterval: "1h", graphInterval: "1M", showChangeWhenPinned: false, invert: false, pinned: false }])
+        let delivered = legacySymbols.concat([{ id: "^GSPC", name: "S&P", provider: "yahoo", priceInterval: "1h", graphInterval: "1M", showChangeWhenPinned: false, invert: false, pinned: false }])
         service.data = Object.assign({}, service.data, { symbols: JSON.stringify(delivered), showPriceRange: true, _addPriceRange: "1h", _addChartRange: "1M" })
         waitFor(allLoaded, function(problem) {
             if (problem) { done(problem); return }
             try {
-                var saved = JSON.parse(service.data.symbols)
+                let saved = JSON.parse(service.data.symbols)
                 same(saved.length, 3)
                 check(saved.every(function(symbol) { return symbol.uid && symbol.ticker }), "the delivered list was migrated and saved")
                 equal(Object.keys(widget.symbolErrors), [], "no symbol shows an error")
@@ -122,11 +122,11 @@ TestSuite {
         equal(widget.symbols, []); equal(widget.symbolErrors, {}); same(service.saves, 0)
     }
     function test_the_settings_page_builds_with_saved_symbols_of_any_format() {
-        var component = Qt.createComponent("file://" + repoRoot + "/src/QML/Settings.qml")
+        let component = Qt.createComponent("file://" + repoRoot + "/src/QML/Settings.qml")
         check(component.status === Component.Ready, component.errorString())
         ;[legacySymbols, currentSymbols].forEach(function(saved) {
-            var settingsService = serviceType.createObject(null, { data: { symbols: JSON.stringify(saved) } })
-            var settings = component.createObject(null, { pluginId: "markets", pluginService: settingsService })
+            let settingsService = serviceType.createObject(null, { data: { symbols: JSON.stringify(saved) } })
+            let settings = component.createObject(null, { pluginId: "markets", pluginService: settingsService })
             check(settings !== null, "the settings page was created")
             same(settings.symbolsList.length, 2, "its list shows the saved symbols")
             check(settings.symbolsList.every(function(symbol) { return symbol.uid && symbol.ticker }), "...migrated")

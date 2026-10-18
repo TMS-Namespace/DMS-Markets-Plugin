@@ -31,9 +31,9 @@ Column {
 
     // The page this row sits in (the nearest parent that can save and load values), or null.
     function _settings() {
-        var item = root.parent
+        let item = root.parent
         while (item) {
-            if (item.saveValue !== undefined && item.loadValue !== undefined) return item
+            if ("saveValue" in item && "loadValue" in item) return item
             item = item.parent
         }
         return null
@@ -41,35 +41,35 @@ Column {
 
     // Takes the saved value (called by the page when its plugin service attaches or its data changes).
     function loadValue() {
-        var settings = _settings()
+        let settings = _settings()
         if (settings && settings.pluginService) value = settings.loadValue(settingKey, defaultValue)
     }
 
     Component.onCompleted: loadValue()
 
     onValueChanged: {
-        var settings = _settings()
+        let settings = _settings()
         if (settings) settings.saveValue(settingKey, value)
     }
 
     readonly property var optionLabels: {
-        var labels = []
-        for (var i = 0; i < options.length; i++) labels.push(options[i].label || options[i])
+        let labels = []
+        for (let i = 0; i < options.length; i++) labels.push(options[i].label || options[i])
         return labels
     }
     readonly property var valueToLabel: {
-        var map = {}
-        for (var i = 0; i < options.length; i++) {
-            var option = options[i]
+        let map = {}
+        for (let i = 0; i < options.length; i++) {
+            let option = options[i]
             if (typeof option === "object") map[option.value] = option.label
             else map[option] = option
         }
         return map
     }
     readonly property var labelToValue: {
-        var map = {}
-        for (var i = 0; i < options.length; i++) {
-            var option = options[i]
+        let map = {}
+        for (let i = 0; i < options.length; i++) {
+            let option = options[i]
             if (typeof option === "object") map[option.label] = option.value
             else map[option] = option
         }

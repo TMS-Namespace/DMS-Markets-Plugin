@@ -36,7 +36,7 @@ assert(/property bool\s+showProviderName:\s+true/.test(popout) && /showProviderN
        "PopoutPanel forwards it");
 assert(/property bool showProviderName:\s+true/.test(row) && /showProviderName:\s+symbolRow\.showProviderName/.test(row),
        "SymbolRow forwards it");
-assert(/providerAlias:\s+ProvidersManager\.aliasOf\(symbolData\.provider \|\| ProvidersManager\.defaultId\)/.test(row),
+assert(/providerAlias:\s+ProvidersManager\.aliasOf\(symbolRow\.symbolData\.provider \|\| ProvidersManager\.defaultId\)/.test(row),
        "the alias comes from the symbol's provider (default provider for older symbols)");
 
 // The fill reaches the chart's own edges, or the card's rounded clip would have nothing to cut at the corners.

@@ -19,14 +19,14 @@ function isSnapshot(candle) {
 // (the close of the previous period at the symbol's change resolution): when it is known the change is the price minus it,
 // otherwise the change is the one over the newest candle.
 function priceFrom(latest, previous, reference) {
-    var open = latest.open, high = latest.high, low = latest.low
+    let open = latest.open, high = latest.high, low = latest.low
     if (previous && isSnapshot(latest)) {
         open = previous.open
         high = Math.max(previous.high, latest.high)
         low = Math.min(previous.low, latest.low)
     }
-    var base = typeof reference === "number" && isFinite(reference) && reference !== 0 ? reference : open
-    var change = latest.close - base
+    let base = typeof reference === "number" && isFinite(reference) && reference !== 0 ? reference : open
+    let change = latest.close - base
     return {
         open: open, high: high, low: low, close: latest.close,
         date: latest.date, time: latest.time,
