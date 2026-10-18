@@ -1,11 +1,11 @@
 // Behaviour of Settings.qml's own functions, run on the real runtime against the real ProvidersManager
 // and DataStorage; only the DMS controls (dropdowns, toggles, toasts) are stubs.
 import QtQuick
-import "../../../src/JS/Helpers/Helpers.js" as Helpers
-import "../../../src/JS/Helpers/SymbolDraft.js" as SymbolDraft
-import "../../../src/JS/Helpers/SymbolRules.js" as SymbolRules
-import "../../../src/QML/Services"
-import "../../Helpers"
+import "../../../../src/JS/Helpers/Helpers.js" as Helpers
+import "../../../../src/JS/Helpers/SymbolDraft.js" as SymbolDraft
+import "../../../../src/JS/Helpers/SymbolRules.js" as SymbolRules
+import "../../../../src/QML/Services"
+import "../../../Helpers"
 
 TestSuite {
     id: suite
@@ -37,9 +37,9 @@ TestSuite {
     // ── addOrUpdateSymbol ────────────────────────────────────────────────────
     function add(ticker, provider, existing, editIndex) {
         let scope = scopeFor(null), submitted = [];
-        scope.tickerInput.value = ticker;
-        scope.nameInput.value = "Name";
-        scope.providerSelect.value = provider;
+        scope.formState.ticker = ticker;
+        scope.formState.name = "Name";
+        scope.formState.provider = provider;
         scope.symbolsList = existing || [];
         scope.editIndex = editIndex === undefined ? -1 : editIndex;
         scope.doSaveSymbol = function (tickerText, displayName) {
@@ -51,34 +51,29 @@ TestSuite {
     function announce(name, extra, call, failing) {
         setup();
         let pluginService = service({}, failing ? new Error("disk full") : null), scope = scopeFor(pluginService);
-        scope.providerSelect.value = "wise";
-        scope.priceResolutionSelect.value = "1h";
-        scope.chartResolutionSelect.value = "1d";
-        scope.chartRangeSelect.value = "1M";
+        scope.formState.provider = "wise";
+        scope.formState.priceResolution = "1h";
+        scope.formState.chartResolution = "1d";
+        scope.formState.chartRange = "1M";
         for (let field in extra)
-            scope[field] = extra[field];
+            (field in scope.formState ? scope.formState : scope)[field] = extra[field];
         call(settingsFunction(name, scope));
         return {
             scope: scope,
             pluginService: pluginService
         };
     }
-    function control(value) {
-        return {
-            value: value
-        };
-    }
     function save(list, editIndex, overrides) {
         let pluginService = service(), scope = scopeFor(pluginService);
-        scope.providerSelect.value = "wise";
-        scope.priceResolutionSelect.value = "1h";
-        scope.chartResolutionSelect.value = "1d";
-        scope.chartRangeSelect.value = "1M";
-        scope.showChangeToggle.value = true;
+        scope.formState.provider = "wise";
+        scope.formState.priceResolution = "1h";
+        scope.formState.chartResolution = "1d";
+        scope.formState.chartRange = "1M";
+        scope.formState.showChange = true;
         scope.symbolsList = list;
         scope.editIndex = editIndex;
         for (let field in overrides)
-            scope[field] = overrides[field];
+            (field in scope.formState ? scope.formState : scope)[field] = overrides[field];
         settingsFunction("doSaveSymbol", scope)("BRLPLN", "Real");
         return pluginService.data.symbols ? JSON.parse(pluginService.data.symbols) : null;
     }
@@ -95,15 +90,17 @@ TestSuite {
                     pluginId: "markets",
                     pluginService: pluginService
                 }) as DataStorage) : null,
-            priceResolutionSelect: control("1m"),
-            changeResolutionSelect: control("1d"),
-            chartResolutionSelect: control("1m"),
-            chartRangeSelect: control("1D"),
-            providerSelect: control("yahoo"),
-            tickerInput: control(""),
-            nameInput: control(""),
-            showChangeToggle: control(false),
-            invertToggle: control(false),
+            formState: {
+                priceResolution: "1m",
+                changeResolution: "1d",
+                chartResolution: "1m",
+                chartRange: "1D",
+                provider: "yahoo",
+                ticker: "",
+                name: "",
+                showChange: false,
+                invert: false
+            },
             symbolsList: [],
             editIndex: -1,
             root: {
@@ -111,19 +108,23 @@ TestSuite {
                     saved[key] = value;
                 }
             },
-            ToastService: {
-                showError: function (title, message) {
-                    errors.push(message);
-                },
-                showInfo: function (title, message) {
-                    infos.push(message);
-                }
+            errorRequested: function (message) {
+                errors.push(message);
+            },
+            infoRequested: function (message) {
+                infos.push(message);
             },
             Qt: {
                 callLater: function (action) {
                     action();
                 }
             }
+        };
+        scope.draftRequested = function (draft) {
+            scope.formState = draft;
+        };
+        scope.selectionRequested = function (selection) {
+            scope.formState = Object.assign({}, scope.formState, selection);
         };
         // Settings reads the selected provider's handler from the manager; it follows the selected id.
         Object.defineProperty(scope, "selectedHandler", {
@@ -146,7 +147,7 @@ TestSuite {
         });
     }
     function settingsFunction(name, scope) {
-        return loadFunction("src/QML/Settings.qml", name, scope);
+        return loadFunction("src/QML/Helpers/SettingsController.qml", name, scope);
     }
     function setup() {
         ErrorHandler.reset();
@@ -168,15 +169,15 @@ TestSuite {
     // ── doSaveSymbol ─────────────────────────────────────────────────────────
     function test_a_blocked_chart_is_refused_a_warned_one_is_saved() {
         let pluginService = service(), scope = scopeFor(pluginService);
-        scope.providerSelect.value = "wise";
-        scope.priceResolutionSelect.value = "1h";
-        scope.chartResolutionSelect.value = "1d";
-        scope.chartRangeSelect.value = "1Y";            // 365 candles → blocked
+        scope.formState.provider = "wise";
+        scope.formState.priceResolution = "1h";
+        scope.formState.chartResolution = "1d";
+        scope.formState.chartRange = "1Y";            // 365 candles → blocked
         settingsFunction("doSaveSymbol", scope)("BRLPLN", "Real");
         same(errors.length, 1);
         check(/cannot be used/.test(errors[0]));
         same(pluginService.data.symbols, undefined, "nothing is saved");
-        scope.chartRangeSelect.value = "6M";                                                    // 182 candles → warn
+        scope.formState.chartRange = "6M";                                                    // 182 candles → warn
         settingsFunction("doSaveSymbol", scope)("BRLPLN", "Real");
         same(JSON.parse(pluginService.data.symbols).length, 1, "a warned combination is still saved");
     }
@@ -196,9 +197,9 @@ TestSuite {
             invert: false
         });
         equal(triple(scope), ["1h", "1d", "6M"]);
-        same(scope.providerSelect.value, "wise");
-        same(scope.showChangeToggle.value, true);
-        same(scope.invertToggle.value, false);
+        same(scope.formState.provider, "wise");
+        same(scope.formState.showChange, true);
+        same(scope.formState.invert, false);
         equal([pluginService.data._addPriceResolution, pluginService.data._addChartResolution, pluginService.data._addChartRange], ["1h", "1d", "6M"], "clamped values are what gets persisted");
         same(pluginService.data._addProvider, "wise");
         same(pluginService.data._addTicker, "BRLPLN");
@@ -223,19 +224,19 @@ TestSuite {
     }
     function test_a_valid_choice_is_left_alone() {
         let scope = scopeFor(null);
-        scope.priceResolutionSelect.value = "15m";
-        scope.chartResolutionSelect.value = "1d";
-        scope.chartRangeSelect.value = "3M";
+        scope.formState.priceResolution = "15m";
+        scope.formState.chartResolution = "1d";
+        scope.formState.chartRange = "3M";
         settingsFunction("syncSelections", scope)();
         equal(triple(scope), ["15m", "1d", "3M"]);
     }
     function test_changing_the_resolution_refilters_the_span() {
         let scope = scopeFor(null);
-        scope.priceResolutionSelect.value = "1h";
-        scope.chartResolutionSelect.value = "1m";
-        scope.chartRangeSelect.value = "1Y";
+        scope.formState.priceResolution = "1h";
+        scope.formState.chartResolution = "1m";
+        scope.formState.chartRange = "1Y";
         settingsFunction("syncSelections", scope)();
-        equal([scope.chartResolutionSelect.value, scope.chartRangeSelect.value], ["1m", "3H"]);
+        equal([scope.formState.chartResolution, scope.formState.chartRange], ["1m", "3H"]);
     }
     function test_clear_form_starts_at_the_provider_default() {
         let scope = scopeFor(null), draft = null;
@@ -281,7 +282,7 @@ TestSuite {
             }
         ];
         let edited = save(existing, 0, {
-            chartRangeSelect: control("3M")
+            chartRange: "3M"
         })[0];
         same(edited.uid, "11111111-1111-4111-8111-111111111111");
         same(edited.pinned, true);
@@ -332,16 +333,16 @@ TestSuite {
     function test_empty_first_run_values_resolve_to_a_servable_default() {
         let scope = scopeFor(null);
         scope.selectedProviderId = "wise";
-        scope.priceResolutionSelect.value = "";
-        scope.chartResolutionSelect.value = "";
-        scope.chartRangeSelect.value = "";
+        scope.formState.priceResolution = "";
+        scope.formState.chartResolution = "";
+        scope.formState.chartRange = "";
         settingsFunction("syncSelections", scope)();
         let wise = ProvidersManager.handlerFromId("wise");
         check(wise.priceResolutionOptions().some(function (option) {
-            return option.value === scope.priceResolutionSelect.value;
+            return option.value === scope.formState.priceResolution;
         }));
-        check(wise.chartSpanOptions(scope.chartResolutionSelect.value).some(function (option) {
-            return option.value === scope.chartRangeSelect.value;
+        check(wise.chartSpanOptions(scope.formState.chartResolution).some(function (option) {
+            return option.value === scope.formState.chartRange;
         }));
     }
     function test_new_symbols_get_a_uid_and_the_ticker_field() {
@@ -430,8 +431,8 @@ TestSuite {
                     }
                 ],
                 editIndex: 0,
-                showChangeToggle: control(true),
-                invertToggle: control(true)
+                showChange: true,
+                invert: true
             }, function (callback) {
                 callback();
             }, failing);
@@ -445,9 +446,9 @@ TestSuite {
     function test_switching_to_wise_snaps_choices_to_what_wise_serves() {
         let scope = scopeFor(null);
         scope.selectedProviderId = "wise";
-        scope.priceResolutionSelect.value = "5m";
-        scope.chartResolutionSelect.value = "15m";
-        scope.chartRangeSelect.value = "1Y";
+        scope.formState.priceResolution = "5m";
+        scope.formState.chartResolution = "15m";
+        scope.formState.chartRange = "1Y";
         settingsFunction("syncSelections", scope)();
         equal(triple(scope), ["1h", "1h", "1W"], "no 5m/15m at Wise; a year of hourly candles is not allowed");
     }
@@ -476,9 +477,9 @@ TestSuite {
     function test_the_display_name_is_validated_before_anything_is_saved() {
         ["12345678901", "A very long name", "Name;rm", "N|N", "é"].forEach(function (bad) {
             let pluginService = service(), scope = scopeFor(pluginService), before = errors.length;
-            scope.tickerInput.value = "BRLPLN";
-            scope.nameInput.value = bad;
-            scope.providerSelect.value = "wise";
+            scope.formState.ticker = "BRLPLN";
+            scope.formState.name = bad;
+            scope.formState.provider = "wise";
             settingsFunction("addOrUpdateSymbol", scope)();
             same(pluginService.writes === undefined ? 0 : pluginService.writes.length, 0, "nothing saved for " + JSON.stringify(bad));
             same(errors.length, before + 1, "the user is told why: " + JSON.stringify(bad));
@@ -486,6 +487,6 @@ TestSuite {
         equal(add("BRLPLN", "wise"), [["BRLPLN", "Name"]], "a valid name is saved");
     }
     function triple(scope) {
-        return [scope.priceResolutionSelect.value, scope.chartResolutionSelect.value, scope.chartRangeSelect.value];
+        return [scope.formState.priceResolution, scope.formState.chartResolution, scope.formState.chartRange];
     }
 }

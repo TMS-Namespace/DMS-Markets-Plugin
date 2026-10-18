@@ -38,6 +38,8 @@ failed, not what any one plugin does.
   - `JS/Helpers`: pure logic modules.
   - `JS/<Integration>/<Name>/`: everything specific to one external integration (see section 6).
 - Dependencies point one way: Views → Helpers/Services → Contracts. A lower layer never imports a higher one.
+- Keep DMS entry points focused on composing views and connecting host APIs. Per-instance controller helpers own
+  form actions and widget lifecycles. Controllers receive data and emit signals; they never reference visual controls.
 - One type per file; the file name equals the type name. Every QML folder has a `qmldir` listing exactly its files.
 
 ## 3. Contracts (shared data structures)

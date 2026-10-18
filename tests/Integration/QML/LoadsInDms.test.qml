@@ -10,7 +10,7 @@ TestSuite {
         return component;
     }
     function test_every_qml_file_of_the_plugin_loads() {
-        ["Widget", "Settings", "Views/SymbolRow", "Views/PopoutPanel", "Views/PriceChart", "Views/ConfiguredSymbol", "Views/IconButton", "Views/ColorSettingRow", "Views/HorizontalBarPill", "Views/VerticalBarPill"].forEach(function (name) {
+        ["Widget", "Settings", "Helpers/SettingsController", "Helpers/WidgetController", "Views/SymbolRow", "Views/PopoutPanel", "Views/PriceChart", "Views/ConfiguredSymbol", "Views/IconButton", "Views/ColorSettingRow", "Views/DisplaySettings", "Views/SymbolEditor", "Views/HorizontalBarPill", "Views/VerticalBarPill"].forEach(function (name) {
             load("src/QML/" + name + ".qml");
         });
     }

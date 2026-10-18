@@ -85,7 +85,7 @@ TestSuite {
                 suite.pollDone("");
             } else if (--suite.pollsLeft <= 0) {
                 stop();
-                suite.pollDone("timed out: list " + (suite.loader.item ? suite.loader.item.symbolsList.length : -1) + ", toasts " + JSON.stringify(ToastService.errors));
+                suite.pollDone("timed out: list " + (suite.loader.item ? suite.loader.item.controller.symbolsList.length : -1) + ", toasts " + JSON.stringify(ToastService.errors));
             }
         }
     }
@@ -153,21 +153,21 @@ TestSuite {
             symbols: "[]"
         });
         waitFor(function () {
-            return page._formReset && page.tickerText === "";
+            return page.controller._formReset && page.controller.tickerText === "";
         }, function (problem) {
             try {
                 if (problem)
                     throw new Error(problem);
                 same(formButton(page, "Add Symbol").enabled, false, "empty input cannot be saved");
-                enterText(page, page.selectedProvider.symbolPlaceholder, "NOT A SYMBOL");
+                enterText(page, page.controller.selectedProvider.symbolPlaceholder, "NOT A SYMBOL");
                 enterText(page, "Gold", "Gold");
                 same(formButton(page, "Add Symbol").enabled, false, "invalid ticker cannot be saved");
-                enterText(page, page.selectedProvider.symbolPlaceholder, "HG=F");
+                enterText(page, page.controller.selectedProvider.symbolPlaceholder, "HG=F");
                 let button = formButton(page, "Add Symbol");
                 check(button.enabled);
                 button.clicked(null);
                 waitFor(function () {
-                    return page.symbolsList.length === 1 && page.tickerText === "";
+                    return page.controller.symbolsList.length === 1 && page.controller.tickerText === "";
                 }, function (saveProblem) {
                     try {
                         if (saveProblem)
@@ -178,8 +178,8 @@ TestSuite {
                         same(saved[0].name, "Gold");
                         check(/^[0-9a-f-]{36}$/i.test(saved[0].uid), "new symbol has a persisted ID");
                         check(configuredRow(page, saved[0].uid) !== null, "new row is displayed");
-                        same(page.editIndex, -1);
-                        same(page.nameText, "", "form resets after saving");
+                        same(page.controller.editIndex, -1);
+                        same(page.controller.nameText, "", "form resets after saving");
                         equal(ToastService.errors, []);
                         done("");
                     } catch (error) {
@@ -192,13 +192,41 @@ TestSuite {
         });
     }
 
+    // The editor's cancel signal resets the form without writing unsaved changes to the symbol list.
+    function async_cancel_button_discards_symbol_edits(done) {
+        let page = open({
+            symbols: JSON.stringify(twoSymbols)
+        });
+        waitFor(function () {
+            return page.controller._formReset && page.controller.symbolsList.length === 2;
+        }, function (problem) {
+            try {
+                if (problem)
+                    throw new Error(problem);
+                page.controller.editSymbol(0);
+                enterText(page, "Gold", "Changed");
+                same(service.data._addName, "Changed", "the editor sends draft changes to storage");
+                formButton(page, "Cancel").clicked(null);
+                same(page.controller.editIndex, -1);
+                same(page.controller.tickerText, "");
+                same(page.controller.nameText, "");
+                equal(JSON.parse(service.data.symbols), twoSymbols, "cancel preserves saved symbols");
+                same(formButton(page, "Add Symbol").enabled, false);
+                equal(ToastService.errors, []);
+                done("");
+            } catch (error) {
+                done(error.message);
+            }
+        });
+    }
+
     // Deleting the row currently being edited must persist the removal and leave the form in add mode.
     function async_delete_symbol_through_settings_controls(done) {
         let page = open({
             symbols: JSON.stringify(twoSymbols)
         });
         waitFor(function () {
-            return page._formReset && configuredRow(page, twoSymbols[1].uid) !== null;
+            return page.controller._formReset && configuredRow(page, twoSymbols[1].uid) !== null;
         }, function (problem) {
             try {
                 if (problem)
@@ -208,7 +236,7 @@ TestSuite {
                     return item as MouseArea;
                 }) as MouseArea;
                 selection.clicked(null);
-                same(page.editIndex, 1);
+                same(page.controller.editIndex, 1);
                 let icon = findItem(row, function (item) {
                     return (item as DankIcon) && item.name === "delete";
                 });
@@ -217,7 +245,7 @@ TestSuite {
                 check(button.enabled);
                 button.clicked(null);
                 waitFor(function () {
-                    return page.symbolsList.length === 1 && page.editIndex === -1;
+                    return page.controller.symbolsList.length === 1 && page.controller.editIndex === -1;
                 }, function (saveProblem) {
                     try {
                         if (saveProblem)
@@ -225,8 +253,8 @@ TestSuite {
                         equal(JSON.parse(service.data.symbols), [twoSymbols[0]], "only the selected entry is removed");
                         same(configuredRow(page, twoSymbols[1].uid), null, "removed row disappears");
                         check(configuredRow(page, twoSymbols[0].uid) !== null, "other row remains");
-                        same(page.tickerText, "");
-                        same(page.nameText, "");
+                        same(page.controller.tickerText, "");
+                        same(page.controller.nameText, "");
                         equal(ToastService.errors, []);
                         done("");
                     } catch (error) {
@@ -238,12 +266,41 @@ TestSuite {
             }
         });
     }
+
+    // Nested host controls must still find the page when loading and saving global settings.
+    function async_display_view_loads_and_saves_settings(done) {
+        let page = open({
+            symbols: "[]",
+            showTicker: false
+        });
+        waitFor(function () {
+            let toggle = findItem(page, function (item) {
+                return (item as ToggleSetting) && item.settingKey === "showTicker";
+            });
+            return page.controller._formReset && toggle !== null && toggle.isInitialized;
+        }, function (problem) {
+            try {
+                if (problem)
+                    throw new Error(problem);
+                let toggle = findItem(page, function (item) {
+                    return (item as ToggleSetting) && item.settingKey === "showTicker";
+                }) as ToggleSetting;
+                same(toggle.value, false, "saved value reaches the extracted view");
+                toggle.value = true;
+                same(service.data.showTicker, true, "nested control saves through the page");
+                equal(ToastService.errors, []);
+                done("");
+            } catch (error) {
+                done(error.message);
+            }
+        });
+    }
     function async_every_field_is_set_from_the_symbol_after_changing_each_dropdown_in_turn(done) {
         let page = open({
             symbols: JSON.stringify(twoSymbols)
         });
         waitFor(function () {
-            return page.symbolsList.length === 2 && page._formReset;
+            return page.controller.symbolsList.length === 2 && page.controller._formReset;
         }, function (problem) {
             if (problem) {
                 done(problem);
@@ -252,9 +309,9 @@ TestSuite {
             settled(page, done, function () {
                 ["_addProvider", "_addPriceResolution", "_addChangeResolution", "_addChartResolution", "_addChartRange", "_addShowChange", "_addInvert"].forEach(function (key) {
                     service.savePluginData("markets", key, key === "_addProvider" ? "wise" : (key === "_addShowChange" || key === "_addInvert" ? true : "1d"));
-                    page.editSymbol(0);
-                    equal(page.formState, fieldsOf(twoSymbols[0]), "after changing " + key);
-                    page.cancelEdit();
+                    page.controller.editSymbol(0);
+                    equal(page.controller.formState, fieldsOf(twoSymbols[0]), "after changing " + key);
+                    page.controller.cancelEdit();
                 });
             });
         });
@@ -264,7 +321,7 @@ TestSuite {
             symbols: JSON.stringify(twoSymbols)
         });
         waitFor(function () {
-            return page.symbolsList.length === 2 && page._formReset;
+            return page.controller.symbolsList.length === 2 && page.controller._formReset;
         }, function (problem) {
             if (problem) {
                 done(problem);
@@ -276,12 +333,12 @@ TestSuite {
                 service.savePluginData("markets", "_addPriceResolution", "1h");
                 service.savePluginData("markets", "_addInvert", true);
                 // …then picks the first symbol, then the second, then the first again.
-                page.editSymbol(0);
-                equal(page.formState, fieldsOf(twoSymbols[0]), "first symbol");
-                page.editSymbol(1);
-                equal(page.formState, fieldsOf(twoSymbols[1]), "second symbol");
-                page.editSymbol(0);
-                equal(page.formState, fieldsOf(twoSymbols[0]), "first symbol again");
+                page.controller.editSymbol(0);
+                equal(page.controller.formState, fieldsOf(twoSymbols[0]), "first symbol");
+                page.controller.editSymbol(1);
+                equal(page.controller.formState, fieldsOf(twoSymbols[1]), "second symbol");
+                page.controller.editSymbol(0);
+                equal(page.controller.formState, fieldsOf(twoSymbols[0]), "first symbol again");
             });
         });
     }
@@ -290,7 +347,7 @@ TestSuite {
             symbols: JSON.stringify(current)
         });
         waitFor(function () {
-            return page.symbolsList.length === 1;
+            return page.controller.symbolsList.length === 1;
         }, function (problem) {
             try {
                 if (problem) {
@@ -309,14 +366,14 @@ TestSuite {
             symbols: JSON.stringify(older)
         });
         waitFor(function () {
-            return page.symbolsList.length === 3;
+            return page.controller.symbolsList.length === 3;
         }, function (problem) {
             if (problem) {
                 done(problem);
                 return;
             }
             try {
-                check(page.symbolsList.every(function (symbol) {
+                check(page.controller.symbolsList.every(function (symbol) {
                     return symbol.uid && symbol.ticker;
                 }), "migrated");
                 equal(ToastService.errors, [], "no error toast");
@@ -342,7 +399,7 @@ TestSuite {
             symbols: JSON.stringify(current)
         }, left));
         waitFor(function () {
-            return page._formReset && page.tickerText === "" && page.nameText === "";
+            return page.controller._formReset && page.controller.tickerText === "" && page.controller.nameText === "";
         }, function (problem) {
             if (problem) {
                 done(problem);
@@ -353,9 +410,9 @@ TestSuite {
                 return false;
             }, function () {
                 try {
-                    same(page.tickerText, "", "no ticker");
-                    same(page.nameText, "", "no name");
-                    same(page.selectedProviderId, "yahoo", "the default provider");
+                    same(page.controller.tickerText, "", "no ticker");
+                    same(page.controller.nameText, "", "no name");
+                    same(page.controller.selectedProviderId, "yahoo", "the default provider");
                     same(service.data._addShowChange, false);
                     same(service.data._addInvert, false);
                     same(service.data._addTicker, "", "the saved draft was reset too");
@@ -376,7 +433,7 @@ TestSuite {
         };      // e.g. the widget saved, or DMS delivered the data late
         service.pluginDataChanged("markets");
         waitFor(function () {
-            return page.symbolsList.length === 1;
+            return page.controller.symbolsList.length === 1;
         }, function (problem) {
             try {
                 if (problem) {
@@ -424,14 +481,14 @@ TestSuite {
             symbols: JSON.stringify(twoSymbols)
         });
         waitFor(function () {
-            return page.symbolsList.length === 2 && page._formReset;
+            return page.controller.symbolsList.length === 2 && page.controller._formReset;
         }, function (problem) {
             if (problem) {
                 done(problem);
                 return;
             }
             settled(page, done, function () {
-                same(page.formUnlocked, false, "an empty form is locked");
+                same(page.controller.formUnlocked, false, "an empty form is locked");
                 let base = {
                     provider: "yahoo",
                     priceResolution: "1h",
@@ -441,45 +498,45 @@ TestSuite {
                     showChange: false,
                     invert: false
                 };
-                page.setDraft(Object.assign({
+                page.controller.setDraft(Object.assign({
                     ticker: "EURUSD=X",
                     name: ""
                 }, base));
-                same(page.formUnlocked, false, "a ticker without a name stays locked");
-                page.setDraft(Object.assign({
+                same(page.controller.formUnlocked, false, "a ticker without a name stays locked");
+                page.controller.setDraft(Object.assign({
                     ticker: "",
                     name: "EUR"
                 }, base));
-                same(page.formUnlocked, false, "a name without a ticker stays locked");
-                page.setDraft(Object.assign({
+                same(page.controller.formUnlocked, false, "a name without a ticker stays locked");
+                page.controller.setDraft(Object.assign({
                     ticker: "NOT A TICKER",
                     name: "EUR"
                 }, base));
-                same(page.formUnlocked, false, "an invalid ticker stays locked");
-                page.setDraft(Object.assign({
+                same(page.controller.formUnlocked, false, "an invalid ticker stays locked");
+                page.controller.setDraft(Object.assign({
                     ticker: "EURUSD=X",
                     name: "a;b"
                 }, base));
-                same(page.formUnlocked, false, "an invalid name stays locked");
-                page.setDraft(Object.assign({
+                same(page.controller.formUnlocked, false, "an invalid name stays locked");
+                page.controller.setDraft(Object.assign({
                     ticker: "EURUSD=X",
                     name: "EUR USD"
                 }, base));
-                same(page.formUnlocked, true, "a valid ticker and name unlock it");
-                page.clearForm();
-                same(page.formUnlocked, false, "clearing locks it again");
-                page.editSymbol(1);
-                same(page.formUnlocked, true, "a picked symbol has both: unlocked");
-                page.cancelEdit();
-                same(page.formUnlocked, false, "deselecting locks it again");
+                same(page.controller.formUnlocked, true, "a valid ticker and name unlock it");
+                page.controller.clearForm();
+                same(page.controller.formUnlocked, false, "clearing locks it again");
+                page.controller.editSymbol(1);
+                same(page.controller.formUnlocked, true, "a picked symbol has both: unlocked");
+                page.controller.cancelEdit();
+                same(page.controller.formUnlocked, false, "deselecting locks it again");
                 // The ticker is validated against the provider, so the provider stays choosable while locked.
-                page.setDraft(Object.assign({
+                page.controller.setDraft(Object.assign({
                     ticker: "BRLPLN",
                     name: "BRL"
                 }, base, {
                     provider: "wise"
                 }));
-                same(page.formUnlocked, true);
+                same(page.controller.formUnlocked, true);
             });
         });
     }
@@ -490,7 +547,7 @@ TestSuite {
             symbols: JSON.stringify(twoSymbols)
         });
         waitFor(function () {
-            return page._formReset && configuredRow(page, twoSymbols[1].uid) !== null;
+            return page.controller._formReset && configuredRow(page, twoSymbols[1].uid) !== null;
         }, function (problem) {
             try {
                 if (problem)
@@ -500,15 +557,15 @@ TestSuite {
                     return item as MouseArea;
                 }) as MouseArea;
                 selection.clicked(null);
-                same(page.editIndex, 1);
-                same(page.tickerText, "BRLPLN", "selected row fills the edit form");
-                enterText(page, page.selectedProvider.symbolPlaceholder, "EURUSD");
+                same(page.controller.editIndex, 1);
+                same(page.controller.tickerText, "BRLPLN", "selected row fills the edit form");
+                enterText(page, page.controller.selectedProvider.symbolPlaceholder, "EURUSD");
                 enterText(page, "Gold", "Euro");
                 let button = formButton(page, "Update Symbol");
                 check(button.enabled);
                 button.clicked(null);
                 waitFor(function () {
-                    return page.editIndex === -1 && page.symbolsList[1].ticker === "EURUSD";
+                    return page.controller.editIndex === -1 && page.controller.symbolsList[1].ticker === "EURUSD";
                 }, function (saveProblem) {
                     try {
                         if (saveProblem)

@@ -3,7 +3,7 @@ const { assert, same, readSource, loadShared } = require("../../../Helpers/Loade
 const chart = readSource("QML/Views/PriceChart.qml");
 const row = readSource("QML/Views/SymbolRow.qml");
 const popout = readSource("QML/Views/PopoutPanel.qml");
-const widget = readSource("QML/Widget.qml");
+const widget = [readSource("QML/Widget.qml"), readSource("QML/Helpers/WidgetController.qml")].join("\n");
 const constants = readSource("QML/Helpers/Constants.qml");
 const { helpers } = loadShared();
 

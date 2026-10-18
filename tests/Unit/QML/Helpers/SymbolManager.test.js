@@ -1,7 +1,7 @@
 const { assert, same, loadProviders, readSource, compileFunction } = require("../../../Helpers/Loader");
 
 const manager = readSource("QML/Helpers/SymbolManager.qml");
-const widget = readSource("QML/Widget.qml");
+const widget = [readSource("QML/Widget.qml"), readSource("QML/Helpers/WidgetController.qml")].join("\n");
 
 // The manager names the actions; persistence is DataStorage's job.
 assert(/property var\s+storage:\s+null/.test(manager), "it is given the widget's DataStorage");

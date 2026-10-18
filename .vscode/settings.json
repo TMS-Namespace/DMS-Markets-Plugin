@@ -8,5 +8,8 @@
         "/usr/lib/qt6/qml",
         "/usr/lib/x86_64-linux-gnu/qt6/qml"
     ],
-    "qt-qml.qmlls.useNoCMakeCalls": true
+    "qt-qml.qmlls.useNoCMakeCalls": true,
+    "cSpell.words": [
+        "popout"
+    ]
 }

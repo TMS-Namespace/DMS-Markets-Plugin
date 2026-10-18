@@ -259,8 +259,8 @@ TestSuite {
                 pluginService: settingsService
             });
             check(settings !== null, "the settings page was created");
-            same(settings.symbolsList.length, 2, "its list shows the saved symbols");
-            check(settings.symbolsList.every(function (symbol) {
+            same(settings.controller.symbolsList.length, 2, "its list shows the saved symbols");
+            check(settings.controller.symbolsList.every(function (symbol) {
                 return symbol.uid && symbol.ticker;
             }), "...migrated");
             settings.destroy();

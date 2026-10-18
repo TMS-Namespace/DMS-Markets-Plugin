@@ -125,7 +125,7 @@ TestSuite {
         seedRecord(original, {}, function () {
             start([]);
             widget.symbols = [original];
-            widget._restoreThen([original], function () {
+            widget.controller._restoreThen([original], function () {
                 done(priceOf(uidA) === null ? "" : "cached data for the old ticker was restored after an edit");
             });
             widget.symbols = [symbol(uidA, "HG=F")];
@@ -299,11 +299,7 @@ TestSuite {
                         same(priceOf(uidA), cachedClose);
                         same(widget.refreshedTimes[uidA + "_price"], timestamp);
                         same(widget.graphData[uidA].length, 2);
-                        let fetcher = widget.children.filter(function (child) {
-                            return typeof child.forceRefreshAll === "function";
-                        })[0];
-                        check(!!fetcher);
-                        fetcher.forceRefreshAll();
+                        widget.controller.refreshAll();
                         waitUntil(function () {
                             return freshPrice(uidA);
                         }, function (refreshProblem) {

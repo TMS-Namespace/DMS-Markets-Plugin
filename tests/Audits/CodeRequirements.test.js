@@ -38,7 +38,7 @@ assert(
 );
 const storageSource = fs.readFileSync(path.join(srcRoot, "QML/Services/DataStorage.qml"), "utf8");
 assert(!/function loadDraftField\(/.test(storageSource), "do not restore the obsolete draft-reading API");
-const widgetSource = fs.readFileSync(path.join(srcRoot, "QML/Widget.qml"), "utf8");
+const widgetSource = fs.readFileSync(path.join(srcRoot, "QML/Helpers/WidgetController.qml"), "utf8");
 assert(
     /property var symbols: dataStorage\.readCurrentSymbols\(pluginData\.symbols\)/.test(widgetSource),
     "only current-format symbols reach the widget"

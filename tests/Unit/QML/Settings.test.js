@@ -1,7 +1,26 @@
 // Static wiring checks of Settings.qml (the behaviour is tested in Settings.test.qml on the real runtime).
 const { assert, readSource } = require("../../Helpers/Loader");
 
-const source = readSource("QML/Settings.qml").replace(/^\s*\/\/.*$/gm, "");
+const page = readSource("QML/Settings.qml");
+const controller = readSource("QML/Helpers/SettingsController.qml");
+const editor = readSource("QML/Views/SymbolEditor.qml");
+const display = readSource("QML/Views/DisplaySettings.qml");
+const source = [page, controller, editor, display].join("\n").replace(/^\s*\/\/.*$/gm, "");
+
+// Views expose fields and actions; persistence and provider decisions stay on the page.
+assert(/SymbolEditor\s*\{/.test(page) && /DisplaySettings\s*\{/.test(page));
+for (const view of [editor, display])
+    assert(
+        !/DataStorage|storage\.|pluginService\./.test(view.replace(/\/\/[^\n]*/g, "")),
+        "settings views do not access storage"
+    );
+for (const [signal, action] of [
+    ["SaveRequested", "addOrUpdateSymbol"],
+    ["CancelRequested", "cancelEdit"],
+    ["FlagsEdited", "saveEditedSymbolFlags"]
+])
+    assert(page.includes(`on${signal}: root.controller.${action}()`), `${signal} reaches the page controller`);
+assert(/onDraftFieldEdited:[^\n]*root\.controller\.saveDraftField/.test(page));
 const code = source.replace(/\/\/.*$/gm, "");
 
 // ── Dropdowns come from the provider properties, never from hard-coded lists ─
@@ -23,7 +42,7 @@ assert(
 );
 assert(source.includes("selectedHandler ? selectedHandler.chartResolutionOptions() : []"));
 assert(
-    source.includes("selectedHandler ? selectedHandler.chartSpanOptions(chartResolutionSelect.value) : []"),
+    source.includes("selectedHandler ? selectedHandler.chartSpanOptions(formState.chartResolution) : []"),
     "chart ranges are filtered by the selected chart resolution"
 );
 assert(!/value:\s*"(1m|5m|15m|1h|1d|1w|1M|1W|3M|6M|1Y|2Y|5Y|10Y)"/.test(source), "no hard-coded range option lists");
@@ -39,7 +58,7 @@ assert(
     "provider change re-clamps selections"
 );
 assert(
-    /chartResolutionSelect[\s\S]*?onValueChanged:\s*Qt\.callLater\(root\.syncSelections\)/.test(source),
+    /chartResolutionSelect[\s\S]*?onValueChanged:\s*root\.chartResolutionEdited\(\)/.test(source),
     "resolution change re-filters the chart range"
 );
 assert(
@@ -99,7 +118,7 @@ assert(
 assert(/id: chartResolutionSelect[\s\S]*?defaultValue:\s*JsConstants\.DEFAULT_CHART_RESOLUTION/.test(source));
 assert(/id: chartRangeSelect[\s\S]*?defaultValue:\s*JsConstants\.DEFAULT_CHART_SPAN/.test(source));
 assert(/id: priceResolutionSelect[\s\S]*?defaultValue:\s*JsConstants\.DEFAULT_PRICE_RESOLUTION/.test(source));
-assert(source.includes('import "../JS/Helpers/Constants.js" as JsConstants'));
+assert(editor.includes('import "../../JS/Helpers/Constants.js" as JsConstants'));
 assert(!/\|\|\s*"(1m|5m|15m|1h|1d|1w|1M|1W|3M|6M|1Y|2Y|5Y|10Y)"/.test(source), "no range literals as fallbacks");
 assert(!/\bdefaultValue:\s*"(1m|5m|15m|1h|1d|1w|1M|1W)"/.test(source), "no range literals as control defaults");
 assert(!/providerCredentials|setProviderCredential/.test(source), "dead credential code removed");
@@ -114,7 +133,7 @@ assert(/SymbolDraft\.fromSymbol\(/.test(source) && /SymbolDraft\.empty\(/.test(s
 
 // ── Resolution vs range validation ───────────────────────────────────────────
 assert(
-    /chartRangeStatus:\s+selectedHandler \? selectedHandler\.chartRangeStatus\(chartResolutionSelect\.value, chartRangeSelect\.value\)/.test(
+    /chartRangeStatus:\s+selectedHandler \? selectedHandler\.chartRangeStatus\(formState\.chartResolution, formState\.chartRange\)/.test(
         source
     )
 );
@@ -126,7 +145,7 @@ assert(
 );
 assert(/color:\s*Theme\.warning/.test(source), "note uses the warning colour");
 assert(
-    /doSaveSymbol[\s\S]*?chartRangeStatus\(chartResolutionSelect\.value, chartRangeSelect\.value\)[\s\S]*?level === "block"/.test(
+    /doSaveSymbol[\s\S]*?chartRangeStatus\(formState\.chartResolution, formState\.chartRange\)[\s\S]*?level === "block"/.test(
         source
     )
 );
@@ -175,7 +194,7 @@ assert(
     "validated against the selected provider"
 );
 assert(
-    /tickerText:\s+\(tickerInput\.value \|\| ""\)\.trim\(\)/.test(source),
+    /tickerText:\s+\(formState\.ticker \|\| ""\)\.trim\(\)/.test(source),
     "the typed text is trimmed before validation"
 );
 assert(
@@ -201,9 +220,7 @@ assert(
     "typing stops at the maximum length"
 );
 assert(
-    /SymbolRules\.validateName\(name\)[\s\S]{0,120}ToastService\.showError\("Markets", nameVerdict\.message\)/.test(
-        source
-    ),
+    /SymbolRules\.validateName\(name\)[\s\S]{0,120}errorRequested\(nameVerdict\.message\)/.test(source),
     "saving a bad name is refused with the reason"
 );
 assert(

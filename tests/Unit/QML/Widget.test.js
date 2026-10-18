@@ -1,6 +1,8 @@
 const { assert, same, loadShared, readSource, compileFunction, compileFunctions } = require("../../Helpers/Loader");
 
-const widget = readSource("QML/Widget.qml").replace(/^\s*\/\/.*$/gm, "");
+const entry = readSource("QML/Widget.qml");
+const controller = readSource("QML/Helpers/WidgetController.qml");
+const widget = [entry, controller].join("\n").replace(/^\s*\/\/.*$/gm, "");
 const { errorMap } = loadShared();
 
 // ── DMS toast wiring ─────────────────────────────────────────────────────────
@@ -90,7 +92,7 @@ assert(
         widget.lastIndexOf("dataStorage.migrateSavedSymbols(pluginData.symbols)"),
     "load errors are reported first"
 );
-const startup = /Component\.onCompleted: \{([\s\S]*?)\n    \}\n/.exec(widget)[1];
+const startup = /function initialize\(\) \{([\s\S]*?)\n    \}\n/.exec(controller)[1];
 assert(!/JSON\.parse/.test(startup) && !/\btry\b/.test(startup), "no ad-hoc parsing or swallowing at startup");
 
 // ── Saved market data: shown first, saved after ──────────────────────────────

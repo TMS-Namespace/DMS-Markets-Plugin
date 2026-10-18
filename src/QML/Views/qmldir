@@ -9,3 +9,5 @@ IconButton          1.0 IconButton.qml
 ColorSettingRow     1.0 ColorSettingRow.qml
 ValueSliderRow      1.0 ValueSliderRow.qml
 SelectionRow        1.0 SelectionRow.qml
+DisplaySettings     1.0 DisplaySettings.qml
+SymbolEditor        1.0 SymbolEditor.qml
