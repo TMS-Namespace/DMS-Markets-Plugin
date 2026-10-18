@@ -8,6 +8,7 @@
 //   pressable                                     false: shown, but not clickable
 //   hovered (read-only), clicked()
 import QtQuick
+import QtQuick.Controls as Controls
 import "../Helpers"
 import qs.Common
 import qs.Widgets
@@ -25,6 +26,8 @@ Rectangle {
     property int iconSize: constants.actionIconSize
     property bool pressable: true
     property bool spinning: false
+    property string tooltipText: ""
+    property bool warning: false
 
     signal clicked
 
@@ -42,12 +45,13 @@ Rectangle {
     MouseArea {
         id: mouseArea
 
+        acceptedButtons: button.pressable ? Qt.LeftButton : Qt.NoButton
         anchors.fill: parent
         cursorShape: Qt.PointingHandCursor
-        enabled: button.pressable
         hoverEnabled: true
 
-        onClicked: button.clicked()
+        onClicked: if (button.pressable)
+            button.clicked()
     }
 
     // The spinner turns; the icon inside keeps its own fixed rotation (for example a tilted pin).
@@ -74,6 +78,50 @@ Rectangle {
             name: button.iconName
             rotation: button.iconRotation
             size: button.iconSize
+        }
+    }
+
+    // Keep the badge outside the rotating icon, so failures remain legible during retries.
+    Rectangle {
+        anchors.right: parent.right
+        anchors.top: parent.top
+        color: Theme.error
+        height: constants.refreshWarningBadgeSize
+        radius: width / 2
+        visible: button.warning
+        width: height
+
+        StyledText {
+            anchors.centerIn: parent
+            color: Theme.surfaceContainer
+            font.pixelSize: constants.refreshWarningBadgeSize - 2
+            font.weight: Font.Bold
+            text: "!"
+        }
+    }
+
+    // DMS's current tooltip clips to one line; fetch failures need wrapping and explicit line breaks.
+    Controls.ToolTip {
+        id: buttonTooltip
+
+        padding: Theme.spacingS
+        parent: button
+        text: button.tooltipText
+        visible: button.hovered && text !== ""
+
+        background: Rectangle {
+            border.color: Theme.outlineVariant
+            border.width: 1
+            color: Theme.surfaceContainerHigh
+            radius: Theme.cornerRadius
+        }
+        contentItem: Text {
+            color: Theme.surfaceText
+            font.pixelSize: Theme.fontSizeSmall
+            text: buttonTooltip.text
+            textFormat: Text.PlainText
+            width: Math.min(implicitWidth, constants.errorTooltipMaxWidth)
+            wrapMode: Text.Wrap
         }
     }
 }

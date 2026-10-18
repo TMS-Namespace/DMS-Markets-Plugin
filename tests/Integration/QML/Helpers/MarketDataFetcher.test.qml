@@ -260,9 +260,12 @@ TestSuite {
         same(received.status[0][2].code, "unsupported");
         same(received.status[0][2].userMessage, "Stooq is currently disabled.");
     }
-    function test_a_failed_change_pull_is_not_shown_on_the_card() {
+    function test_a_failed_change_pull_is_published_without_discarding_prices() {
         fetcher._reportSymbolError("u1", "change", new Error("boom"));
-        same(received.status.length, 0, "the price still shows with its own change; the card stays clean");
+        same(received.status.length, 1, "the header receives failed change pulls too");
+        same(received.status[0][1], "change");
+        same(received.price, null, "failure does not replace the current price");
+        same(toasts.length, 0, "network failures are shown in the popup instead of repeated toasts");
     }
     function test_a_failed_pull_is_not_worth_saving() {
         fetcher._onResponse(context("price"), failed(new PluginError.PluginError(PluginError.Code.HTTP, "x", "y")), null);
@@ -502,6 +505,21 @@ TestSuite {
         fetcher.restore("u1", savedRecord(), signature);
         same(typeof received.graph.u1[0].destroy, "undefined");
         equal(JSON.parse(JSON.stringify(received.graph.u1)), received.graph.u1);
+    }
+    // A network failure follows the same publication path as a provider error, preserving previous values.
+    function test_network_failures_are_published_and_success_clears_only_its_pull() {
+        let failure = new PluginError.PluginError(PluginError.Code.NETWORK, "No internet connection.", "private diagnostics");
+        fetcher._onResponse(context("price"), failed(failure), null);
+        same(received.status.length, 1);
+        same(received.status[0][0], "u-wise");
+        same(received.status[0][1], "price");
+        same(received.status[0][2].userMessage, "No internet connection.");
+        same(received.price, null);
+        same(received.graph, null);
+        equal(received.stored, []);
+        store("u-wise", "price", ok(live));
+        same(received.status[1][1], "price");
+        same(received.status[1][2], null, "only a successful pull clears its warning");
     }
     function test_never_fetched_pulls_both() {
         equal(pulled([wise], {}), ["u-wise_graph", "u-wise_price"]);

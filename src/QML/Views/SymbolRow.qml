@@ -38,11 +38,9 @@ Item {
     readonly property string errorDetails: SymbolErrors.details(symbolError)
     readonly property string errorMessage: priceFailed ? SymbolErrors.message(symbolError) : (chartFailed ? SymbolErrors.message({
             graph: symbolError.graph
-        }) : "")
+        }) : (!hasData && !hasChart ? SymbolErrors.message(symbolError) : ""))
 
-    // A failed pull replaces the information it would have shown with a short message
-    // (see SymbolErrorMap.js): a failed price replaces the price and the chart, a failed
-    // chart only the chart.
+    // Errors replace only information that has never loaded, keeping any available price or chart.
     // A failed refresh never hides what was already loaded: the old price and chart stay (dimmed, "stale")
     // and the message only appears for information that was never loaded.
     readonly property bool hasChart: chartData && chartData.length > 0
@@ -56,7 +54,7 @@ Item {
     property real price: (priceInfo.close !== undefined && !isNaN(priceInfo.close)) ? priceInfo.close : 0
     readonly property bool priceFailed: SymbolErrors.priceFailed(symbolError) && !hasData
     property var priceInfo: ({})   // a PriceInfo (empty until the first price arrived)
-    readonly property bool refreshFailed: SymbolErrors.priceFailed(symbolError) || SymbolErrors.chartFailed(symbolError)
+    readonly property bool refreshFailed: SymbolErrors.message(symbolError) !== ""
     property bool showChartRange: true
     property bool showPriceChange: true
     property bool showProviderName: true
@@ -189,12 +187,13 @@ Item {
 
         anchors.bottom: parent.bottom
         anchors.bottomMargin: constants.chartAreaMargin
-        anchors.left: symbolRow.priceFailed ? nameColumn.right : priceColumn.right
+        anchors.left: symbolRow.priceFailed && !symbolRow.hasChart ? nameColumn.right : priceColumn.right
         anchors.leftMargin: constants.chartAreaMargin
         anchors.right: parent.right
         anchors.rightMargin: constants.chartAreaMargin
         anchors.top: parent.top
         anchors.topMargin: constants.chartAreaMargin
+        z: 1
 
         // Clipped by Quickshell's ClippingRectangle, the item DMS itself uses for its rounded wallpaper, artwork and avatar
         // images (checked on a real GPU window: it clips a canvas child to the rounded shape).
@@ -202,7 +201,7 @@ Item {
             anchors.fill: parent
             color: "transparent"
             radius: symbolRow.chartRadius
-            visible: !symbolRow.priceFailed && !symbolRow.chartFailed
+            visible: symbolRow.hasChart || (!symbolRow.priceFailed && !symbolRow.chartFailed)
 
             PriceChart {
                 anchors.fill: parent
@@ -214,36 +213,52 @@ Item {
                 providerAlias: ProvidersManager.aliasOf(symbolRow.symbolData.provider || ProvidersManager.defaultId)
                 showProviderName: symbolRow.showProviderName
                 showRangeLabel: symbolRow.showChartRange
-                visible: !symbolRow.priceFailed && !symbolRow.chartFailed
+                visible: symbolRow.hasChart || (!symbolRow.priceFailed && !symbolRow.chartFailed)
             }
         }
 
         // ── Error message (instead of the information that could not be loaded) ──
-        Row {
+        Item {
             id: errorBlock
 
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.rightMargin: constants.actionButtonSize * 3 + constants.actionButtonSpacing * 3   // keep clear of the hover buttons
-            anchors.verticalCenter: parent.verticalCenter
-            spacing: Theme.spacingXS
+            anchors.left: symbolRow.priceFailed ? nameColumn.right : chartArea.left
+            anchors.leftMargin: Theme.spacingS
+            anchors.right: symbolRow.priceFailed && symbolRow.hasChart ? chartArea.left : chartArea.right
+            anchors.rightMargin: Theme.spacingXS
+            anchors.verticalCenter: symbolRow.verticalCenter
+            height: symbolRow.height
+
+            // A cached chart survives even if no price was loaded; its error belongs in the price space.
+            parent: symbolRow
             visible: symbolRow.errorMessage !== ""
 
-            DankIcon {
-                anchors.verticalCenter: parent.verticalCenter
-                color: Theme.error
-                name: "error"
-                size: constants.actionIconSize
-            }
-            StyledText {
-                anchors.verticalCenter: parent.verticalCenter
-                color: Theme.error
-                elide: Text.ElideRight
-                font.pixelSize: Theme.fontSizeSmall
-                maximumLineCount: 3
-                text: symbolRow.errorMessage
-                width: parent.width - constants.actionIconSize - Theme.spacingXS
-                wrapMode: Text.WordWrap
+            Row {
+                anchors.centerIn: parent
+                height: Math.max(errorIcon.height, errorText.implicitHeight)
+                spacing: Theme.spacingXS
+                width: Math.min(parent.width, errorIcon.width + spacing + errorText.implicitWidth)
+
+                DankIcon {
+                    id: errorIcon
+
+                    anchors.verticalCenter: parent.verticalCenter
+                    color: Theme.error
+                    name: "error"
+                    size: constants.actionIconSize
+                }
+                StyledText {
+                    id: errorText
+
+                    anchors.verticalCenter: parent.verticalCenter
+                    color: Theme.error
+                    elide: Text.ElideRight
+                    font.pixelSize: Theme.fontSizeSmall
+                    horizontalAlignment: Text.AlignHCenter
+                    maximumLineCount: 3
+                    text: symbolRow.errorMessage
+                    width: Math.max(0, parent.width - errorIcon.width - parent.spacing)
+                    wrapMode: Text.WordWrap
+                }
             }
         }
 

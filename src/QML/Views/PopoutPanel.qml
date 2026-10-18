@@ -7,6 +7,7 @@
 pragma ComponentBehavior: Bound
 import QtQuick
 import "../../JS/Contracts/FetchType.js" as FetchType
+import "../../JS/Helpers/SymbolErrorMap.js" as SymbolErrors
 import "../Helpers"
 import qs.Common
 import qs.Widgets
@@ -22,7 +23,10 @@ Item {
         return false;
     }
     property color downColor
+    readonly property string errorSummary: SymbolErrors.summary(symbolErrors, symbols)
     property var graphData: ({})
+    readonly property bool hasErrors: errorSummary !== ""
+    readonly property bool headerHovered: headerHoverArea.containsMouse || refreshAllButton.hovered || closePopoutButton.hovered
 
     // ── Header geometry (for positioning overlay buttons) ─────────────────────
     property real headerOffset: 0    // headerHeight + detailsHeight
@@ -77,7 +81,7 @@ Item {
         anchors.right: parent.right
         anchors.rightMargin: Theme.spacingS
         spacing: constants.headerButtonSpacing
-        visible: headerHoverArea.containsMouse || refreshAllButton.hovered || closePopoutButton.hovered || panel._anyLoading
+        visible: panel.headerHovered || panel._anyLoading || panel.hasErrors
         y: -panel.headerOffset + Theme.spacingS
         z: constants.headerButtonZ
 
@@ -92,6 +96,8 @@ Item {
             iconSize: constants.headerIconSize
             pressable: !panel._anyLoading
             spinning: panel._anyLoading
+            tooltipText: panel.hasErrors ? "Unable to refresh:\n" + panel.errorSummary : "Refresh all symbols"
+            warning: panel.hasErrors
 
             onClicked: panel.refreshAll()
         }
@@ -100,10 +106,12 @@ Item {
 
             buttonRadius: constants.headerButtonRadius
             buttonSize: constants.headerButtonSize
+            enabled: panel.headerHovered || panel._anyLoading
             hoverTint: Theme.error
             iconColor: closePopoutButton.hovered ? Theme.error : Theme.surfaceText
             iconName: "close"
             iconSize: constants.headerIconSize
+            opacity: enabled ? 1 : 0
 
             onClicked: panel.closePopout()
         }

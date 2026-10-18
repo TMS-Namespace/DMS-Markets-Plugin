@@ -204,17 +204,10 @@ Item {
     // ── Error reporting ───────────────────────────────────────────────────────
     // Logs (devMode), records and publishes the error for the symbol's card. Only errors
     // the user must act on (credentials) also raise a toast; the rest are shown on the card.
-    // A failed change pull is only logged: the price still shows, with the change of its own candle.
+    // Change-reference failures also reach the header; the price keeps its available candle change.
     function _reportSymbolError(uid, fetchType, error) {
         let symbol = _findSymbol(uid);
         let wrapped = PluginError.from(error);
-        if (fetchType === FetchType.Values.CHANGE) {
-            ErrorHandler.handle("fetcher", wrapped, {
-                context: (symbol ? symbol.ticker : uid) + " " + fetchType,
-                notify: false
-            });
-            return;
-        }
         let record = ErrorHandler.handle("fetcher", wrapped, {
             context: symbol ? symbol.ticker + " " + fetchType : fetchType,
             notify: wrapped.code === PluginError.Code.CREDENTIAL

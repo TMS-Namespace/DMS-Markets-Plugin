@@ -58,6 +58,7 @@ QtObject {
     readonly property bool devMode: true   // enable for verbose plugin diagnostics
 
     readonly property int emptyStateIconSize: 48
+    readonly property int errorTooltipMaxWidth: 360
     readonly property int fullRotationDeg: 360
     readonly property int headerAnimDurationMs: 800
     readonly property int headerButtonRadius: 14
@@ -77,6 +78,7 @@ QtObject {
 
     // ── Popout / widget layout ────────────────────────────────────────────────
     readonly property int popoutWidth: 440
+    readonly property int refreshWarningBadgeSize: 14
     readonly property int rowHeight: 78   // px per symbol row
     readonly property int scrollAnimDurationMs: 200
     readonly property int scrollBarRadius: 2

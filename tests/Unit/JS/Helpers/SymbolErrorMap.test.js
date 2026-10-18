@@ -67,3 +67,28 @@ assert.strictEqual(SymbolErrors.details({ price: { userMessage: "m" } }), "", "m
 assert.strictEqual(SymbolErrors.details({}), "");
 
 console.log("SymbolErrors tests passed");
+
+// Change-reference failures persist independently and participate in the header summary.
+const changeFailure = SymbolErrors.set({}, "u1", FetchType.Values.CHANGE, errorRecord("network", "No internet."));
+same(changeFailure.u1.change.userMessage, "No internet.");
+assert.strictEqual(SymbolErrors.message(changeFailure.u1), "No internet.");
+const priceAndChange = SymbolErrors.set(changeFailure, "u1", priceType, errorRecord("network", "No internet."));
+assert(SymbolErrors.set(priceAndChange, "u1", priceType, null).u1.change, "price recovery preserves change errors");
+same(SymbolErrors.set(changeFailure, "u1", FetchType.Values.CHANGE, null), {});
+const summarySymbols = [
+    { uid: "u1", name: "Euro" },
+    { uid: "u2", ticker: "BRLPLN" }
+];
+const summaryErrors = {
+    ...priceAndChange,
+    u2: { graph: errorRecord("noData", "No chart.", "secret") },
+    removed: { price: errorRecord("network", "Old error") }
+};
+assert.strictEqual(
+    SymbolErrors.summary(summaryErrors, summarySymbols),
+    "Euro: No internet.\nBRLPLN: No chart.",
+    "deduplicate per symbol, preserve names/order, omit removed symbols and internal details"
+);
+assert.strictEqual(SymbolErrors.summary({ u1: { price: {} } }, summarySymbols), "Euro: Could not refresh data.");
+assert.strictEqual(SymbolErrors.summary({}, summarySymbols), "");
+assert.strictEqual(SymbolErrors.summary(summaryErrors, []), "");

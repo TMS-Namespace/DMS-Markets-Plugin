@@ -151,11 +151,15 @@ assert(
     "the price column gives way to the message"
 );
 assert(
-    /id: chartArea[\s\S]*?anchors\.left:\s+symbolRow\.priceFailed \? nameColumn\.right : priceColumn\.right/.test(row),
+    /id: chartArea[\s\S]*?anchors\.left:\s+symbolRow\.priceFailed && !symbolRow\.hasChart \? nameColumn\.right : priceColumn\.right/.test(
+        row
+    ),
     "the message uses the room of the price column"
 );
 assert(
-    /PriceChart \{[\s\S]*?visible:\s+!symbolRow\.priceFailed && !symbolRow\.chartFailed/.test(row),
+    /PriceChart \{[\s\S]*?visible:\s+symbolRow\.hasChart \|\| \(!symbolRow\.priceFailed && !symbolRow\.chartFailed\)/.test(
+        row
+    ),
     "the chart is hidden while either failed"
 );
 const block = /id: errorBlock([\s\S]*?)\n        \}\n\n        MouseArea \{\s*id: chartMouseArea/.exec(row)[1];
@@ -168,7 +172,7 @@ assert(
         /elide: Text\.ElideRight/.test(block),
     "short: wraps to at most 3 lines"
 );
-assert(/anchors\.rightMargin:[^\n]*constants\.actionButtonSize/.test(block), "keeps clear of the hover buttons");
+assert(/anchors\.centerIn: parent/.test(block), "the icon and message are centered in the missing-data space");
 assert(!/errorDetails/.test(block.replace(/\/\/.*$/gm, "")) || true);
 // The card stays usable in an error state: name/ticker stay, and refresh / pin / remove are still there.
 assert(

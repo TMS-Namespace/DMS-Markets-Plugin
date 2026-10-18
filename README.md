@@ -68,8 +68,6 @@ Currently supported providers:
   - Full refactoring for first class support of self-declarative multiprovider setup. Note: the saved symbols will be migrated to new formats on first load.
   - Fetched data is now cached on disk, so prices and data will stay visible even without internet connection.
   - Symbol change is now calculated correctly against the close of the previous period.
-  - Settings and widget entry points now compose views backed by separate per-instance controllers.
-  - Explicit JavaScript provider base classes, checked by lint before runtime to guide new provider contributions.
   - Various optimizations and tests added.
   - Some cosmetic improvements to comply with `DMS` theme.
 - v1.0.4 :
