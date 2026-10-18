@@ -231,6 +231,47 @@ TestSuite {
         same(received.stored.length, 0, "restoring is not new data: nothing to save")
         same(received.status.length, 0, "and no error state is touched")
     }
+
+    // Cache freshness applies independently to each data type; unusable data cannot postpone a fetch.
+    function test_startup_fetches_only_stale_or_invalid_cached_parts() {
+        let now = Date.now()
+        make([{ uid: "u1", ticker: "BRLPLN", provider: "wise", priceResolution: "1h", changeResolution: "1d", chartResolution: "1d", chartRange: "1M" }])
+        fetcher.restore("u1", savedRecord({ graph: [{}], refreshedAt: { price: now - 1000, change: now - 2 * hour, graph: now - 1000 } }), signature)
+        fetcher.lastFetchTimes = received.times
+        fetcher.startInitialFetches(fetcher.symbols)
+        let handler = ProvidersManager.requireFromId("wise")
+        same(handler._queue.length, 1, "only the stale change reference starts immediately")
+        same(handler._queue[0].request.context.fetchType, "change")
+        same(fetcher._initialGraphQueue.length, 1, "an invalid cached chart still needs a fetch")
+        same(received.times.u1_price, now - 1000, "fresh price timestamp is preserved")
+    }
+
+    // Restoring tomorrow's timestamps must never suppress requests indefinitely.
+    function test_future_cache_timestamps_do_not_delay_requests() {
+        fetcher.restore("u1", savedRecord({ refreshedAt: { price: Date.now() + day, change: Date.now() + day, graph: Date.now() + day } }), signature)
+        equal(received.times, {})
+        equal(received.refreshed, {})
+    }
+
+    // Bulk chart data stays plain and serializable rather than allocating a QObject for every candle.
+    function test_live_and_restored_charts_use_plain_candles() {
+        store("u1", "graph", ok(rows([1, 2, 3], day)), 3)
+        same(typeof received.graph.u1[0].destroy, "undefined")
+        equal(JSON.parse(JSON.stringify(received.graph.u1)), received.graph.u1)
+        setup()
+        fetcher.restore("u1", savedRecord(), signature)
+        same(typeof received.graph.u1[0].destroy, "undefined")
+        equal(JSON.parse(JSON.stringify(received.graph.u1)), received.graph.u1)
+    }
+
+    // A symbol removed during the initial stagger must release its queued graph and all scheduling keys.
+    function test_forget_releases_staggered_requests_and_start_times() {
+        fetcher.lastFetchTimes = { u1_price: 1, u1_change: 2, u1_graph: 3, u2_price: 4 }
+        fetcher._initialGraphQueue = [{ uid: "u1" }, { uid: "u2" }]
+        fetcher.forget("u1")
+        equal(received.times, { u2_price: 4 })
+        equal(fetcher._initialGraphQueue.map(function(symbol) { return symbol.uid }), ["u2"])
+    }
     function test_the_restored_reference_is_used_by_the_next_price() {
         fetcher.restore("u1", savedRecord({ reference: 2.5 }), signature)
         store("u1", "price", ok(live))                                        // the live answer closes at 4
@@ -414,9 +455,12 @@ TestSuite {
         let inverted = Object.assign({}, wise, { invert: true })
         fetcher.symbols = [inverted]
         fetcher.doFetch(inverted, "price")
-        same(handler._queue.length, 2, "the old configuration must not suppress its replacement")
+        same(handler._queue.length, 1, "the replacement can use the same provider answer")
+        same(handler._queue[0].listeners.length, 2, "both configurations keep separate delivery contexts")
         check(!fetcher._isLive(oldContext))
-        check(fetcher._isLive(handler._queue[1].request.context))
+        check(fetcher._isLive(handler._queue[0].listeners[1].context))
+        check(handler._pruneJob(handler._queue[0]))
+        same(handler._queue[0].listeners.length, 1, "the obsolete configuration is dropped")
     }
 
 }

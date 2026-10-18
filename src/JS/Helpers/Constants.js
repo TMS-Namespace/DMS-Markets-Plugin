@@ -66,6 +66,7 @@ var FETCH_QUEUE_MAX        = 100        // reject excess work before allocating 
 var MAX_RETRIES            = 3
 var MAX_CONCURRENT_FETCHES = 1          // keep curl bursts off the UI path
 var FETCH_QUEUE_PUMP_MS    = 50
+var RATE_LIMIT_COOLDOWN_MS = 30 * SECOND_MS // HTTP 429 pauses all requests to that provider; repeated attempts wait longer
 
 // ── Shell fetch command constants ────────────────────────────────────────────
 var FETCH_SHELL_COMMAND = ["bash", "-o", "pipefail", "-c"]

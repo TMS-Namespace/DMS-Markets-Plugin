@@ -61,6 +61,8 @@ Item {
     property int  _activeCount: 0
     property var  _queue:       []     // jobs waiting for a slot
     property var  _keys:        ({})   // keys of calls in flight (queued, running or awaiting retry)
+    property var _transfers:   ({})   // identical commands share one queued/running transfer and retry budget
+    property real _rateLimitUntil: 0  // a provider-wide pause after HTTP 429
     property real _retryAfter: 0      // earliest next retry start, for spacing between ready jobs
     property var  _retryQueue:  []     // jobs waiting for their retry delay
 
@@ -210,26 +212,46 @@ Item {
     // Describe a queued call without exposing its URL or credential.
     function _label(request) { return request.context.ticker + " " + request.context.fetchType }
 
-    // Reject duplicate or excess work before adding a pending call.
+    // Deduplicate callers separately from transfers: each caller keeps its context and parse limit.
     function _submit(request, context, isCurrent) {
-        let call = callType.createObject(null, {
-            key: context.uid + "_" + context.fetchType + "_" + request.url + (context.signature ? "|" + context.signature : ""), group: context.uid,
-            command: request.command, candles: request.candles, context: context, isCurrent: isCurrent || null
-        }) as FetchCall
-        if (_keys[call.key]) {                                    // this very call is already in flight
-            _log("skipped " + _label(call) + ": already in flight")
-            return false
-        }
-
-        if (_queue.length >= JsConstants.FETCH_QUEUE_MAX)
+        let key = context.uid + "_" + context.fetchType + "_" + request.url + (context.signature ? "|" + context.signature : "")
+        if (_keys[key]) return false
+        if (Object.keys(_keys).length >= JsConstants.FETCH_QUEUE_MAX)
             throw new PluginError.PluginError(PluginError.Code.PROCESS, "Too many market requests are queued. Try again shortly.",
                                               "provider request queue reached its limit", { retryable: true })
-        _keys = Helpers.withEntry(_keys, call.key, true)
-
+        let call = callType.createObject(null, {
+            key: key, group: context.uid, command: request.command, candles: request.candles,
+            context: context, isCurrent: isCurrent || null
+        }) as FetchCall
+        // The command includes credentials and output trimming, so only interchangeable responses share work.
+        let transferKey = FetchCommand.transferKey(request.url, request.command)
+        let transfer = _transfers[transferKey]
+        _keys = Helpers.withEntry(_keys, key, true)
         _changePending(call.group, 1)
-        _enqueue({ request: call, attempt: 0 })
-        _log("queued " + _label(call) + " (needs " + call.candles + " candles, " + _queue.length + " waiting)")
+        if (transfer) {
+            transfer.listeners.push(call)
+            _log("shared " + _label(call) + " with an existing request")
+        } else {
+            transfer = { request: call, listeners: [call], transferKey: transferKey, attempt: 0 }
+            _transfers = Helpers.withEntry(_transfers, transferKey, transfer)
+            _enqueue(transfer)
+            _log("queued " + _label(call) + " (needs " + call.candles + " candles, " + _queue.length + " waiting)")
+        }
         return true
+    }
+
+    // Release obsolete callers before consuming a process slot; another caller may still need this transfer.
+    function _pruneJob(job) {
+        let live = []
+        let listeners = job.listeners || [job.request]
+        for (let call of listeners) {
+            if (_isCurrent(call)) live.push(call)
+            else _complete(call, null)
+        }
+        job.listeners = live
+        if (live.length) job.request = live[0]
+        else if (job.transferKey) _transfers = Helpers.withoutEntry(_transfers, job.transferKey)
+        return live.length > 0
     }
 
     // The handler outlives the widgets that ask it for data (DMS recreates widgets, e.g. after a reload or
@@ -252,6 +274,7 @@ Item {
         let queue = _queue.slice()
         queue.push(job)
         _queue = queue
+        pumpTimer.interval = JsConstants.FETCH_QUEUE_PUMP_MS
         pumpTimer.restart()
     }
 
@@ -267,10 +290,17 @@ Item {
     function _pump() {
         if (_queue.length === 0) return
         if (_activeCount >= JsConstants.MAX_CONCURRENT_FETCHES) return
+        if (clock() < _rateLimitUntil) {
+            pumpTimer.interval = Math.max(1, _rateLimitUntil - clock())
+            pumpTimer.restart()
+            return
+        }
+        pumpTimer.interval = JsConstants.FETCH_QUEUE_PUMP_MS
 
         let queue = _queue.slice()
         let job = queue.shift()
         _queue = queue
+        if (!_pruneJob(job)) { pumpTimer.restart(); return }
         _activeCount = _activeCount + 1
         _log("started " + _label(job.request) + " (attempt " + (job.attempt + 1) + ")")
 
@@ -319,45 +349,49 @@ Item {
     // Never throws, always frees the slot, and reports a final result at most once per call
     // (a retry reports nothing yet).
     function _handleFinished(job, exitCode, stdout, stderr) {
-        let request = job.request
-        let finalResponse = null
-        let series = null
+        let response = null
         let retrying = false
-        let current = true
-
         try {
-            current = _isCurrent(request)
+            let current = _pruneJob(job)
+            response = interpret({ exitCode: exitCode, stdout: stdout, stderr: stderr })
+            // A rate limit applies to the provider even if the requesting symbol was removed meanwhile.
+            if (response.status === 429)
+                _rateLimitUntil = Math.max(_rateLimitUntil, clock() + JsConstants.RATE_LIMIT_COOLDOWN_MS * Math.pow(2, Math.min(job.attempt, maxRetries)))
             if (current) {
-                let response = interpret({ exitCode: exitCode, stdout: stdout, stderr: stderr })
-                if (response.ok) {
-                    try {
-                        series = _parse(request, response)
-                    } catch (caughtError) {
-                        response = _failed(caughtError)   // an unreadable answer is final, never retried
-                    }
+                if (!response.ok && ErrorHandler.shouldRetry(response.error, job.attempt, maxRetries)) {
+                    job.attempt++
+                    retrying = _scheduleRetry(job)
+                    if (retrying) _log("retrying " + _label(job.request) + " (retry " + job.attempt + "/" + maxRetries + "): " + response.error.userMessage)
                 }
-                if (!response.ok && ErrorHandler.shouldRetry(response.error, job.attempt, maxRetries)
-                        && _scheduleRetry({ request: request, attempt: job.attempt + 1 })) {
-                    _log("retrying " + _label(request) + " (retry " + (job.attempt + 1) + "/" + maxRetries + "): " + response.error.userMessage)
-                    retrying = true
-                } else {
-                    finalResponse = response
-                    _log("finished " + _label(request) + ": " + (response.ok ? "HTTP " + response.status + ", " + (Array.isArray(series) ? series.length + " candles" : "reference " + series)
-                                                                              : "failed [" + response.error.code + "] " + response.error.userMessage))
-                }
-            } else {
-                _log("dropped " + _label(request) + ": nobody waits for it any more")
             }
         } catch (caughtError) {
-            // Unexpected: still a final, failed ProviderResponse for the caller to show.
-            _log("unexpected failure for " + _label(request) + ": " + String(caughtError && caughtError.message))
-            finalResponse = _failed(caughtError)
+            response = _failed(caughtError)
         } finally {
             _activeCount = Math.max(0, _activeCount - 1)
             pumpTimer.restart()
         }
+        if (!retrying) _finishJob(job, response)
+    }
 
-        if (!retrying) _complete(request, finalResponse, series)
+    // Parse each caller's view of the shared answer; one parse failure must not prevent other deliveries.
+    function _finishJob(job, response) {
+        if (job.transferKey) _transfers = Helpers.withoutEntry(_transfers, job.transferKey)
+        for (let call of job.listeners || [job.request]) {
+            let finalResponse = response
+            let series = null
+            if (finalResponse && finalResponse.ok) {
+                try { series = _parse(call, finalResponse) }
+                catch (caughtError) { finalResponse = _failed(caughtError) }
+            }
+            try {
+                _log("finished " + _label(call) + ": " + (finalResponse && finalResponse.ok
+                    ? "HTTP " + finalResponse.status + ", " + (Array.isArray(series) ? series.length + " candles" : "reference " + series)
+                    : "failed"))
+                _complete(call, finalResponse, series)
+            } catch (caughtError) {
+                ErrorHandler.handle("providers", PluginError.from(caughtError), { notify: false })
+            }
+        }
     }
 
     Component { id: responseComponent; ProviderResponse {} }
@@ -408,7 +442,7 @@ Item {
     // New failures cannot postpone an older job or bypass another job's growing backoff.
     function _armRetryTimer() {
         if (_retryQueue.length === 0) return
-        retryTimer.interval = Math.max(1, Math.max(_retryQueue[0].readyAt, _retryAfter) - clock())
+        retryTimer.interval = Math.max(1, Math.max(_retryQueue[0].readyAt, _retryAfter, _rateLimitUntil) - clock())
         retryTimer.restart()
     }
 
@@ -422,18 +456,13 @@ Item {
     // Requeue the next live retry and release obsolete requests.
     function _processRetryQueue() {
         if (_retryQueue.length === 0) return
-        if (clock() < Math.max(_retryQueue[0].readyAt, _retryAfter)) { _armRetryTimer(); return }
+        if (clock() < Math.max(_retryQueue[0].readyAt, _retryAfter, _rateLimitUntil)) { _armRetryTimer(); return }
         let queue = _retryQueue.slice()
         let job = queue.shift()
         _retryQueue = queue
         _retryAfter = clock() + JsConstants.RETRY_SUBSEQUENT_MS
 
-        if (!_isCurrent(job.request)) {                              // nobody waits any more
-            _log("dropped the retry of " + _label(job.request) + ": nobody waits for it any more")
-            _complete(job.request, null)
-        } else {
-            _enqueue(job)
-        }
+        if (_pruneJob(job)) _enqueue(job)
 
         if (_retryQueue.length > 0) _armRetryTimer()
     }

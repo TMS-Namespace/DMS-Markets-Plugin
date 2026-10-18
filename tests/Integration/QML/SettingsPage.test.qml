@@ -5,8 +5,10 @@
 import QtQuick
 import qs.Modules.Plugins
 import qs.Services
+import qs.Widgets
 import "../../Helpers"
 import "../../../src/QML/Services"
+import "../../../src/QML/Views"
 
 TestSuite {
     id: suite
@@ -56,6 +58,130 @@ TestSuite {
         loader = (loaderType.createObject(null, { service: service, source: "file://" + repoRoot + "/src/QML/Settings.qml" }) as Loader)
         check(loader.status === Loader.Ready, "the page loads: " + loader.status)
         return loader.item
+    }
+
+    // Find rendered controls without exposing the page's private QML IDs.
+    function findItem(parentItem: Item, predicate): Item {
+        if (predicate(parentItem)) return parentItem
+        for (let child of parentItem.children) {
+            let found = findItem(child, predicate)
+            if (found) return found
+        }
+        return null
+    }
+
+    // Enter text and finish editing through the same control signals used by DMS.
+    function enterText(page: Item, placeholder: string, value: string) {
+        let field = findItem(page, function(item) { return (item as DankTextField) && item.placeholderText === placeholder }) as DankTextField
+        check(field !== null, "text field exists: " + placeholder)
+        field.text = value
+        field.editingFinished()
+    }
+
+    // Locate a form action by its visible label, then activate its actual input handler.
+    function formButton(page: Item, label: string): MouseArea {
+        let text = findItem(page, function(item) { return "text" in item && item.text === label })
+        check(text !== null, "button label exists: " + label)
+        let button = findItem(text.parent, function(item) { return item as MouseArea }) as MouseArea
+        check(button !== null, "button input exists: " + label)
+        return button
+    }
+
+    // Select a configured row by saved identity so reordering cannot silently target another symbol.
+    function configuredRow(page: Item, uid: string): ConfiguredSymbol {
+        return findItem(page, function(item) { return (item as ConfiguredSymbol) && item.symbolData.uid === uid }) as ConfiguredSymbol
+    }
+
+    // Exercise adding through the fields and button, including the disabled state for invalid input.
+    function async_add_symbol_through_settings_controls(done) {
+        let page = open({ symbols: "[]" })
+        waitFor(function() { return page._formReset && page.tickerText === "" }, function(problem) {
+            try {
+                if (problem) throw new Error(problem)
+                same(formButton(page, "Add Symbol").enabled, false, "empty input cannot be saved")
+                enterText(page, page.selectedProvider.symbolPlaceholder, "NOT A SYMBOL")
+                enterText(page, "Gold", "Gold")
+                same(formButton(page, "Add Symbol").enabled, false, "invalid ticker cannot be saved")
+                enterText(page, page.selectedProvider.symbolPlaceholder, "HG=F")
+                let button = formButton(page, "Add Symbol")
+                check(button.enabled)
+                button.clicked(null)
+                waitFor(function() { return page.symbolsList.length === 1 && page.tickerText === "" }, function(saveProblem) {
+                    try {
+                        if (saveProblem) throw new Error(saveProblem)
+                        let saved = JSON.parse(service.data.symbols)
+                        same(saved.length, 1); same(saved[0].ticker, "HG=F"); same(saved[0].name, "Gold")
+                        check(/^[0-9a-f-]{36}$/i.test(saved[0].uid), "new symbol has a persisted ID")
+                        check(configuredRow(page, saved[0].uid) !== null, "new row is displayed")
+                        same(page.editIndex, -1); same(page.nameText, "", "form resets after saving")
+                        equal(ToastService.errors, [])
+                        done("")
+                    } catch (error) { done(error.message) }
+                })
+            } catch (error) { done(error.message) }
+        })
+    }
+
+    // Updating from a selected row must preserve its ID and pin without modifying another entry.
+    function async_update_symbol_through_settings_controls(done) {
+        let page = open({ symbols: JSON.stringify(twoSymbols) })
+        waitFor(function() { return page._formReset && configuredRow(page, twoSymbols[1].uid) !== null }, function(problem) {
+            try {
+                if (problem) throw new Error(problem)
+                let row = configuredRow(page, twoSymbols[1].uid)
+                let selection = findItem(row, function(item) { return item as MouseArea }) as MouseArea
+                selection.clicked(null)
+                same(page.editIndex, 1)
+                same(page.tickerText, "BRLPLN", "selected row fills the edit form")
+                enterText(page, page.selectedProvider.symbolPlaceholder, "EURUSD")
+                enterText(page, "Gold", "Euro")
+                let button = formButton(page, "Update Symbol")
+                check(button.enabled)
+                button.clicked(null)
+                waitFor(function() { return page.editIndex === -1 && page.symbolsList[1].ticker === "EURUSD" }, function(saveProblem) {
+                    try {
+                        if (saveProblem) throw new Error(saveProblem)
+                        let saved = JSON.parse(service.data.symbols)
+                        same(saved.length, 2); equal(saved[0], twoSymbols[0], "other entry is unchanged")
+                        same(saved[1].uid, twoSymbols[1].uid); same(saved[1].pinned, true)
+                        same(saved[1].ticker, "EURUSD"); same(saved[1].name, "Euro"); same(saved[1].provider, "wise")
+                        same(configuredRow(page, saved[1].uid).symbolData.name, "Euro", "row displays the update")
+                        equal(ToastService.errors, [])
+                        done("")
+                    } catch (error) { done(error.message) }
+                })
+            } catch (error) { done(error.message) }
+        })
+    }
+
+    // Deleting the row currently being edited must persist the removal and leave the form in add mode.
+    function async_delete_symbol_through_settings_controls(done) {
+        let page = open({ symbols: JSON.stringify(twoSymbols) })
+        waitFor(function() { return page._formReset && configuredRow(page, twoSymbols[1].uid) !== null }, function(problem) {
+            try {
+                if (problem) throw new Error(problem)
+                let row = configuredRow(page, twoSymbols[1].uid)
+                let selection = findItem(row, function(item) { return item as MouseArea }) as MouseArea
+                selection.clicked(null)
+                same(page.editIndex, 1)
+                let icon = findItem(row, function(item) { return (item as DankIcon) && item.name === "delete" })
+                check(icon !== null)
+                let button = icon.parent as MouseArea
+                check(button.enabled)
+                button.clicked(null)
+                waitFor(function() { return page.symbolsList.length === 1 && page.editIndex === -1 }, function(saveProblem) {
+                    try {
+                        if (saveProblem) throw new Error(saveProblem)
+                        equal(JSON.parse(service.data.symbols), [twoSymbols[0]], "only the selected entry is removed")
+                        same(configuredRow(page, twoSymbols[1].uid), null, "removed row disappears")
+                        check(configuredRow(page, twoSymbols[0].uid) !== null, "other row remains")
+                        same(page.tickerText, ""); same(page.nameText, "")
+                        equal(ToastService.errors, [])
+                        done("")
+                    } catch (error) { done(error.message) }
+                })
+            } catch (error) { done(error.message) }
+        })
     }
     readonly property var older: [{ id: "EURUSD=X", name: "EUR", provider: "yahoo", priceInterval: "1h", graphInterval: "1M", showChangeWhenPinned: false, invert: false, pinned: false },
                                   { id: "DX-Y.NYB", name: "USDX", provider: "yahoo", priceInterval: "1h", graphInterval: "1M", showChangeWhenPinned: false, invert: false, pinned: true },

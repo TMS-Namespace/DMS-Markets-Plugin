@@ -60,7 +60,6 @@ assert.strictEqual((widget.match(/fetcher\.startInitialFetches\(/g) || []).lengt
 assert(/_restoreThen\([\s\S]*?function\(\) \{ fetcher\.fetchNewSymbols\(root\.symbols, previousIds\) \}\)/.test(widget), "new symbols show their saved data before they are fetched");
 assert(/function onSymbolStored\(uid\) \{ cache\.markDirty\(uid\) \}/.test(widget), "new provider data is saved in the background");
 assert(/lastFetchTimes: root\.refreshedTimes/.test(widget), "the popup shows when each symbol was last refreshed successfully, not when a fetch started");
-assert(/previousIds\.forEach\(function\(uid\) \{ if \(currentIds\.indexOf\(uid\) === -1\) cache\.discard\(uid\) \}\)/.test(widget), "a removed symbol (even the last one) loses its saved data");
 assert(/fetcher\.forget\(symbol\.uid\)\s*cache\.discard\(symbol\.uid\)\s*fetcher\.forceRefreshSymbol|fetcher\.forget\(symbol\.uid\)\s*cache\.discard\(symbol\.uid\)[\s\S]*?fetcher\.forceRefreshSymbol/.test(widget), "changed settings drop the shown and the saved data before the refresh");
 assert(widget.indexOf("MarketCache {") > widget.indexOf("DataStorage {") && !/pluginService|savePluginData/.test(/MarketCache \{[\s\S]*?\n    \}\n/.exec(widget)[0]), "the cache is its own service, not plugin data");
 

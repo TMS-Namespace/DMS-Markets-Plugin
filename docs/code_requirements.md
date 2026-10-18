@@ -107,6 +107,12 @@ failed, not what any one plugin does.
 - Timers are explicit and one-shot unless there is a reason to repeat; repeating timers stop when there is nothing
   to do. No raw `setTimeout`/`setInterval`.
 - Process work (shell, network) is queued and limited in concurrency.
+- Share identical in-flight requests while preserving each caller's context, parsing limits and error handling.
+  Discard obsolete callers before launching queued work. A rate-limit response pauses the affected provider's
+  whole queue, with a bounded retry budget and growing cooldown.
+- Restore the refresh schedule only for valid cached data with matching settings and sane timestamps.
+  Startup fetches only what is due; an explicit manual refresh still fetches immediately, subject to rate limits.
+- Keep bulk chart candles as plain validated data. Removing a symbol releases its data, scheduling state and errors.
 
 ## 9. Time, text and security
 

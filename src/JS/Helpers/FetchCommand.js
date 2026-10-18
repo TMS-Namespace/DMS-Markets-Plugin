@@ -14,6 +14,9 @@
 .import "../Contracts/PluginError.js" as PluginError
 .import "ResponseInterpreter.js" as ResponseInterpreter
 
+// Compare complete fetch commands, including credentials and output limits, without exposing them in logs.
+function transferKey(url, command) { return JSON.stringify([url, command]) }
+
 // Build a fetch script that prints its status before the response body.
 function plainScript(tailLines) {
     let script = ""

@@ -50,7 +50,7 @@ TestSuite {
     }
     // Move the fake clock to the next deadline; no wall-clock waiting in queue unit tests.
     function advanceRetry() {
-        now = Math.max(now, handler._retryQueue[0].readyAt, handler._retryAfter)
+        now = Math.max(now, handler._retryQueue[0].readyAt, handler._retryAfter, handler._rateLimitUntil)
         handler._processRetryQueue()
     }
     function keyCount() { return Object.keys(handler._keys).length }
@@ -66,6 +66,84 @@ TestSuite {
         equal(handler.pending, { u1: 2 })
         check(send(request("nogroup", { group: "" })), "a group is optional")
         equal(handler.pending, { u1: 2 })
+    }
+
+    // One HTTP response serves callers with different symbols, fetch types and candle windows.
+    function test_identical_transfers_keep_each_callers_context_and_parse_limit() {
+        let price = request("shared", { candles: 2 })
+        let graph = request("shared", { group: "u2", candles: 3 })
+        graph.context.fetchType = "graph"
+        check(send(price)); check(send(graph))
+        same(handler._queue.length, 1, "one transfer")
+        equal(handler.pending, { u1: 1, u2: 1 })
+        runNext(0, envelope(0, 200, JSON.stringify([1, 2, 3, 4].map(function(value) { return { value: value, time: value * 1000 } }))))
+        same(seen.finished.length, 2)
+        same(seen.finished[0].context, price.context)
+        same(seen.finished[1].context, graph.context)
+        equal(seen.finished[0].series.map(function(candle) { return candle.close }), [3, 4])
+        equal(seen.finished[1].series.map(function(candle) { return candle.close }), [2, 3, 4])
+        equal(handler.pending, {}); same(keyCount(), 0)
+        same(Object.keys(handler._transfers).length, 0, "completed transfers release their listeners")
+    }
+
+    // Different shell output limits or credentials cannot safely share a response.
+    function test_different_commands_for_the_same_url_stay_separate() {
+        check(send(request("same", { command: ["x", "tail-2"] })))
+        check(send(request("same", { group: "u2", command: ["x", "tail-30"] })))
+        same(handler._queue.length, 2)
+    }
+
+    // Obsolete jobs must never start their shell command or consume an active slot.
+    function test_obsolete_queued_calls_are_dropped_before_starting_a_process() {
+        send(request())
+        current = false
+        handler._pump()
+        same(handler._queue.length, 0); same(handler._activeCount, 0)
+        equal(handler.pending, {}); same(keyCount(), 0)
+        same(Object.keys(handler._transfers).length, 0)
+        same(seen.finished.length, 0)
+    }
+
+    // Removing one subscriber must not discard the live subscriber's shared request.
+    function test_shared_transfer_survives_removal_of_its_first_caller() {
+        let obsolete = request("same")
+        handler._submit(obsolete, obsolete.context, function() { return false })
+        let liveCall = request("same", { group: "u2" })
+        handler._submit(liveCall, liveCall.context, function() { return true })
+        let job = handler._queue[0]
+        check(handler._pruneJob(job))
+        equal(handler.pending, { u2: 1 })
+        runNext(0, envelope(0, 200, wiseBody))
+        same(seen.finished.length, 1); same(seen.finished[0].context.uid, "u2")
+        equal(handler.pending, {})
+    }
+
+    // Shared failures have one retry budget and keep all subscribers until the final result.
+    function test_shared_calls_retry_once_together_and_accept_late_subscribers() {
+        send(request("same")); send(request("same", { group: "u2" }))
+        runNext(0, envelope(6, "000"))
+        same(handler._retryQueue.length, 1)
+        send(request("same", { group: "u3" }))
+        same(handler._queue.length, 0, "joining a delayed retry must respect its backoff")
+        advanceRetry()
+        same(handler._queue.length, 1)
+        runNext(0, envelope(0, 200, wiseBody))
+        same(seen.finished.length, 3)
+        equal(handler.pending, {}); same(keyCount(), 0)
+    }
+
+    // Parsing one view of a response can fail without breaking another caller's valid view.
+    function test_one_shared_parse_failure_does_not_fail_other_callers() {
+        send(request("same"))
+        let graph = request("same", { group: "u2" })
+        graph.context.fetchType = "graph"
+        send(graph)
+        handler.api = { parsePrice: handler.api.parsePrice, parseHistory: function() { throw new Error("unreadable chart") } }
+        runNext(0, envelope(0, 200, wiseBody))
+        same(seen.finished.length, 2)
+        check(seen.finished[0].response.ok); check(!seen.finished[1].response.ok)
+        same(handler._retryQueue.length, 0)
+        equal(handler.pending, {})
     }
     // ── Final response ───────────────────────────────────────────────────────
     function test_success_reports_one_final_response_with_the_callers_context() {
@@ -188,6 +266,53 @@ TestSuite {
             same(handler._queue[0].attempt, 1)
         }
     }
+
+    // One rate-limit response pauses every queued request, including calls submitted during the pause.
+    function test_rate_limits_pause_the_provider_instead_of_calling_other_symbols() {
+        send(request("limited")); send(request("waiting", { group: "u2" }))
+        runNext(0, envelope(0, 429, "slow down"))
+        same(handler._rateLimitUntil, now + JsConstants.RATE_LIMIT_COOLDOWN_MS)
+        send(request("new", { group: "u3" }))
+        handler._pump()
+        same(handler._activeCount, 0)
+        same(handler._queue.length, 2, "other symbols cannot bypass the provider cooldown")
+        now = handler._retryQueue[0].readyAt
+        handler._processRetryQueue()
+        same(handler._retryQueue.length, 1, "even a ready retry respects the provider cooldown")
+        advanceRetry()
+        same(handler._retryQueue.length, 0)
+        // Finish the two other calls, then simulate a second rate limit on the original retry.
+        runNext(0, envelope(0, 200, wiseBody)); runNext(0, envelope(0, 200, wiseBody))
+        runNext(0, envelope(0, 429, "slow down"))
+        same(handler._rateLimitUntil, now + 2 * JsConstants.RATE_LIMIT_COOLDOWN_MS, "repeated rate limits wait longer")
+    }
+
+    // A removed symbol's in-flight response can still tell us that the whole provider is rate limited.
+    function test_obsolete_responses_still_apply_provider_rate_limits() {
+        send(request("removed"))
+        current = false
+        runNext(0, envelope(0, 429, "slow down"))
+        same(seen.finished.length, 0)
+        equal(handler.pending, {})
+        current = true
+        send(request("new"))
+        handler._pump()
+        same(handler._activeCount, 0)
+        same(handler._queue.length, 1, "the next symbol respects the obsolete call's rate-limit response")
+    }
+
+    // Coalescing cannot bypass the memory bound by attaching unlimited logical callers to one transfer.
+    function test_shared_subscribers_are_bounded_too() {
+        for (let i = 0; i < JsConstants.FETCH_QUEUE_MAX; i++) check(send(request("same", { group: "symbol-" + i })))
+        same(handler._queue.length, 1)
+        throws(function() { send(request("same", { group: "overflow" })) }, "queue reached its limit")
+        same(keyCount(), JsConstants.FETCH_QUEUE_MAX)
+        runNext(0, envelope(0, 404, "unknown symbol"))
+        same(seen.finished.length, JsConstants.FETCH_QUEUE_MAX, "all subscribers receive the final HTTP failure")
+        check(seen.finished.every(function(result) { return !result.response.ok }))
+        equal(handler.pending, {})
+        same(keyCount(), 0); same(Object.keys(handler._transfers).length, 0)
+    }
     function test_retry_queue_is_bounded_and_deduplicated() {
         function job(key) { return { request: request(key), attempt: 1 } }
         check(handler._scheduleRetry(job("a")))
@@ -262,6 +387,26 @@ TestSuite {
             done(response.ok && series.length === 1 && series[0].close === 3 && response.status === 200 ? "" : "unexpected response: " + response.body + " " + (response.error && response.error.details))
         })
         send(call)
+    }
+
+    // Verify physical process counts, not only queue contents, when two views share one response.
+    function async_shared_calls_start_one_real_process(done) {
+        let starts = 0
+        Logger.configure({ devMode: true, sink: function(level, scope, text) { if (text.indexOf("started ") !== -1) starts++ } })
+        let command = ["bash", "-c", "printf 'MARKETS-RESPONSE 0 200\\n%s' \"$1\"", "test", wiseBody]
+        send(request("shared-process", { command: command, candles: 1 }))
+        let graph = request("shared-process", { command: command, candles: 2, group: "u2" })
+        graph.context.fetchType = "graph"
+        send(graph)
+        waitUntil(function() { return seen.finished.length === 2 && keyCount() === 0 }, function(problem) {
+            try {
+                if (problem) throw new Error(problem)
+                same(starts, 1, "one physical request serves both callers")
+                same(seen.finished[0].series.length, 1); same(seen.finished[1].series.length, 2)
+                equal(handler.pending, {})
+                done("")
+            } catch (error) { done(error.message) }
+        })
     }
     function test_new_request_queue_is_bounded_without_leaking_pending_counts() {
         for (let i = 0; i < JsConstants.FETCH_QUEUE_MAX; i++) check(send(request("request-" + i)))

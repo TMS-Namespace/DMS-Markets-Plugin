@@ -207,7 +207,12 @@ PluginComponent {
                          function() { fetcher.fetchNewSymbols(root.symbols, previousIds) })
             // A removed symbol's saved data goes with it. (DMS starts with an empty list, but then nothing is known yet,
             // so there is nothing to compare with: only symbols this widget already knew can be removed.)
-            previousIds.forEach(function(uid) { if (currentIds.indexOf(uid) === -1) cache.discard(uid) })
+            previousIds.forEach(function(uid) {
+                if (currentIds.indexOf(uid) !== -1) return
+                fetcher.forget(uid)
+                root.symbolErrors = Helpers.withoutEntry(root.symbolErrors, uid)
+                cache.discard(uid)
+            })
             Logger.debug("widget", "checking " + root.symbols.length + " symbols for new or changed ones")
             for (let i = 0; i < root.symbols.length; i++) {
                 let symbol = root.symbols[i]

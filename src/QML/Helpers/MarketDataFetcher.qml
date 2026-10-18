@@ -93,7 +93,6 @@ Item {
 
     Component { id: contextType; FetchContext {} }
     Component { id: priceType;   PriceInfo {} }
-    Component { id: pointType;   DataPoint {} }
 
     // ── Polling timer ─────────────────────────────────────────────────────────
     Timer {
@@ -232,7 +231,7 @@ Item {
     }
 
     // ── Store a successful result ─────────────────────────────────────────────
-    // `series` holds the newest candles the pull asked for, so nothing is trimmed here.
+    // `series` holds the newest validated plain candles the pull asked for, so nothing is trimmed here.
     // Throws PluginError (NO_DATA) for an answer without any candle.
     function _store(symbolId, providerName, fetchType, series) {
         let invert = Helpers.isInverted(symbols, symbolId)
@@ -267,7 +266,7 @@ Item {
                 throw new PluginError.PluginError(PluginError.Code.NO_DATA, name + " has no chart data for this symbol.", "empty history answer")
 
             graphDataReady(Helpers.withEntry(graphData, symbolId, series.map(function(candle) {
-                return pointType.createObject(null, invert ? SeriesRules.transform(candle, Helpers.inv) : candle) as DataPoint
+                return invert ? SeriesRules.transform(candle, Helpers.inv) : candle
             })))
             Logger.debug("fetcher", "stored " + series.length + " chart candles of " + symbolId + (invert ? " (inverted)" : ""))
         }
@@ -291,6 +290,10 @@ Item {
         if (priceData[uid] !== undefined) priceDataReady(Helpers.withoutEntry(priceData, uid))
         if (graphData[uid] !== undefined) graphDataReady(Helpers.withoutEntry(graphData, uid))
         _references = Helpers.withoutEntry(_references, uid)
+        let started = lastFetchTimes
+        timeKeys.forEach(function(key) { if (started[key] !== undefined) started = Helpers.withoutEntry(started, key) })
+        if (started !== lastFetchTimes) fetchTimesUpdated(started)
+        _initialGraphQueue = _initialGraphQueue.filter(function(symbol) { return symbol.uid !== uid })
         let refreshed = refreshedTimes
         timeKeys.forEach(function(key) { if (refreshed[key] !== undefined) refreshed = Helpers.withoutEntry(refreshed, key) })
         if (refreshed !== refreshedTimes) refreshedTimesUpdated(refreshed)
@@ -345,9 +348,9 @@ Item {
             let candle = saved[i]
             if (!candle || typeof candle !== "object") return null
             for (let j = 2; j < root._candleFields.length; j++) if (!_isNumber(candle[root._candleFields[j]])) return null
-            let point = pointType.createObject(null, _plain(candle, _candleFields)) as DataPoint
-            if (!point.dateValid || !point.timeValid) return null
-            points.push(point)
+            if (typeof candle.date !== "string" || !SeriesRules.DATE_PATTERN.test(candle.date)
+                    || typeof candle.time !== "string" || !SeriesRules.TIME_PATTERN.test(candle.time)) return null
+            points.push(SeriesRules.candle(_plain(candle, _candleFields)))
         }
         return points
     }
@@ -376,11 +379,21 @@ Item {
                 graphDataReady(Helpers.withEntry(graphData, uid, chart))
                 restored = true
             }
+            let started = Helpers.copyOf(lastFetchTimes)
+            let available = { price: !!price, graph: !!chart, change: !!price && typeof _references[uid] === "number" }
+            let now = Date.now()
             ;[FetchType.Values.PRICE, FetchType.Values.CHANGE, FetchType.Values.GRAPH].forEach(function(fetchType) {
                 let key = FetchType.timeKey(uid, fetchType)
-                if (_isNumber(saved[fetchType]) && saved[fetchType] > 0 && !refreshed[key]) refreshed[key] = saved[fetchType]
+                let timestamp = saved[fetchType]
+                if (available[fetchType] && _isNumber(timestamp) && timestamp > 0 && timestamp <= now) {
+                    if (!refreshed[key]) refreshed[key] = timestamp
+                    if (!started[key]) started[key] = timestamp
+                }
             })
-            if (restored) refreshedTimesUpdated(refreshed)
+            if (restored) {
+                refreshedTimesUpdated(refreshed)
+                fetchTimesUpdated(started)
+            }
             Logger.debug("fetcher", "restored the saved data of " + uid + ": " + (price ? "price " : "") + (chart ? chart.length + " candles" : ""))
             return restored
         } catch (caughtError) {
@@ -425,29 +438,40 @@ Item {
         let remaining = _initialGraphQueue.slice()
         let symbol    = remaining.shift()
         _initialGraphQueue = remaining
-        doFetch(symbol, FetchType.Values.GRAPH)
+        let current = _findSymbol(symbol.uid)
+        if (current && Helpers.symbolFetchSignature(current, ProvidersManager.defaultId)
+                === Helpers.symbolFetchSignature(symbol, ProvidersManager.defaultId)) doFetch(current, FetchType.Values.GRAPH)
         if (remaining.length > 0) initialGraphTimer.restart()
     }
 
-    // ── Public: kick off all initial fetches ──────────────────────────────────
+    // Cached successes keep their normal refresh cadence across reloads; manual refresh bypasses this check.
+    function _isDue(symbol, fetchType, now, times) {
+        let selection = _selectionFor(symbol)
+        let interval = fetchType === FetchType.Values.CHANGE ? SelectionPolicy.changeRefreshMs(selection.changeResolution)
+            : Helpers.resolutionToMs(fetchType === FetchType.Values.PRICE ? selection.priceResolution : selection.chartResolution)
+        return now - (times[FetchType.timeKey(symbol.uid, fetchType)] || 0) >= interval
+    }
+
+    // ── Public: kick off due initial fetches ─────────────────────────────────
     function startInitialFetches(symbolList) {
         Logger.debug("fetcher", "initial fetches for " + symbolList.length + " symbols")
-        let now      = Date.now()
-        let newTimes = {}
-        let queue    = []
-        for (let i = 0; i < symbolList.length; i++) {
-            let symbol = symbolList[i]
-            doFetch(symbol, FetchType.Values.PRICE)
-            doFetch(symbol, FetchType.Values.CHANGE)
-            newTimes[FetchType.timeKey(symbol.uid, FetchType.Values.PRICE)] = now
-            newTimes[FetchType.timeKey(symbol.uid, FetchType.Values.CHANGE)] = now
-            newTimes[FetchType.timeKey(symbol.uid, FetchType.Values.GRAPH)] = now
-            queue.push(symbol)
+        let now = Date.now()
+        let newTimes = Helpers.copyOf(lastFetchTimes)
+        let queue = []
+        for (let symbol of symbolList) {
+            if (!symbol.uid) continue
+            for (let fetchType of FetchType.ORDER) {
+                if (!_isDue(symbol, fetchType, now, newTimes)) continue
+                if (fetchType === FetchType.Values.GRAPH) queue.push(symbol)
+                else doFetch(symbol, fetchType)
+                newTimes[FetchType.timeKey(symbol.uid, fetchType)] = now
+            }
         }
         fetchTimesUpdated(newTimes)
-        _initialGraphQueue     = queue
+        _initialGraphQueue = queue
         initialGraphTimer.interval = JsConstants.INITIAL_GRAPH_DELAY_MS
-        initialGraphTimer.restart()
+        if (queue.length) initialGraphTimer.restart()
+        else initialGraphTimer.stop()
     }
 
     // ── Public: fetch newly-added symbols ─────────────────────────────────────
@@ -459,12 +483,11 @@ Item {
         for (let i = 0; i < newSymbolList.length; i++) {
             let symbol = newSymbolList[i]
             if (knownIds.indexOf(symbol.uid) === -1) {
-                doFetch(symbol, FetchType.Values.PRICE)
-                doFetch(symbol, FetchType.Values.CHANGE)
-                doFetch(symbol, FetchType.Values.GRAPH)
-                newTimes[FetchType.timeKey(symbol.uid, FetchType.Values.PRICE)] = now
-                newTimes[FetchType.timeKey(symbol.uid, FetchType.Values.CHANGE)] = now
-                newTimes[FetchType.timeKey(symbol.uid, FetchType.Values.GRAPH)] = now
+                for (let fetchType of FetchType.ORDER) {
+                    if (!_isDue(symbol, fetchType, now, newTimes)) continue
+                    doFetch(symbol, fetchType)
+                    newTimes[FetchType.timeKey(symbol.uid, fetchType)] = now
+                }
                 hasNew = true
             }
         }

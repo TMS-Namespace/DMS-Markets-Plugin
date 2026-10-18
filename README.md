@@ -68,6 +68,7 @@ Currently supported providers:
   - Full refactoring for first class support of self-declarative multiprovider setup. Note: the saved symbols will be migrated to new formats on first load.
   - Fetched data is now cached on disk, so prices and data will stay visible even without internet connection.
   - Symbol change is now calculated correctly against the close of the previous period.
+  - Various optimizations and tests added.
   - Some cosmetic improvements to comply with `DMS` theme.
 - v1.0.4 :
   - A maintenance release with small fixes, to comply with `DMS` comments [published here](https://github.com/AvengeMedia/dms-plugin-registry/issues/555#issuecomment-5899885512) and [here](https://github.com/AvengeMedia/dms-plugin-registry/pull/990#issuecomment-5947902007).

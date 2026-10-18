@@ -25,7 +25,7 @@ TestSuite {
     readonly property string uidA: "aaaaaaaa-1111-4111-8111-111111111111"
     readonly property string uidB: "bbbbbbbb-2222-4222-8222-222222222222"
     readonly property real cachedClose: 4242
-    readonly property real tenMinutesAgo: Date.now() - 600000
+    readonly property real twoDaysAgo: Date.now() - 2 * 86400000
 
     function setup() {
         if (widget) { widget.destroy(); widget = null }
@@ -42,11 +42,11 @@ TestSuite {
     }
     function signatureOf(s) { return [s.provider, s.ticker, s.priceResolution, s.changeResolution, s.chartResolution, s.chartRange, s.invert].join("|") }
     function recordOf(s, extra) {
-        return Object.assign({ version: 1, uid: s.uid, savedAt: tenMinutesAgo, signature: signatureOf(s),
+        return Object.assign({ version: 1, uid: s.uid, savedAt: twoDaysAgo, signature: signatureOf(s),
             price: { open: cachedClose - 7, high: cachedClose + 1, low: cachedClose - 8, close: cachedClose, date: "2026-01-02", time: "10:00:00", change: 7, changePercent: 0.17 },
             reference: cachedClose - 7,
             graph: [{ date: "2026-01-01", time: "", open: 4200, high: 4250, low: 4190, close: 4230, volume: 0 }, { date: "2026-01-02", time: "", open: 4230, high: 4260, low: 4220, close: cachedClose, volume: 0 }],
-            refreshedAt: { price: tenMinutesAgo, change: tenMinutesAgo, graph: tenMinutesAgo } }, extra || {})
+            refreshedAt: { price: twoDaysAgo, change: twoDaysAgo, graph: twoDaysAgo } }, extra || {})
     }
     function seed(uid, text, done) { shell('mkdir -p -- "$1" && printf %s "$3" > "$1/$2.json"', [directory, uid, text], function() { done() }) }
     function seedRecord(s, extra, done) { seed(s.uid, JSON.stringify(recordOf(s, extra)), done) }
@@ -89,6 +89,37 @@ TestSuite {
     }
 
     // ── Saved data first, fresh data after ───────────────────────────────────
+    // A reload with fresh, matching cached data must not spend any public API requests.
+    function async_fresh_cache_avoids_startup_requests_but_manual_refresh_still_fetches(done) {
+        let savedSymbol = symbol(uidA, "EURUSD=X")
+        let timestamp = Date.now() - 60000
+        seedRecord(savedSymbol, { refreshedAt: { price: timestamp, change: timestamp, graph: timestamp } }, function() {
+            start([savedSymbol])
+            let started = []
+            Logger.configure({ devMode: true, sink: function(level, scope, text) {
+                if (scope === "providers" && text.indexOf("started ") !== -1) started.push(text)
+            } })
+            waitUntil(function() { return widget.lastFetchTimes[uidA + "_graph"] === timestamp }, function(problem) {
+                if (problem) { done(problem); return }
+                // Allow both the symbol watcher and initial graph delay to run before checking request counts.
+                waitUntil(function() { return false }, function() {
+                    try {
+                        equal(started, [], "fresh cache starts zero API processes")
+                        same(priceOf(uidA), cachedClose)
+                        same(widget.refreshedTimes[uidA + "_price"], timestamp)
+                        same(widget.graphData[uidA].length, 2)
+                        let fetcher = widget.children.filter(function(child) { return typeof child.forceRefreshAll === "function" })[0]
+                        check(!!fetcher)
+                        fetcher.forceRefreshAll()
+                        waitUntil(function() { return freshPrice(uidA) }, function(refreshProblem) {
+                            done(refreshProblem || (started.length > 0 ? "" : "manual refresh did not start a request"))
+                        }, 10000, describe)
+                    } catch (error) { done(error.message) }
+                }, 700)
+            }, 10000, describe)
+        })
+    }
+
     function async_saved_data_is_shown_first_then_replaced_by_what_the_provider_answers(done) {
         let s = symbol(uidA, "EURUSD=X")
         seedRecord(s, {}, function() {
@@ -97,8 +128,8 @@ TestSuite {
                 if (problem) { done(problem); return }
                 let first = firstSeen(uidA), problems = []
                 if (!first || first.close !== cachedClose) problems.push("the first thing shown was " + JSON.stringify(first) + ", not the saved price")
-                if (!first || Math.abs(first.refreshed - tenMinutesAgo) > 1) problems.push("the saved time of the fetch is not shown with it: " + (first && first.refreshed))
-                if (widget.refreshedTimes[uidA + "_price"] <= tenMinutesAgo) problems.push("refreshed time not updated by the fresh answer")
+                if (!first || Math.abs(first.refreshed - twoDaysAgo) > 1) problems.push("the saved time of the fetch is not shown with it: " + (first && first.refreshed))
+                if (widget.refreshedTimes[uidA + "_price"] <= twoDaysAgo) problems.push("refreshed time not updated by the fresh answer")
                 if (Object.keys(widget.symbolErrors).length) problems.push("an error is shown")
                 done(problems.join("; "))
             }, 15000, describe)
@@ -158,11 +189,11 @@ TestSuite {
                 let problems = []
                 if (priceOf(uidA) !== cachedClose) problems.push("the price on screen is " + priceOf(uidA))
                 if (!widget.graphData[uidA] || widget.graphData[uidA].length !== 2) problems.push("the chart was lost")
-                if (Math.abs(widget.refreshedTimes[uidA + "_price"] - tenMinutesAgo) > 1) problems.push("the refreshed time was changed by a failure")
+                if (Math.abs(widget.refreshedTimes[uidA + "_price"] - twoDaysAgo) > 1) problems.push("the refreshed time was changed by a failure")
                 waitUntil(function() { return everythingOnDisk() }, function(problem2) {
                     fileText(uidA, function(text) {
                         let saved = JSON.parse(text)
-                        if (saved.price.close !== cachedClose || Math.abs(saved.refreshedAt.price - tenMinutesAgo) > 1) problems.push("the saved file was overwritten by a failure")
+                        if (saved.price.close !== cachedClose || Math.abs(saved.refreshedAt.price - twoDaysAgo) > 1) problems.push("the saved file was overwritten by a failure")
                         done(problem2 || problems.join("; "))
                     })
                 }, 5000, describe)
@@ -241,7 +272,15 @@ TestSuite {
                     }, function(problem2) {
                         // the removal is noticed by the symbol watcher after its delay
                         waitUntil(function() { return false }, function() {
-                            files(function(names) { done(problem2 || (names.join() === uidA + ".json" ? "" : "files " + names)) })
+                            files(function(names) {
+                                try {
+                                    check(!widget.priceData[uidB] && !widget.graphData[uidB], "removed market data is released")
+                                    check(!widget.lastFetchTimes[uidB + "_price"] && !widget.refreshedTimes[uidB + "_graph"], "removed scheduling state is released")
+                                    check(!widget.symbolErrors[uidB], "removed errors are released")
+                                    check(!!widget.priceData[uidA] && !!widget.graphData[uidA], "other symbols remain loaded")
+                                    done(problem2 || (names.join() === uidA + ".json" ? "" : "files " + names))
+                                } catch (error) { done(error.message) }
+                            })
                         }, 1500)
                     }, 10000, describe)
                 }, 15000, describe)
@@ -257,7 +296,14 @@ TestSuite {
                 service.data = Object.assign({}, service.data, { symbols: JSON.stringify([]) })
                 waitUntil(function() { return false }, function() {
                     waitUntil(function() { return widget.marketCache.busy === 0 }, function() {
-                        files(function(names) { done(names.length === 0 ? "" : "left behind: " + names) })
+                        files(function(names) {
+                            try {
+                                equal(widget.priceData, {}); equal(widget.graphData, {})
+                                equal(widget.lastFetchTimes, {}); equal(widget.refreshedTimes, {})
+                                equal(widget.symbolErrors, {})
+                                done(names.length === 0 ? "" : "left behind: " + names)
+                            } catch (error) { done(error.message) }
+                        })
                     }, 3000)
                 }, 1500)
             }, 15000, describe)
