@@ -334,7 +334,7 @@ Item {
 
     // Deduplicate callers separately from transfers: each caller keeps its context and parse limit.
     function _submit(request, context, isCurrent) {
-        let key = context.uid + "_" + context.fetchType + "_" + request.url + (context.signature ? "|" + context.signature : "");
+        let key = context.uid + "_" + context.fetchType + "_" + request.url + (context.signature ? "|" + context.signature : "") + (context.generation ? "|" + context.generation : "");
         if (_keys[key])
             return false;
         if (Object.keys(_keys).length >= JsConstants.FETCH_QUEUE_MAX)

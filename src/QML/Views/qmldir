@@ -11,3 +11,4 @@ ValueSliderRow      1.0 ValueSliderRow.qml
 SelectionRow        1.0 SelectionRow.qml
 DisplaySettings     1.0 DisplaySettings.qml
 SymbolEditor        1.0 SymbolEditor.qml
+DataMaintenance 1.0 DataMaintenance.qml

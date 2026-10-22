@@ -6,7 +6,7 @@
 import QtQuick
 import "../Helpers"
 import qs.Common
-import qs.Widgets
+import qs.DCommon.Widgets
 
 Row {
     id: pill
@@ -15,13 +15,14 @@ Row {
 
     // ── Required bindings (set by Widget.qml) ────────────────────────────────
     property int iconSize: constants.defaultBarIconSize
+    property int textSize: Theme.fontSizeSmall
 
     spacing: Theme.spacingS
 
     Constants {
         id: constants
     }
-    DankIcon {
+    DIcon {
         anchors.verticalCenter: parent.verticalCenter
         color: Theme.primary
         name: "show_chart"
@@ -30,7 +31,7 @@ Row {
     StyledText {
         anchors.verticalCenter: parent.verticalCenter
         color: Theme.surfaceText
-        font.pixelSize: Theme.fontSizeSmall
+        font.pixelSize: pill.textSize
         text: pill.displayText
     }
 }

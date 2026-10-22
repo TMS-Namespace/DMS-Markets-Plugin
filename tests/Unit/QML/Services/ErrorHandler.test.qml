@@ -26,13 +26,13 @@ TestSuite {
     function setup() {
         ErrorHandler.reset();
         Logger.configure({
-            devMode: false
+            isDevMode: false
         });
         toasts = [];
         logs = [];
         now = 1000;
         Logger.configure({
-            devMode: true,
+            isDevMode: true,
             sink: function (level, scope, text) {
                 logs.push([level, scope, text]);
             }
@@ -61,7 +61,7 @@ TestSuite {
         check(record.userMessage.indexOf("secret") === -1, "raw text is never shown");
         same(toasts.length, 1);
         check(toasts[0][0].indexOf("secret") === -1);
-        check(logs.length === 1 && logs[0][2].indexOf("secret") !== -1, "devMode logs the exact reason");
+        check(logs.length === 1 && logs[0][2].indexOf("secret") !== -1, "isDevMode logs the exact reason");
     }
     function test_guard_returns_value_or_record() {
         let ok = ErrorHandler.guard("s", function () {
@@ -77,7 +77,7 @@ TestSuite {
     }
     function test_nothing_is_logged_outside_dev_mode() {
         Logger.configure({
-            devMode: false
+            isDevMode: false
         });
         ErrorHandler.handle("fetcher", new Error("x"));
         Logger.debug("fetcher", "hello");

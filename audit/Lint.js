@@ -199,7 +199,7 @@ function checkQml(executable, files) {
 async function main() {
     console.log(`Provider contracts: ${checkProviders().join(", ")}; all implementations conform.`);
     const qmlFiles = ["src", "tests"].flatMap((directory) => collect(path.join(root, directory), ".qml"));
-    const jsFiles = ["src", "tests", "support"].flatMap((directory) => collect(path.join(root, directory), ".js"));
+    const jsFiles = ["src", "tests", "audit"].flatMap((directory) => collect(path.join(root, directory), ".js"));
     const syntaxFailures = checkJavaScript(jsFiles);
     const diagnostics = await checkQml(findLanguageServer(), qmlFiles);
     console.log(

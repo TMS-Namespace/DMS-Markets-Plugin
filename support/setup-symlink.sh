@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# setup-symlink.sh - Link this plugin into the DMS plugins directory
+# setup-symlink.sh - Link this plugin into the Dux Shell plugins directory
 #
 # Run once after cloning:
 #   chmod +x support/setup-symlink.sh && support/setup-symlink.sh
 
-PLUGIN_DIR="$HOME/.config/DankMaterialShell/plugins"
+PLUGIN_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/dms/plugins"
 PLUGIN_NAME="MarketsPlugin"
 SOURCE_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
@@ -14,7 +14,7 @@ ln -sfn "$SOURCE_DIR" "$PLUGIN_DIR/$PLUGIN_NAME"
 echo "✓ Symlinked: $PLUGIN_DIR/$PLUGIN_NAME → $SOURCE_DIR"
 echo ""
 echo "Next steps:"
-echo "  1. Open DMS Settings → Plugins"
+echo "  1. Open Dux Shell Settings → Plugins"
 echo "  2. Click 'Scan for Plugins'"
 echo "  3. Toggle 'Markets' on"
 echo "  4. Add widget to DankBar"

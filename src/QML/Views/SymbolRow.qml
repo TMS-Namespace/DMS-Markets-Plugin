@@ -17,7 +17,7 @@ import "../../JS/Helpers/SymbolErrorMap.js" as SymbolErrors
 import "../Helpers"
 import "../Services"
 import qs.Common
-import qs.Widgets
+import qs.DCommon.Widgets
 
 Item {
     id: symbolRow
@@ -217,51 +217,6 @@ Item {
             }
         }
 
-        // ── Error message (instead of the information that could not be loaded) ──
-        Item {
-            id: errorBlock
-
-            anchors.left: symbolRow.priceFailed ? nameColumn.right : chartArea.left
-            anchors.leftMargin: Theme.spacingS
-            anchors.right: symbolRow.priceFailed && symbolRow.hasChart ? chartArea.left : chartArea.right
-            anchors.rightMargin: Theme.spacingXS
-            anchors.verticalCenter: symbolRow.verticalCenter
-            height: symbolRow.height
-
-            // A cached chart survives even if no price was loaded; its error belongs in the price space.
-            parent: symbolRow
-            visible: symbolRow.errorMessage !== ""
-
-            Row {
-                anchors.centerIn: parent
-                height: Math.max(errorIcon.height, errorText.implicitHeight)
-                spacing: Theme.spacingXS
-                width: Math.min(parent.width, errorIcon.width + spacing + errorText.implicitWidth)
-
-                DankIcon {
-                    id: errorIcon
-
-                    anchors.verticalCenter: parent.verticalCenter
-                    color: Theme.error
-                    name: "error"
-                    size: constants.actionIconSize
-                }
-                StyledText {
-                    id: errorText
-
-                    anchors.verticalCenter: parent.verticalCenter
-                    color: Theme.error
-                    elide: Text.ElideRight
-                    font.pixelSize: Theme.fontSizeSmall
-                    horizontalAlignment: Text.AlignHCenter
-                    maximumLineCount: 3
-                    text: symbolRow.errorMessage
-                    width: Math.max(0, parent.width - errorIcon.width - parent.spacing)
-                    wrapMode: Text.WordWrap
-                }
-            }
-        }
-
         // ── Chart click → open symbol page ───────────────────────────────
         MouseArea {
             id: chartMouseArea
@@ -319,6 +274,50 @@ Item {
                 iconSize: constants.actionCloseIconSize
 
                 onClicked: symbolRow.removeSymbol()
+            }
+        }
+    }
+
+    // ── Error message (instead of the information that could not be loaded) ──
+    Item {
+        id: errorBlock
+
+        anchors.left: symbolRow.priceFailed ? nameColumn.right : chartArea.left
+        anchors.leftMargin: Theme.spacingS
+        anchors.right: symbolRow.priceFailed && symbolRow.hasChart ? chartArea.left : chartArea.right
+        anchors.rightMargin: Theme.spacingXS
+        anchors.verticalCenter: symbolRow.verticalCenter
+        height: symbolRow.height
+
+        // A cached chart survives even if no price was loaded; its error belongs in the price space.
+        visible: symbolRow.errorMessage !== ""
+
+        Row {
+            anchors.centerIn: parent
+            height: Math.max(errorIcon.height, errorText.implicitHeight)
+            spacing: Theme.spacingXS
+            width: Math.min(parent.width, errorIcon.width + spacing + errorText.implicitWidth)
+
+            DIcon {
+                id: errorIcon
+
+                anchors.verticalCenter: parent.verticalCenter
+                color: Theme.error
+                name: "error"
+                size: constants.actionIconSize
+            }
+            StyledText {
+                id: errorText
+
+                anchors.verticalCenter: parent.verticalCenter
+                color: Theme.error
+                elide: Text.ElideRight
+                font.pixelSize: Theme.fontSizeSmall
+                horizontalAlignment: Text.AlignHCenter
+                maximumLineCount: 3
+                text: symbolRow.errorMessage
+                width: Math.max(0, parent.width - errorIcon.width - parent.spacing)
+                wrapMode: Text.WordWrap
             }
         }
     }

@@ -32,7 +32,7 @@ TestSuite {
     function setup() {
         ErrorHandler.reset();
         Logger.configure({
-            devMode: false
+            isDevMode: false
         });
         ProvidersManager.reload(ProvidersManager.sources);
     }

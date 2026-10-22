@@ -1,13 +1,14 @@
 // Settings.qml - DMS settings entry point. Composes views and connects them to a per-page controller.
 pragma ComponentBehavior: Bound
 import QtQuick
+import QtQuick.Layouts
 import "./Helpers"
 import "./Services"
 import "./Views"
 import qs.Common
+import qs.DCommon.Widgets
 import qs.Modules.Plugins
 import qs.Services
-import qs.Widgets
 
 PluginSettings {
     id: root
@@ -19,7 +20,7 @@ PluginSettings {
     // Connect the shared error handler to the host's notifications before reading saved settings.
     function _configureErrorHandler() {
         Logger.configure({
-            devMode: constants.devMode
+            isDevMode: constants.isDevMode
         });
         ErrorHandler.configure({
             notify: function (message, details, category) {
@@ -77,7 +78,7 @@ PluginSettings {
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    //  CHART COLORS
+    //  COLLAPSIBLE SETTINGS GROUPS
     // ═══════════════════════════════════════════════════════════════════════
 
     Column {
@@ -86,83 +87,97 @@ PluginSettings {
         spacing: Theme.spacingS
         width: parent.width
 
-        DisplaySettings {
-            id: displaySettings
-
-            width: parent.width
-        }
-        Rectangle {
-            color: Theme.outlineVariant
-            height: 1
-            width: parent.width
-        }
-
-        // ═══════════════════════════════════════════════════════════════════════
-        //  SYMBOL LOOKUP + ADD/EDIT
-        // ═══════════════════════════════════════════════════════════════════════
-
-        SymbolEditor {
-            id: symbolEditor
-
-            changeResolutionOptions: root.controller.changeResolutionOptions
-            chartRangeAvailable: root.controller.chartRangeAvailable
-            chartRangeOptions: root.controller.chartRangeOptions
-            chartRangeStatus: root.controller.chartRangeStatus
-            chartResolutionOptions: root.controller.chartResolutionOptions
-            editIndex: root.controller.editIndex
-            formUnlocked: root.controller.formUnlocked
-            nameText: root.controller.nameText
-            nameValidation: root.controller.nameValidation
-            priceResolutionOptions: root.controller.priceResolutionOptions
-            providerLoadErrors: root.controller.providerLoadErrors
-            selectedProvider: root.controller.selectedProvider
-            selectedProviderDisabled: root.controller.selectedProviderDisabled
-            tickerText: root.controller.tickerText
-            tickerValidation: root.controller.tickerValidation
+        DCollapsibleSection {
+            title: "Global View Settings"
             width: parent.width
 
-            onCancelRequested: root.controller.cancelEdit()
-            onChartResolutionEdited: Qt.callLater(root.controller.syncSelections)
-            onDraftFieldEdited: (field, value) => root.controller.saveDraftField(field, value)
-            onFlagsEdited: root.controller.saveEditedSymbolFlags()
-            onSaveRequested: root.controller.addOrUpdateSymbol()
-        }
-        Rectangle {
-            color: Theme.outlineVariant
-            height: 1
-            width: parent.width
-        }
+            DisplaySettings {
+                id: displaySettings
 
-        // ═══════════════════════════════════════════════════════════════════════
-        //  CONFIGURED SYMBOLS LIST
-        // ═══════════════════════════════════════════════════════════════════════
-
-        StyledText {
-            color: Theme.surfaceText
-            font.pixelSize: Theme.fontSizeLarge
-            font.weight: Font.Bold
-            text: "Configured Symbols"
-            topPadding: Theme.spacingS
-            width: parent.width
-        }
-        Repeater {
-            model: root.controller.symbolsList
-
-            delegate: ConfiguredSymbol {
-                required property int index
-                required property var modelData
-
-                isEditing: root.controller.editIndex === index
-                isFirst: index === 0
-                isLast: index === root.controller.symbolsList.length - 1
-                symbolData: modelData
-                width: root.width
-
-                onClicked: root.controller.editSymbol(index)
-                onMovedDown: root.controller.moveSymbol(index, 1)
-                onMovedUp: root.controller.moveSymbol(index, -1)
-                onRemoved: root.controller.removeSymbolAt(index)
+                Layout.fillWidth: true
             }
+        }
+        DCollapsibleSection {
+            title: "Per Symbol Settings"
+            width: parent.width
+
+            Column {
+                Layout.fillWidth: true
+                spacing: Theme.spacingS
+
+                SymbolEditor {
+                    id: symbolEditor
+
+                    changeResolutionOptions: root.controller.changeResolutionOptions
+                    chartRangeAvailable: root.controller.chartRangeAvailable
+                    chartRangeOptions: root.controller.chartRangeOptions
+                    chartRangeStatus: root.controller.chartRangeStatus
+                    chartResolutionOptions: root.controller.chartResolutionOptions
+                    editIndex: root.controller.editIndex
+                    formUnlocked: root.controller.formUnlocked
+                    nameText: root.controller.nameText
+                    nameValidation: root.controller.nameValidation
+                    priceResolutionOptions: root.controller.priceResolutionOptions
+                    providerLoadErrors: root.controller.providerLoadErrors
+                    selectedProvider: root.controller.selectedProvider
+                    selectedProviderDisabled: root.controller.selectedProviderDisabled
+                    tickerText: root.controller.tickerText
+                    tickerValidation: root.controller.tickerValidation
+                    width: parent.width
+
+                    onCancelRequested: root.controller.cancelEdit()
+                    onChartResolutionEdited: Qt.callLater(root.controller.syncSelections)
+                    onDraftFieldEdited: (field, value) => root.controller.saveDraftField(field, value)
+                    onFlagsEdited: root.controller.saveEditedSymbolFlags()
+                    onSaveRequested: root.controller.addOrUpdateSymbol()
+                }
+                Rectangle {
+                    color: Theme.outlineVariant
+                    height: 1
+                    width: parent.width
+                }
+
+                // ═══════════════════════════════════════════════════════════════════════
+                //  CONFIGURED SYMBOLS LIST
+                // ═══════════════════════════════════════════════════════════════════════
+
+                StyledText {
+                    color: Theme.surfaceText
+                    font.pixelSize: Theme.fontSizeLarge
+                    font.weight: Font.Bold
+                    text: "Configured Symbols"
+                    topPadding: Theme.spacingS
+                    width: parent.width
+                }
+                Repeater {
+                    model: root.controller.symbolsList
+
+                    delegate: ConfiguredSymbol {
+                        required property int index
+                        required property var modelData
+
+                        isEditing: root.controller.editIndex === index
+                        isFirst: index === 0
+                        isLast: index === root.controller.symbolsList.length - 1
+                        symbolData: modelData
+                        width: parent ? parent.width : 0
+
+                        onClicked: root.controller.editSymbol(index)
+                        onMovedDown: root.controller.moveSymbol(index, 1)
+                        onMovedUp: root.controller.moveSymbol(index, -1)
+                        onRemoved: root.controller.removeSymbolAt(index)
+                    }
+                }
+            }
+        }
+        DataMaintenance {
+            cacheClearing: root.controller.cacheClearing
+            serviceReady: root.pluginService !== null
+            symbolCount: root.controller.symbolsList.length
+            width: parent.width
+
+            onClearCacheRequested: root.controller.clearCache()
+            onRemoveAllRequested: root.controller.removeAllSymbols()
         }
     } // settingsBody
 }

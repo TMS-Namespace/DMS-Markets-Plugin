@@ -9,7 +9,7 @@ import "../../JS/Contracts/Resolution.js" as Resolution
 import "../Helpers"
 import "../Services"
 import qs.Common
-import qs.Widgets
+import qs.DCommon.Widgets
 
 Item {
     id: configRow
@@ -52,7 +52,7 @@ Item {
             spacing: Theme.spacingS
 
             // ── Pin indicator ────────────────────────────────────────────
-            DankIcon {
+            DIcon {
                 anchors.verticalCenter: parent.verticalCenter
                 color: configRow.symbolData.pinned ? Theme.primary : Theme.surfaceContainerHighest
                 name: "push_pin"
@@ -93,7 +93,7 @@ Item {
 
                     onClicked: configRow.movedUp()
 
-                    DankIcon {
+                    DIcon {
                         anchors.centerIn: parent
                         color: !configRow.isFirst ? (parent.containsMouse ? Theme.primary : Theme.surfaceVariantText) : Theme.surfaceContainerHighest
                         name: "arrow_upward"
@@ -109,7 +109,7 @@ Item {
 
                     onClicked: configRow.movedDown()
 
-                    DankIcon {
+                    DIcon {
                         anchors.centerIn: parent
                         color: !configRow.isLast ? (parent.containsMouse ? Theme.primary : Theme.surfaceVariantText) : Theme.surfaceContainerHighest
                         name: "arrow_downward"
@@ -124,7 +124,7 @@ Item {
 
                     onClicked: configRow.removed()
 
-                    DankIcon {
+                    DIcon {
                         anchors.centerIn: parent
                         color: parent.containsMouse ? Theme.error : Theme.surfaceVariantText
                         name: "delete"

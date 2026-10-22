@@ -4,8 +4,8 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import "../Helpers"
 import qs.Common
+import qs.DCommon.Widgets
 import qs.Modules.Plugins
-import qs.Widgets
 
 Column {
     id: root

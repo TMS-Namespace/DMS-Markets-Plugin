@@ -44,6 +44,7 @@ var STORAGE_SAVE_ATTEMPTS = 3; // tries of one write to the plugin data
 // Saved market data (MarketCache): one file per symbol, named by the symbol's uid, in the user's cache directory.
 var CACHE_DIR_NAME = "dms-markets-plugin";
 var CACHE_FORMAT_VERSION = 1;
+var CACHE_CLEAR_TIMEOUT_MS = 15000; // stop waiting if an existing cache operation cannot settle
 var CACHE_ATTEMPTS = 3; // tries of one file read or write before giving up on that file
 var CACHE_RETRY_MS = 500; // wait between those tries
 var CACHE_FLUSH_DELAY_MS = 1000; // updates of a symbol within this time are written as one file

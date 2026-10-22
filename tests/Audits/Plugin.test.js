@@ -6,6 +6,7 @@ const manifest = JSON.parse(fs.readFileSync(path.join(repoRoot, "plugin.json"), 
 
 for (const key of ["id", "name", "version", "component", "settings", "permissions", "dependencies", "repo"])
     assert(manifest[key] !== undefined, `plugin.json.${key}`);
+assert.strictEqual(manifest.requires_dms, ">=2.0.0", "Dux shared widgets require host 2.0 or newer");
 assert(/^\d+\.\d+\.\d+$/.test(manifest.version), "semantic version");
 for (const key of ["component", "settings"]) {
     const file = path.resolve(repoRoot, manifest[key]);

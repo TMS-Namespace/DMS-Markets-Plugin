@@ -34,6 +34,7 @@ Item {
 
     // ── State ─────────────────────────────────────────────────────────────────
     property var _dirty: ({})       // uids with data not yet written
+    property bool _pausedForClear: false
     property int _processCount: 0
     property var _processQueue: []
     property var _removed: ({})       // uids discarded while a write was in progress
@@ -314,6 +315,10 @@ Item {
 
     // Retry the write or try a bounded number of fallback file names.
     function _writeFailed(uid, text, name, attempt, fallbacksUsed, reason) {
+        if (_pausedForClear) {
+            _writeEnded(uid);
+            return;
+        }
         _directoryReady = false;      // maybe the directory vanished: make sure of it on the next try
         if (attempt < attempts) {
             Logger.debug("cache", "writing " + name + " failed (attempt " + attempt + "/" + attempts + "): " + reason);
@@ -346,6 +351,19 @@ Item {
         });
     }
 
+    // Remove this plugin's JSON cache files, without following directories or touching symbol settings.
+    function clearStoredFiles(completion) {
+        if (!_pausedForClear || busy > 0) {
+            completion(false);
+            return;
+        }
+        _run(["sh", "-c", 'if [ -e "$1" ]; then [ -d "$1" ] && [ -r "$1" ] && [ -x "$1" ] || exit 1; fi; rm -f -- "$1"/*.json', "sh", directory], function (code) {
+            _directoryReady = false;
+            Logger.debug("cache", code === 0 ? "cleared saved market data" : "cache clearing failed");
+            completion(code === 0);
+        });
+    }
+
     // ── Removing ──────────────────────────────────────────────────────────────
     function discard(uid) {
         if (!isValidUid(uid))
@@ -372,6 +390,8 @@ Item {
     // Starts the writes that are due now (also what the timer does).
     function flushNow() {
         flushTimer.stop();
+        if (_pausedForClear)
+            return;
         Object.keys(_dirty).forEach(function (uid) {
             if (!_writing[uid])
                 _startWrite(uid);
@@ -415,6 +435,8 @@ Item {
 
     // ── Saving ────────────────────────────────────────────────────────────────
     function markDirty(uid) {
+        if (_pausedForClear)
+            return;
         if (!isValidUid(uid)) {
             Logger.debug("cache", "not saving '" + String(uid).slice(0, 40) + "': not a symbol uid");
             return;
@@ -426,6 +448,21 @@ Item {
         if (!flushTimer.running)
             flushTimer.restart();
     }
+
+    // Discard buffered saves; the coordinator waits for any already-started operation before deleting files.
+    function pauseForClear() {
+        _pausedForClear = true;
+        flushTimer.stop();
+        _dirty = {};
+    }
+
+    // Allow later provider results to be cached again after the explicit cleanup finishes.
+    function resumeAfterClear() {
+        _pausedForClear = false;
+    }
+
+    Component.onCompleted: CacheMaintenance.registerCache(root)
+    Component.onDestruction: CacheMaintenance.unregisterCache(root)
 
     // ── Small async tools ─────────────────────────────────────────────────────
     Component {

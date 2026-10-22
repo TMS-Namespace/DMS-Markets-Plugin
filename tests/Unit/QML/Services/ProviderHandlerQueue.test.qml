@@ -61,7 +61,7 @@ TestSuite {
     function async_shared_calls_start_one_real_process(done) {
         let starts = 0;
         Logger.configure({
-            devMode: true,
+            isDevMode: true,
             sink: function (level, scope, text) {
                 if (text.indexOf("started ") !== -1)
                     starts++;
@@ -343,6 +343,20 @@ TestSuite {
         same(seen.finished.length, 1);
         check(max >= 1 && max <= 5, "a small, finite default retry limit");
     }
+
+    // ── Submitting ───────────────────────────────────────────────────────────
+    // A refresh after cache clearing is a new logical caller, while matching transfers remain shared.
+    function test_new_cache_generation_is_not_swallowed_as_an_old_duplicate() {
+        let previous = request("generation-test");
+        let currentCall = request("generation-test");
+        currentCall.context.generation = 1;
+        same(send(previous), true);
+        same(send(currentCall), true);
+        same(keyCount(), 2, "each generation keeps its own caller context");
+        runNext(0, envelope(0, 200, wiseBody));
+        same(seen.finished.length, 2, "one transfer delivers both logical calls");
+        same(keyCount(), 0);
+    }
     function test_new_request_queue_is_bounded_without_leaking_pending_counts() {
         for (let i = 0; i < JsConstants.FETCH_QUEUE_MAX; i++)
             check(send(request("request-" + i)));
@@ -358,7 +372,7 @@ TestSuite {
     function test_nothing_is_logged_when_dev_mode_is_off() {
         let lines = [];
         Logger.configure({
-            devMode: false,
+            isDevMode: false,
             sink: function (level, scope, text) {
                 lines.push(text);
             }
@@ -586,8 +600,6 @@ TestSuite {
         same(seen.finished[0].context.uid, "u2");
         equal(handler.pending, {});
     }
-
-    // ── Submitting ───────────────────────────────────────────────────────────
     function test_submit_counts_pending_per_group_and_refuses_duplicates() {
         check(send(request()));
         same(handler._queue.length, 1);
@@ -630,7 +642,7 @@ TestSuite {
     function test_the_handler_logs_its_work_in_dev_mode_without_urls_or_credentials() {
         let lines = [];
         Logger.configure({
-            devMode: true,
+            isDevMode: true,
             sink: function (level, scope, text) {
                 lines.push(text);
             }

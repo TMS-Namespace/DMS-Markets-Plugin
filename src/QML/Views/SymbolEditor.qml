@@ -5,8 +5,8 @@ import "../../JS/Helpers/Constants.js" as JsConstants
 import "../Helpers"
 import "../Services"
 import qs.Common
+import qs.DCommon.Widgets
 import qs.Modules.Plugins
-import qs.Widgets
 
 Column {
     id: root
@@ -176,7 +176,7 @@ Column {
             spacing: Theme.spacingS
             width: parent.width
 
-            DankTextField {
+            DTextField {
                 id: tickerField
 
                 placeholderText: root.selectedProvider.symbolPlaceholder
@@ -204,7 +204,7 @@ Column {
                         rightMargin: constants.symbolSearchButtonPadding
                         verticalCenter: parent.verticalCenter
                     }
-                    DankIcon {
+                    DIcon {
                         anchors.verticalCenter: parent.verticalCenter
                         color: providerSearchMouseArea.containsMouse ? Theme.surfaceContainer : Theme.primary
                         name: "open_in_new"
@@ -216,7 +216,7 @@ Column {
                         elide: Text.ElideRight
                         font.pixelSize: Theme.fontSizeMedium
                         font.weight: Font.Medium
-                        text: "Open symbols search..."
+                        text: "Search For Symbols"
                         width: parent.width - x
                     }
                 }
@@ -259,7 +259,7 @@ Column {
             width: parent.width
             wrapMode: Text.WordWrap
         }
-        DankTextField {
+        DTextField {
             id: nameField
 
             maximumLength: JsConstants.DISPLAY_NAME_MAX_LENGTH

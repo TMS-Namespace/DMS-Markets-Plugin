@@ -14,5 +14,5 @@ Thumbs.db
 .codex
 .agents
 
-# Generated editor metadata; rebuilt from the installed Quickshell module by support/Lint.js.
-support/lint-imports/Quickshell/
+# Generated editor metadata; rebuilt from the installed Quickshell module by audit/Lint.js.
+audit/lint-imports/Quickshell/

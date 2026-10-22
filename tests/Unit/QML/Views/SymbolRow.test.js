@@ -162,7 +162,7 @@ assert(
     ),
     "the chart is hidden while either failed"
 );
-const block = /id: errorBlock([\s\S]*?)\n        \}\n\n        MouseArea \{\s*id: chartMouseArea/.exec(row)[1];
+const block = row.slice(row.indexOf("id: errorBlock"));
 assert(/visible: symbolRow\.errorMessage !== ""/.test(block), "shown only when there is a message");
 assert(/name:\s+"error"/.test(block) && /color: Theme\.error/.test(block), "error icon and colour");
 assert(/text:\s+symbolRow\.errorMessage/.test(block), "shows the friendly message");

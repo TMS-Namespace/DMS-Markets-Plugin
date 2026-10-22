@@ -1,6 +1,6 @@
 // PopoutPanel.qml - Popout content area for the Markets plugin
 //
-// Contains the symbol list, header hover buttons (refresh all + close),
+// Contains the symbol list, header hover buttons (refresh all, settings and close),
 // custom scroll indicator, and empty-state placeholder.
 // Moved from QML/ to QML/Views/ so all view-layer components live together.
 
@@ -10,7 +10,7 @@ import "../../JS/Contracts/FetchType.js" as FetchType
 import "../../JS/Helpers/SymbolErrorMap.js" as SymbolErrors
 import "../Helpers"
 import qs.Common
-import qs.Widgets
+import qs.DCommon.Widgets
 
 Item {
     id: panel
@@ -26,7 +26,7 @@ Item {
     readonly property string errorSummary: SymbolErrors.summary(symbolErrors, symbols)
     property var graphData: ({})
     readonly property bool hasErrors: errorSummary !== ""
-    readonly property bool headerHovered: headerHoverArea.containsMouse || refreshAllButton.hovered || closePopoutButton.hovered
+    readonly property bool headerHovered: headerHoverArea.containsMouse || refreshAllButton.hovered || settingsButton.hovered || closePopoutButton.hovered
 
     // ── Header geometry (for positioning overlay buttons) ─────────────────────
     property real headerOffset: 0    // headerHeight + detailsHeight
@@ -47,14 +47,19 @@ Item {
 
     // ── Display settings (Widget.qml always binds all of these) ──────────────
     property color upColor
+    readonly property int visibleRows: Math.min(symbols.length, Math.max(1, popoutRows))
 
     signal closePopout
+    signal openSettings
     signal refreshAll
     signal refreshSymbol(string uid)
     signal removeSymbol(string uid)
 
     // ── Signals (forwarded to Widget.qml) ────────────────────────────────────
     signal togglePin(string uid)
+
+    // Match the cards exactly; the host adds the header and outer padding separately.
+    implicitHeight: symbols.length > 0 ? visibleRows * constants.symbolRowHeight + (visibleRows - 1) * symbolList.spacing : emptyState.implicitHeight
 
     Constants {
         id: constants
@@ -102,6 +107,21 @@ Item {
             onClicked: panel.refreshAll()
         }
         IconButton {
+            id: settingsButton
+
+            buttonRadius: constants.headerButtonRadius
+            buttonSize: constants.headerButtonSize
+            enabled: panel.headerHovered || panel._anyLoading
+            hoverTint: Theme.primary
+            iconColor: Theme.surfaceText
+            iconName: "settings"
+            iconSize: constants.headerIconSize
+            opacity: enabled ? 1 : 0
+            tooltipText: "Open Markets settings"
+
+            onClicked: panel.openSettings()
+        }
+        IconButton {
             id: closePopoutButton
 
             buttonRadius: constants.headerButtonRadius
@@ -126,7 +146,7 @@ Item {
 
         anchors.bottom: parent.bottom
         anchors.left: parent.left
-        anchors.right: scrollIndicator.visible ? scrollIndicator.left : parent.right
+        anchors.right: parent.right
         anchors.top: parent.top
         boundsBehavior: Flickable.StopAtBounds
         clip: true
@@ -165,11 +185,12 @@ Item {
         id: scrollIndicator
 
         anchors.bottom: parent.bottom
-        anchors.right: parent.right
         anchors.top: parent.top
         color: "transparent"
         visible: panel.symbols.length > panel.popoutRows
         width: constants.scrollBarWidth
+        // Use the outer gutter so scrolling never narrows only the right side of the cards.
+        x: panel.width + (Theme.spacingS - width) / 2
 
         Rectangle {
             property real ratio: symbolList.height / symbolList.contentHeight
@@ -194,11 +215,14 @@ Item {
     // ═════════════════════════════════════════════════════════════════════════
 
     Column {
+        id: emptyState
+
         anchors.centerIn: parent
         spacing: Theme.spacingM
         visible: panel.symbols.length === 0
+        width: parent.width
 
-        DankIcon {
+        DIcon {
             anchors.horizontalCenter: parent.horizontalCenter
             color: Theme.surfaceVariantText
             name: "add_chart"
@@ -208,13 +232,19 @@ Item {
             anchors.horizontalCenter: parent.horizontalCenter
             color: Theme.surfaceVariantText
             font.pixelSize: Theme.fontSizeMedium
-            text: "No symbols added"
+            horizontalAlignment: Text.AlignHCenter
+            text: "Add symbols to start…"
+            width: parent.width
+            wrapMode: Text.WordWrap
         }
         StyledText {
             anchors.horizontalCenter: parent.horizontalCenter
             color: Theme.surfaceVariantText
             font.pixelSize: Theme.fontSizeSmall
-            text: "Open Settings → Markets to add symbols"
+            horizontalAlignment: Text.AlignHCenter
+            text: "Open Markets settings → Per Symbol Settings to add symbols."
+            width: parent.width
+            wrapMode: Text.WordWrap
         }
     }
 }

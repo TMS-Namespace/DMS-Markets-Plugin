@@ -230,7 +230,7 @@ assert(
 
 // ── Error handling and storage wiring ────────────────────────────────────────
 assert(
-    /function _configureErrorHandler\(\) \{[\s\S]*?Logger\.configure\(\{\s*devMode:\s*constants\.devMode\s*\}\)[\s\S]*?ErrorHandler\.configure\(\{[\s\S]*?ToastService\.showError\("Markets: " \+ message, details, "", category\)/.test(
+    /function _configureErrorHandler\(\) \{[\s\S]*?Logger\.configure\(\{\s*isDevMode:\s*constants\.isDevMode\s*\}\)[\s\S]*?ErrorHandler\.configure\(\{[\s\S]*?ToastService\.showError\("Markets: " \+ message, details, "", category\)/.test(
         source
     )
 );
@@ -285,12 +285,12 @@ const sliderRow = require("fs").readFileSync(
     "utf8"
 );
 assert(
-    /DankSlider \{[\s\S]*?width: sliderRow\.width - root\.valueWidth - sliderRow\.spacing/.test(sliderRow) &&
+    /DSlider \{[\s\S]*?width: sliderRow\.width - root\.valueWidth - sliderRow\.spacing/.test(sliderRow) &&
         /text: root\.value/.test(sliderRow),
     "the value sits to the right of the slider"
 );
 assert(
-    /DankSlider \{[\s\S]*?anchors\.verticalCenter: parent\.verticalCenter[\s\S]*?StyledText \{[\s\S]*?anchors\.verticalCenter: parent\.verticalCenter/.test(
+    /DSlider \{[\s\S]*?anchors\.verticalCenter: parent\.verticalCenter[\s\S]*?StyledText \{[\s\S]*?anchors\.verticalCenter: parent\.verticalCenter/.test(
         sliderRow
     ),
     "slider and value are centred on the same line"
@@ -320,8 +320,8 @@ assert(
 );
 assert((source.match(/SelectionRow \{/g) || []).length === 5, "all five dropdowns");
 assert(
-    /Binding \{[\s\S]*?property: "currentValue"/.test(readSource("QML/Views/SelectionRow.qml")),
-    "a Binding keeps the shown text following the value"
+    /function syncDropdown\(\)/.test(readSource("QML/Views/SelectionRow.qml")),
+    "explicit synchronization keeps the shown text following the value"
 );
 
 console.log("Settings static tests passed");

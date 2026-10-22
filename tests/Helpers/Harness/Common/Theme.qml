@@ -14,6 +14,7 @@ QtObject {
     readonly property real popupTransparency: 1.0
     readonly property color primary: "#6750a4"
     readonly property color primaryContainer: "#eaddff"
+    readonly property int spacingL: 16
     readonly property int spacingM: 12
     readonly property int spacingS: 8
     readonly property int spacingXL: 24

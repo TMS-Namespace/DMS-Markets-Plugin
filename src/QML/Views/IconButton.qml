@@ -11,7 +11,7 @@ import QtQuick
 import QtQuick.Controls as Controls
 import "../Helpers"
 import qs.Common
-import qs.Widgets
+import qs.DCommon.Widgets
 
 Rectangle {
     id: button
@@ -70,7 +70,7 @@ Rectangle {
             to: constants.fullRotationDeg
         }
 
-        DankIcon {
+        DIcon {
             id: icon
 
             anchors.centerIn: parent

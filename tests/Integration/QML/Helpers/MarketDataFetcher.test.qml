@@ -63,6 +63,7 @@ TestSuite {
                 ticker: "BRLPLN",
                 providerId: "wise",
                 fetchType: fetchType || "price",
+                generation: CacheMaintenance.generation,
                 chartRange: "1M",
                 chartResolution: "1d"
             }) as FetchContext);
@@ -205,7 +206,7 @@ TestSuite {
         toasts = [];
         logs = [];
         Logger.configure({
-            devMode: false,
+            isDevMode: false,
             sink: function (level, scope, text) {
                 logs.push([level, scope, text]);
             }
@@ -340,6 +341,31 @@ TestSuite {
         same(received.graph.u1[received.graph.u1.length - 1].close, 1.79, "the newest candle is kept");
         same(typeof received.times["u1_graph"], "number");
     }
+
+    // Neither old responses nor automatic polling may replace an explicitly cleared card.
+    function test_cleared_data_rejects_old_generation_even_after_a_manual_unblock() {
+        make([wise]);
+        let previous = context("price");
+        let generation = CacheMaintenance.generation;
+        CacheMaintenance.generation++;
+        try {
+            fetcher.clearDisplayedData();
+            same(fetcher._isLive(previous), false);
+            fetcher._checkAndFetch();
+            equal(fetcher._manualRefreshOnly, {
+                "u-wise": true
+            });
+            same(received.stored.length, 0);
+            fetcher._manualRefreshOnly = {};
+            same(fetcher._isLive(previous), false, "manual refresh cannot revive an old response");
+            let current = context("price");
+            same(fetcher._isLive(current), true, "new requests use the current cache generation");
+            previous.destroy();
+            current.destroy();
+        } finally {
+            CacheMaintenance.generation = generation;
+        }
+    }
     function test_credential_problems_also_toast() {
         respond(context("price"), failed(new PluginError.PluginError("credential", "Wise refused access (HTTP 403).", "HTTP 403")));
         same(toasts.length, 1);
@@ -355,12 +381,12 @@ TestSuite {
     }
     function test_dev_mode_logging_only_when_enabled() {
         Logger.configure({
-            devMode: false
+            isDevMode: false
         });
         respond(context("price"), failed(new PluginError.PluginError("network", "Down.", "curl exit 6")));
-        same(logs.length, 0, "no logging without devMode");
+        same(logs.length, 0, "no logging without isDevMode");
         Logger.configure({
-            devMode: true
+            isDevMode: true
         });
         respond(context("price"), failed(new PluginError.PluginError("network", "Down.", "curl exit 6")));
         check(logs.some(function (entry) {

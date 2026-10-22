@@ -3,7 +3,7 @@ const assert = require("assert").strict;
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const { prepareQmlImports } = require("../../../support/PrepareQmlImports");
+const { prepareQmlImports } = require("../../../audit/PrepareQmlImports");
 
 const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), "markets-qml-imports-"));
 const installedRoot = path.join(temporaryRoot, "installed");

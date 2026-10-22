@@ -1,6 +1,6 @@
 // Provider contract checks must reject broken contributions before any QML runtime or network work starts.
 const { assert, createRegistry, loadModule } = require("../../Helpers/Loader");
-const { assertProvider, checkProviders } = require("../../../support/CheckProviders");
+const { assertProvider, checkProviders } = require("../../../audit/CheckProviders");
 
 // Each fixture has fresh class identities and instances, just like an isolated contributor check.
 function fixture() {

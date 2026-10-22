@@ -40,6 +40,7 @@ Item {
 
     // ── Initial stagger queue ─────────────────────────────────────────────────
     property var _initialGraphQueue: []
+    property var _manualRefreshOnly: ({})
 
     // ── Saved market data ─────────────────────────────────────────────────────
     // What of a symbol is worth keeping on disk (plain data, see MarketCache), or null when it has nothing yet.
@@ -77,7 +78,7 @@ Item {
 
         for (let i = 0; i < symbols.length; i++) {
             let symbol = symbols[i];
-            if (!symbol.uid)
+            if (!symbol.uid || _manualRefreshOnly[symbol.uid])
                 continue;
             let selection = _selectionFor(symbol);
             let priceKey = FetchType.timeKey(symbol.uid, FetchType.Values.PRICE);
@@ -103,10 +104,7 @@ Item {
 
     // Subscribe to the current provider handlers and detach the old ones.
     function _connectHandlers() {
-        _connected.forEach(function (handler) {
-            handler.pendingChanged.disconnect(_publishPending);
-            handler.finished.disconnect(_onResponse);
-        });
+        _disconnectHandlers();
         _connected = ProvidersManager.types.map(function (type) {
             return ProvidersManager.handlerFor(type);
         });
@@ -114,6 +112,17 @@ Item {
             handler.pendingChanged.connect(_publishPending);
             handler.finished.connect(_onResponse);
         });
+    }
+
+    // Release JS signal connections before this fetcher or the provider handlers are replaced.
+    function _disconnectHandlers() {
+        _connected.forEach(function (handler) {
+            if (handler) {
+                handler.pendingChanged.disconnect(_publishPending);
+                handler.finished.disconnect(_onResponse);
+            }
+        });
+        _connected = [];
     }
 
     // Find the current saved symbol by its internal handle.
@@ -134,7 +143,7 @@ Item {
     // Recheck at delivery too: shared handlers can report calls started by another widget.
     function _isLive(callContext) {
         let symbol = _findSymbol(callContext.uid);
-        return symbol !== null && (!callContext.signature || callContext.signature === Helpers.symbolFetchSignature(symbol, ProvidersManager.defaultId));
+        return symbol !== null && !_manualRefreshOnly[callContext.uid] && callContext.generation === CacheMaintenance.generation && (!callContext.signature || callContext.signature === Helpers.symbolFetchSignature(symbol, ProvidersManager.defaultId));
     }
 
     // Accept only finite JavaScript numbers from saved market data.
@@ -147,7 +156,7 @@ Item {
     // provider handler (only the candles that were asked for) and are stored. Anything unexpected is
     // reported the same way.
     function _onResponse(context, response, series) {
-        if (!_isLive(context))
+        if (!root || !_isLive(context))
             return;
         try {
             if (!response.ok) {
@@ -185,10 +194,17 @@ Item {
 
     // Combine pending request counts from all provider handlers.
     function _publishPending() {
+        if (!root)
+            return;
         let total = {};
         _connected.forEach(function (handler) {
-            for (let uid in handler.pending)
-                total[uid] = (total[uid] || 0) + handler.pending[uid];
+            if (!handler || !handler.pending)
+                return;
+            let counts = handler.pending;
+            for (let uid in counts) {
+                if (!_manualRefreshOnly[uid])
+                    total[uid] = (total[uid] || 0) + counts[uid];
+            }
         });
         pendingFetchesUpdated(total);
     }
@@ -202,7 +218,7 @@ Item {
     }
 
     // ── Error reporting ───────────────────────────────────────────────────────
-    // Logs (devMode), records and publishes the error for the symbol's card. Only errors
+    // Logs (isDevMode), records and publishes the error for the symbol's card. Only errors
     // the user must act on (credentials) also raise a toast; the rest are shown on the card.
     // Change-reference failures also reach the header; the price keeps its available candle change.
     function _reportSymbolError(uid, fetchType, error) {
@@ -310,9 +326,32 @@ Item {
         }
     }
 
+    // Empty all displayed data and require an explicit refresh; old responses carry an obsolete generation.
+    function clearDisplayedData() {
+        let waiting = {};
+        symbols.forEach(function (symbol) {
+            waiting[symbol.uid] = true;
+        });
+        _manualRefreshOnly = waiting;
+        initialGraphTimer.stop();
+        _initialGraphQueue = [];
+        symbols.forEach(function (symbol) {
+            root.forget(symbol.uid);
+            // This is an explicit user action, so show a card notice without logging a failed request.
+            root.symbolErrorChanged(symbol.uid, FetchType.Values.PRICE, emptyNoticeType.createObject(null, {
+                code: PluginError.Code.NO_DATA,
+                scope: "cache",
+                userMessage: "No data. Click refresh."
+            }));
+        });
+        _publishPending();
+    }
+
     // ── Public: start a fetch ─────────────────────────────────────────────────
     // `selection` (optional) is the symbol's clamped selection when the caller already has it.
     function doFetch(symbol, fetchType, knownSelection) {
+        if (CacheMaintenance.clearing || _manualRefreshOnly[symbol.uid])
+            return;
         if (!symbol.uid) {
             Logger.debug("fetcher", "skipped a symbol without an id (not migrated yet): " + symbol.name + " " + fetchType);
             return;
@@ -331,6 +370,7 @@ Item {
                 ticker: symbol.ticker,
                 providerId: providerId,
                 fetchType: fetchType,
+                generation: CacheMaintenance.generation,
                 chartRange: selection.chartRange,
                 chartResolution: selection.chartResolution,
                 signature: Helpers.symbolFetchSignature(symbol, ProvidersManager.defaultId)
@@ -371,6 +411,9 @@ Item {
 
     // ── Public: force-refresh every symbol ────────────────────────────────────
     function forceRefreshAll() {
+        if (CacheMaintenance.clearing)
+            return;
+        _manualRefreshOnly = {};
         Logger.debug("fetcher", "refresh all " + symbols.length + " symbols");
         for (let i = 0; i < symbols.length; i++) {
             doFetch(symbols[i], FetchType.Values.PRICE);
@@ -381,6 +424,9 @@ Item {
 
     // ── Public: force-refresh a single symbol ─────────────────────────────────
     function forceRefreshSymbol(uid) {
+        if (CacheMaintenance.clearing)
+            return;
+        _manualRefreshOnly = Helpers.withoutEntry(_manualRefreshOnly, uid);
         Logger.debug("fetcher", "refresh " + uid);
         let symbol = _findSymbol(uid);
         if (!symbol)
@@ -502,7 +548,7 @@ Item {
         let newTimes = Helpers.copyOf(lastFetchTimes);
         let queue = [];
         for (let symbol of symbolList) {
-            if (!symbol.uid)
+            if (!symbol.uid || _manualRefreshOnly[symbol.uid])
                 continue;
             for (let fetchType of FetchType.ORDER) {
                 if (!_isDue(symbol, fetchType, now, newTimes))
@@ -527,15 +573,23 @@ Item {
         _connectHandlers();
         _syncProviderCredentials();
     }
+    Component.onDestruction: _disconnectHandlers()
     onProviderCredentialsChanged: _syncProviderCredentials()
 
     Connections {
         // Reconnect when the provider manager replaces its handlers.
         function onHandlersChanged() {
-            root._connectHandlers();
+            if (root)
+                root._connectHandlers();
         }
 
         target: ProvidersManager
+    }
+    Component {
+        id: emptyNoticeType
+
+        ErrorRecord {
+        }
     }
     Component {
         id: contextType

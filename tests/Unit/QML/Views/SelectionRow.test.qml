@@ -1,10 +1,10 @@
 // A dropdown setting must keep showing the value it is set to, also after the user picked an option in it. (DMS's own
-// SelectionSetting loses that: DankDropdown assigns its shown text itself when the user picks, destroying the binding, so a
+// SelectionSetting loses that: DDropdown assigns its shown text itself when the user picks, destroying the binding, so a
 // symbol picked in the list no longer updated the dropdowns the user had touched.)
 import QtQuick
 import "../../../../src/QML/Views"
 import "../../../Helpers"
-import qs.Widgets
+import qs.DCommon.Widgets
 
 TestSuite {
     property var made: []
@@ -55,7 +55,7 @@ TestSuite {
                 })
             property string value: "1d"
 
-            DankDropdown {
+            DDropdown {
                 id: field
 
                 currentValue: parent.labels[parent.value]

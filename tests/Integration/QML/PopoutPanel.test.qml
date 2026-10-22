@@ -61,6 +61,9 @@ TestSuite {
             panel.refreshAll.connect(function () {
                 events.push(["all"]);
             });
+            panel.openSettings.connect(function () {
+                events.push(["settings"]);
+            });
             panel.closePopout.connect(function () {
                 events.push(["close"]);
             });
@@ -70,8 +73,14 @@ TestSuite {
             suite.button(row, "close").clicked();
             suite.button(row, "refresh").clicked();
             suite.button(panel, "refresh").clicked();
-            suite.button(panel, "close").clicked();
-            suite.equal(events, [["pin", suite.secondSymbol.uid], ["remove", suite.secondSymbol.uid], ["refresh", suite.secondSymbol.uid], ["all"], ["close"]]);
+            let settings = suite.button(panel, "settings");
+            let refreshAll = suite.button(panel, "refresh");
+            let close = suite.button(panel, "close");
+            check(refreshAll.x < settings.x && settings.x < close.x, "settings sits between refresh and close");
+            same(settings.tooltipText, "Open Markets settings");
+            settings.clicked();
+            close.clicked();
+            suite.equal(events, [["pin", suite.secondSymbol.uid], ["remove", suite.secondSymbol.uid], ["refresh", suite.secondSymbol.uid], ["all"], ["settings"], ["close"]]);
         });
     }
 
@@ -79,7 +88,7 @@ TestSuite {
     function async_empty_state_follows_the_symbol_list(done) {
         withPanel([], done, function (panel, list) {
             let placeholder = findItem(panel, function (item) {
-                return "text" in item && item.text === "No symbols added";
+                return "text" in item && item.text === "Add symbols to start…";
             });
             check(placeholder !== null && placeholder.visible, "empty popup explains how to get started");
             panel.symbols = [suite.firstSymbol];
@@ -177,6 +186,8 @@ TestSuite {
         withPanel([firstSymbol, secondSymbol], done, function (panel, list) {
             let refresh = suite.button(panel, "refresh");
             same(refresh.visible, false, "healthy header actions start hidden");
+            let settings = suite.button(panel, "settings");
+            same(settings.visible, false);
             panel.symbolErrors = ({
                     [suite.firstSymbol.uid]: {
                         price: {
@@ -195,6 +206,8 @@ TestSuite {
                 });
             same(refresh.visible, true);
             same(refresh.warning, true);
+            same(settings.opacity, 0, "errors alone keep only refresh visible");
+            same(settings.enabled, false, "hidden settings do not intercept clicks");
             check(refresh.tooltipText.indexOf("Euro: No internet.") !== -1);
             check(refresh.tooltipText.indexOf("Other Euro: Reference failed.") !== -1);
             check(refresh.tooltipText.indexOf("private") === -1);

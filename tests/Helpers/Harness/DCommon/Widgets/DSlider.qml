@@ -1,6 +1,6 @@
 import QtQuick
 
-// As DMS's DankSlider for what the plugin uses: an integer value between minimum and maximum, reported through sliderValueChanged.
+// As DMS's DSlider for what the plugin uses: an integer value between minimum and maximum, reported through sliderValueChanged.
 Item {
     property string leftIcon: ""
     property int maximum: 100

@@ -16,6 +16,8 @@ Item {
     // saved over them once, then.
     property bool _applyingDraft: false
     property bool _formReset: false
+    readonly property bool cacheClearing: CacheMaintenance.clearing
+    property string cacheDirectory: ""
     readonly property var changeResolutionOptions: selectedHandler ? selectedHandler.changeResolutionOptions() : []
     readonly property bool chartRangeAvailable: chartRangeOptions.length > 0
     readonly property var chartRangeOptions: selectedHandler ? selectedHandler.chartSpanOptions(formState.chartResolution) : []
@@ -109,6 +111,14 @@ Item {
         clearForm();
     }
 
+    // Remove disk and displayed market data while retaining all configured symbols.
+    function clearCache() {
+        CacheMaintenance.clearAll(function (success) {
+            if (success && root)
+                root.infoRequested("Cache cleared. Click refresh to load market data.");
+        });
+    }
+
     // Reset the form to the default provider and refresh the saved list.
     function clearForm() {
         editIndex = -1;
@@ -199,6 +209,14 @@ Item {
     function refreshSymbolsList() {
         symbolsList = storage.loadSymbols();
         Logger.debug("settings", "symbols list: " + symbolsList.length + " symbols");
+    }
+
+    // Persist the empty list before resetting the editor or announcing the deletion.
+    function removeAllSymbols() {
+        if (!pluginService || !storage.saveSymbols([]))
+            return;
+        clearForm();
+        infoRequested("All symbols deleted");
     }
 
     // Remove the selected entry and update the active edit position.
@@ -311,6 +329,11 @@ Item {
                 root._resetFormOnce();
             }
         }
+    }
+
+    // This instance supplies the cache location even when the widget is disabled.
+    MarketCache {
+        directory: root.cacheDirectory !== "" ? root.cacheDirectory : defaultDirectory
     }
 
     // Plugin data changes elsewhere too (the widget saves the migrated list, DMS delivers data late): follow it.

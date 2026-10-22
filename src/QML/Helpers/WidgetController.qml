@@ -16,7 +16,9 @@ Item {
     // ── Symbol change detection ───────────────────────────────────────────────
     property var _knownSymbolIds: []
     property string _lastProviderCredentialsSignature: ""
+    property var _lastSymbolsRaw: undefined
     property var _pendingFetches: ({})
+    property bool _symbolsRead: false
     readonly property string barDisplayText: symbolManager.barDisplayText
 
     // The last market data of every symbol is kept on disk (one file per symbol): it is shown right after a start,
@@ -61,7 +63,7 @@ Item {
 
     // Latest error per symbol and pull (a SymbolErrorMap map: { uid: { price, graph } }), cleared on success.
     property var symbolErrors: ({})
-    property var symbols: dataStorage.readCurrentSymbols(pluginData.symbols)
+    property var symbols: []
 
     // ── Settings-driven display properties ────────────────────────────────────
     property color upColor: {
@@ -82,11 +84,18 @@ Item {
 
     // Shows the saved data of the given symbols (asynchronously read), then calls `proceed`.
     function _restoreThen(symbolList, proceed) {
+        if (CacheMaintenance.clearing) {
+            fetcher.clearDisplayedData();
+            return;
+        }
         let uids = symbolList.map(function (symbol) {
             return symbol.uid;
         });
         let signatures = _symbolFetchSignatureMap(symbolList);
+        let generation = CacheMaintenance.generation;
         cache.load(uids, function (records) {
+            if (generation !== CacheMaintenance.generation)
+                return;
             let currentSignatures = root._symbolFetchSignatureMap(root.symbols);
             uids.forEach(function (uid) {
                 if (records[uid] && currentSignatures[uid] === signatures[uid])
@@ -128,8 +137,11 @@ Item {
         // pluginData again: right away (inside this very call) or later. Neither case may be waited for, so
         // the symbols that already carry a uid are started now, and any that arrive later are picked up by
         // the symbol watcher as new symbols.
+        updateSymbols();
         dataStorage.migrateSavedSymbols(pluginData.symbols);
         dataStorage.migrateSettings(pluginData);
+        // A host that delivers saves synchronously may already expose the persisted migration.
+        updateSymbols();
         let ready = symbols.filter(function (symbol) {
             return !!symbol.uid;
         });
@@ -166,6 +178,18 @@ Item {
         return symbolManager.togglePin(uid);
     }
 
+    // Read changed host data outside a binding: error reporting and deferred backup update observable state.
+    function updateSymbols() {
+        let raw = pluginData.symbols;
+        if (_symbolsRead && raw === _lastSymbolsRaw)
+            return;
+        _symbolsRead = true;
+        _lastSymbolsRaw = raw;
+        symbols = dataStorage.readCurrentSymbols(raw);
+    }
+
+    onPluginDataChanged: if (_initialized)
+        updateSymbols()
     onProviderCredentialsChanged: {
         Logger.debug("widget", "provider credentials changed");
         let signature = _providerCredentialsSignature(providerCredentials);
@@ -298,6 +322,15 @@ Item {
         repeat: false
 
         onTriggered: dataStorage.migrateSavedSymbols(root.pluginData.symbols)
+    }
+    Connections {
+        // Cache clearing is shared by every widget, including ones on another screen.
+        function onClearStarted() {
+            root.symbolErrors = {};
+            fetcher.clearDisplayedData();
+        }
+
+        target: CacheMaintenance
     }
 
     // ── Per-symbol fetch results ─────────────────────────────────────────────

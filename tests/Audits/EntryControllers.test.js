@@ -20,7 +20,7 @@ for (const name of ["Settings", "Widget"]) {
         `${name}: provider and saved-data decisions belong to helpers`
     );
     assert(
-        !/import.*Views|import qs\.|ToastService|StyledText|MouseArea|DankTextField/.test(controller),
+        !/import.*Views|import qs\.|ToastService|StyledText|MouseArea|DankTextField|DTextField/.test(controller),
         `${name}: controller must work without views or DMS controls`
     );
 }

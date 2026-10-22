@@ -31,16 +31,18 @@ failed, not what any one plugin does.
 ## 2. Layers and folders
 
 - Mirror the structure in `src/` and `tests/`. Each folder has one role:
-  - `QML/Contracts`: data holders.
-  - `QML/Services`: stateful objects shared across the plugin.
-  - `QML/Helpers`: per-widget helper items.
-  - `QML/Views`: UI only.
-  - `JS/Contracts`: value domains (enums with `isValid`/`label`) and the exception type.
-  - `JS/Helpers`: pure logic modules.
-  - `JS/<Integration>/<Name>/`: everything specific to one external integration (see section 6).
+    - `QML/Contracts`: data holders.
+    - `QML/Services`: stateful objects shared across the plugin.
+    - `QML/Helpers`: per-widget helper items.
+    - `QML/Views`: UI only.
+    - `JS/Contracts`: value domains (enums with `isValid`/`label`) and the exception type.
+    - `JS/Helpers`: pure logic modules.
+    - `JS/<Integration>/<Name>/`: everything specific to one external integration (see section 6).
 - Dependencies point one way: Views → Helpers/Services → Contracts. A lower layer never imports a higher one.
 - Keep DMS entry points focused on composing views and connecting host APIs. Per-instance controller helpers own
   form actions and widget lifecycles. Controllers receive data and emit signals; they never reference visual controls.
+- Shared Dux widgets use `qs.DCommon.Widgets` and their current `D*` names. Keep shell-specific plugin types in
+  `qs.Modules.Plugins`. Bar text and icons follow the host's `textSize` and `iconSize`.
 - One type per file; the file name equals the type name. Every QML folder has a `qmldir` listing exactly its files.
 
 ## 3. Contracts (shared data structures)
@@ -82,7 +84,7 @@ failed, not what any one plugin does.
 - Provider API classes extend `JS/Contracts/ProviderApi.js`; declarations extend `JS/Contracts/ProviderProperties.js`.
   Both modules export `create()`. Override every required API method; optional hooks have inherited defaults.
 - Lint checks every provider's inheritance, required overrides, method signatures, property names and property types
-  before starting QML. `node support/CheckProviders.js` runs these contributor checks on their own.
+  before starting QML. `node audit/CheckProviders.js` runs these contributor checks on their own.
 - The properties are checked as a whole when the integration is loaded; unknown keys and inconsistent declarations
   are errors.
 - Integrations should preferably be stateless and see only current-format data. They know nothing about storage, UI,
@@ -135,11 +137,11 @@ failed, not what any one plugin does.
 - Test on the real runtime where behaviour depends on it. Run QML headless and instantiate real contracts, services
   and singletons; text-matching a source file is not a behaviour test.
 - Layers of tests:
-  - Node tests for pure logic.
-  - Real QML tests for contracts, services and facades.
-  - Static audits for architecture rules (layers, one contract per file, no legacy handling outside the migration
-    module, JS size ceiling, no direct reach around a facade).
-  - An opt-in live test that exercises the real external services end to end.
+    - Node tests for pure logic.
+    - Real QML tests for contracts, services and facades.
+    - Static audits for architecture rules (layers, one contract per file, no legacy handling outside the migration
+      module, JS size ceiling, no direct reach around a facade).
+    - An opt-in live test that exercises the real external services end to end.
 - Load the real entry points (the widget, the settings page) in an integration test, against stand-ins for the host's
   own modules that keep the host's contract (required properties, types, when data is delivered), with the network and
   other external tools replaced by deterministic fakes. A unit test of each file cannot see ordering and timing
@@ -149,7 +151,8 @@ failed, not what any one plugin does.
 - Create host-loaded pages in tests the way the host does: the page first, its services attached afterwards, host controls
   that save on every change, data that changes later. Assert that nothing is reported to the user in that window.
 - Any runtime warning from the code under test (an undefined property, a component that is not ready, a binding
-  error) fails the test run.
+  error) fails the test run. Cache fault-injection tests may declare a bounded number of Quickshell's known
+  file-open warnings for an exact path: upstream prints these even with `printErrors: false`. Other warnings still fail.
 - Do not assert source text as a substitute for behaviour; a static check that encodes an assumption hides the bug.
 - Tests mirror the source structure. Tests that need fresh state reset it in setup; no state leaks between tests.
 - Every bug fix and every rule above gets a test or an audit that would have caught it.
@@ -157,17 +160,18 @@ failed, not what any one plugin does.
 
 ## 11. Running the checks
 
-From the repository root, run:
+Development tools and their editor imports live in `audit/`. The installation script remains at
+`support/setup-symlink.sh`. From the repository root, run:
 
 ```sh
-node support/Lint.js
+node audit/Lint.js
 node tests/RunAll.js
 ```
 
 To format all QML and JavaScript files, run:
 
 ```sh
-npm exec --yes --package=prettier@3.6.2 -- node support/Format.js
+npm exec --yes --package=prettier@3.6.2 -- node audit/Format.js
 ```
 
 Add `--check` to check formatting without changing source files. This uses Qt 6 `qmlls` and downloads
@@ -181,8 +185,12 @@ installation. No npm packages are required. The test suite requires Quickshell a
 isolated cache directories and deterministic provider responses. `node tests/RunAll.js --live` additionally
 tests the real providers and requires network access.
 
+During desktop testing, `dms ipc call plugins reload markets` reloads the entry point, but Dux may retain
+imported QML views. If a layout change or a fixed load error still appears stale, run `dms restart` once
+to clear the running shell's QML cache. This preserves saved symbols and market data.
+
 The lint command also prepares the editor imports. After a fresh checkout or a Quickshell update, run it
-before opening the editor; `node support/PrepareQmlImports.js` prepares only the imports. Reload the QML
+before opening the editor; `node audit/PrepareQmlImports.js` prepares only the imports. Reload the QML
 language server if it was already running. The workspace settings resolve `qs.*` through the same DMS
 interface stand-ins audited by the tests, and Qt/Quickshell through the installed QML directories.
 

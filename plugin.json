@@ -12,7 +12,7 @@
     "component": "./src/QML/Widget.qml",
     "settings": "./src/QML/Settings.qml",
     "permissions": ["settings_read", "settings_write", "process", "network"],
-    "requires_dms": ">=1.2.0",
+    "requires_dms": ">=2.0.0",
     "distro": ["any"],
     "compositors": ["any"],
     "dependencies": ["curl", "bash", "coreutils"],

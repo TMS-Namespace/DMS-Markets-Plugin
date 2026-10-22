@@ -35,7 +35,7 @@ assert(!/console\./.test(manager), "dev-mode messages go through Logger.debug");
     const toggle = compileFunction(manager, "togglePin", {
         storage,
         symbols,
-        constants: { devMode: false },
+        constants: { isDevMode: false },
         Logger: { debug: () => {} },
         console
     });
@@ -43,7 +43,7 @@ assert(!/console\./.test(manager), "dev-mode messages go through Logger.debug");
     const remove = compileFunction(manager, "removeSymbol", {
         storage,
         symbols,
-        constants: { devMode: false },
+        constants: { isDevMode: false },
         Logger: { debug: () => {} },
         console
     });
@@ -71,7 +71,7 @@ assert(
     /DataStorage \{\s*id: dataStorage\s*pluginId:\s+root\.pluginId\s*pluginService:\s+root\.pluginService/.test(widget)
 );
 assert(
-    /property var symbols: dataStorage\.readCurrentSymbols\(pluginData\.symbols\)/.test(widget),
+    /symbols = dataStorage\.readCurrentSymbols\(raw\)/.test(widget),
     "saved symbols are read (and damaged data handled) by the storage"
 );
 assert(

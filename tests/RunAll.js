@@ -8,6 +8,7 @@
 //   *.test.qml  the real Qt6 QML runtime: Quickshell run headless (QT_QPA_PLATFORM=offscreen) with the
 //               harness in tests/Helpers/Harness (contracts, singletons, services are really instantiated)
 // `--live` additionally runs tests/Integration/Live/ProviderLive.test.qml (real requests; needs network access).
+const { unexpectedWarnings } = require("./Helpers/RuntimeWarnings");
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
@@ -61,13 +62,7 @@ function runQml(file, extraEnv = {}, timeout = 120000) {
         .map((line) => line.slice(line.indexOf("T:")));
     // Any QML runtime warning is a failure too: a TypeError in a binding, a component that is not ready, an unknown
     // property... break things silently in DMS, and a passing assertion elsewhere would hide them.
-    const warnings = `${result.stdout}${result.stderr}`
-        .split("\n")
-        .filter(
-            (line) =>
-                /^\s*(WARN|ERROR)\b/.test(line) &&
-                !/T:|qml: (ok  |LOG )|WAYLAND|QT_QPA_PLATFORM|If you are actually|--- WARNING ---/.test(line)
-        );
+    const warnings = unexpectedWarnings(`${result.stdout}${result.stderr}`);
     const ok = !!summary && Number(summary[2]) === 0 && failures.length === 0 && warnings.length === 0;
     const output = ok
         ? ""

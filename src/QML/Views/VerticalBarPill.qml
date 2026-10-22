@@ -6,7 +6,7 @@
 import QtQuick
 import "../Helpers"
 import qs.Common
-import qs.Widgets
+import qs.DCommon.Widgets
 
 Column {
     id: pill
@@ -14,13 +14,14 @@ Column {
     // ── Required bindings (set by Widget.qml) ────────────────────────────────
     property int iconSize: constants.defaultBarIconSize
     property string shortLabel: "MKT"
+    property int textSize: Theme.fontSizeSmall
 
     spacing: Theme.spacingXS
 
     Constants {
         id: constants
     }
-    DankIcon {
+    DIcon {
         anchors.horizontalCenter: parent.horizontalCenter
         color: Theme.primary
         name: "show_chart"
@@ -29,7 +30,7 @@ Column {
     StyledText {
         anchors.horizontalCenter: parent.horizontalCenter
         color: Theme.surfaceText
-        font.pixelSize: Theme.fontSizeSmall
+        font.pixelSize: pill.textSize
         horizontalAlignment: Text.AlignHCenter
         text: pill.shortLabel
     }

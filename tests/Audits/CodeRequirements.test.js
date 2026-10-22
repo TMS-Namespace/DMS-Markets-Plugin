@@ -41,7 +41,7 @@ const storageSource = fs.readFileSync(path.join(srcRoot, "QML/Services/DataStora
 assert(!/function loadDraftField\(/.test(storageSource), "do not restore the obsolete draft-reading API");
 const widgetSource = fs.readFileSync(path.join(srcRoot, "QML/Helpers/WidgetController.qml"), "utf8");
 assert(
-    /property var symbols: dataStorage\.readCurrentSymbols\(pluginData\.symbols\)/.test(widgetSource),
+    /symbols = dataStorage\.readCurrentSymbols\(raw\)/.test(widgetSource),
     "only current-format symbols reach the widget"
 );
 console.log("Code requirements audit passed");

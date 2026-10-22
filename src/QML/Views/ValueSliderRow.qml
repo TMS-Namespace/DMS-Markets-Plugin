@@ -9,7 +9,7 @@
 // saveValue and loadValue).
 import QtQuick
 import qs.Common
-import qs.Widgets
+import qs.DCommon.Widgets
 
 Column {
     id: root
@@ -90,7 +90,7 @@ Column {
         spacing: Theme.spacingS
         width: parent.width
 
-        DankSlider {
+        DSlider {
             id: slider
 
             anchors.verticalCenter: parent.verticalCenter

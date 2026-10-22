@@ -14,7 +14,7 @@ function findPrettier() {
         const executable = path.join(directory, "prettier");
         if (fs.existsSync(executable)) return createRequire(fs.realpathSync(executable))("prettier");
     }
-    throw new Error("Run: npm exec --yes --package=prettier@3.6.2 -- node support/Format.js");
+    throw new Error("Run: npm exec --yes --package=prettier@3.6.2 -- node audit/Format.js");
 }
 
 // Protect QML directives as comments while Prettier formats the JavaScript body, then restore them verbatim.
@@ -159,9 +159,9 @@ async function formatQml(files) {
 // Gather every result before writing; --check reports differences without modifying source files.
 async function main() {
     if (process.argv.slice(2).some((argument) => argument !== "--check"))
-        throw new Error("Usage: node support/Format.js [--check]");
+        throw new Error("Usage: node audit/Format.js [--check]");
     const qmlFiles = ["src", "tests"].flatMap((directory) => collect(path.join(root, directory), ".qml"));
-    const jsFiles = ["src", "tests", "support"].flatMap((directory) => collect(path.join(root, directory), ".js"));
+    const jsFiles = ["src", "tests", "audit"].flatMap((directory) => collect(path.join(root, directory), ".js"));
     const results = new Map([...(await formatJavaScript(jsFiles, findPrettier())), ...(await formatQml(qmlFiles))]);
     let changed = 0;
     for (const [file, formatted] of results) {

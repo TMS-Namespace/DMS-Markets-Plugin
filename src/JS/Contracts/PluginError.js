@@ -2,10 +2,10 @@
 //
 // An error has two audiences, so it carries two messages:
 //   userMessage  short, friendly, free of internals - what the symbol card / toast shows
-//   message      developer detail (and `details`) - what goes to the log in devMode
+//   message      developer detail (and `details`) - what goes to the log in isDevMode
 //
 // JS modules throw PluginError and never touch the UI; the QML layers catch, log
-// (devMode) and display it through ErrorHandler.qml. DMS has no plugin error API of its
+// (isDevMode) and display it through ErrorHandler.qml. DMS has no plugin error API of its
 // own beyond ToastService, so this type is the plugin's own.
 //
 // ES5 constructor + prototype, like the rest of the JS here (works in QML's engine).

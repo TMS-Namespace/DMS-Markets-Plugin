@@ -1,6 +1,6 @@
 import QtQuick
 
-// As DMS's DankDropdown for what the plugin uses. Like the real one it ASSIGNS currentValue itself when an option is chosen
+// As DMS's DDropdown for what the plugin uses. Like the real one it ASSIGNS currentValue itself when an option is chosen
 // (which destroys a plain binding on it): choose() does exactly that.
 Item {
     property string currentValue: ""

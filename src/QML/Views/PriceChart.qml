@@ -24,7 +24,7 @@ import QtQuick
 import "../../JS/Contracts/ChartSpan.js" as ChartSpan
 import "../Helpers"
 import qs.Common
-import qs.Widgets
+import qs.DCommon.Widgets
 
 Canvas {
     id: chart

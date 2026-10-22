@@ -3,17 +3,17 @@
 //   settingKey, label, description, options ([{ label, value }]), defaultValue   as for DMS's SelectionSetting
 //   value                                                                        the selected value (read it, or set it)
 //
-// Why this exists: DMS's SelectionSetting binds its dropdown's shown text to `value`, but DankDropdown assigns that text
+// Why this exists: DMS's SelectionSetting binds its dropdown's shown text to `value`, but DDropdown assigns that text
 // itself as soon as the user picks an option, which silently destroys the binding. From then on setting `value` from code
-// (e.g. filling the form from a symbol picked in the list) changes `value` but not what the dropdown shows. A Binding
-// element is not destroyed by such an assignment, so the dropdown follows `value` always.
+// (e.g. filling the form from a symbol picked in the list) changes `value` but not what the dropdown shows.
+// Explicit synchronization keeps user choices, programmatic values and option labels in step without a binding loop.
 //
 // Like DMS's own setting controls it loads its saved value when the settings page asks (loadValue, also when the plugin
 // service attaches or the data changes) and saves every change, through the page it sits in (the nearest parent that has
 // saveValue and loadValue).
 import QtQuick
 import qs.Common
-import qs.Widgets
+import qs.DCommon.Widgets
 
 Column {
     id: root
@@ -72,17 +72,31 @@ Column {
             value = settings.loadValue(settingKey, defaultValue);
     }
 
+    // Update the displayed label after a user choice, a programmatic value or new options.
+    function syncDropdown() {
+        if (field) {
+            let label = root.valueToLabel[root.value] || root.value;
+            if (field.currentValue !== label)
+                field.currentValue = label;
+        }
+    }
+
     spacing: Theme.spacingS
     width: parent ? parent.width : implicitWidth
 
-    Component.onCompleted: loadValue()
+    Component.onCompleted: {
+        loadValue();
+        syncDropdown();
+    }
     onValueChanged: {
+        syncDropdown();
         let settings = _settings();
         if (settings)
             settings.saveValue(settingKey, value);
     }
+    onValueToLabelChanged: syncDropdown()
 
-    DankDropdown {
+    DDropdown {
         id: field
 
         description: root.description
@@ -91,12 +105,5 @@ Column {
         width: parent.width
 
         onValueChanged: newValue => root.value = root.labelToValue[newValue] || newValue
-    }
-
-    // The dropdown's shown text always follows `value` (see the note at the top).
-    Binding {
-        property: "currentValue"
-        target: field
-        value: root.valueToLabel[root.value] || root.value
     }
 }

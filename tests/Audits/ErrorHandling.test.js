@@ -1,7 +1,7 @@
 // Static audit of the whole code base for the error-handling rules:
 //   - JS modules throw PluginError (never a bare Error) and never touch the UI
 //   - nothing swallows an exception: every catch rethrows, reports it, or is a documented exception
-//   - nothing logs outside devMode
+//   - nothing logs outside isDevMode
 //   - no unbounded loops
 const fs = require("fs");
 const path = require("path");
@@ -154,8 +154,8 @@ for (const file of qmlFiles) {
         assert(
             !/\bdevMode\b/.test(
                 code
-                    .replace(/Logger\.configure\(\{\s*devMode:\s*constants\.devMode\s*\}\)/g, "")
-                    .replace(/readonly property bool devMode: (true|false)/, "")
+                    .replace(/Logger\.configure\(\{\s*isDevMode:\s*constants\.isDevMode\s*\}\)/g, "")
+                    .replace(/readonly property bool isDevMode: (true|false)/, "")
             ),
             `${relative}: only the Logger knows dev mode; callers log without checking it`
         );
@@ -163,7 +163,7 @@ for (const file of qmlFiles) {
 }
 const loggerSource = strip(read(path.join(srcRoot, "QML/Services/Logger.qml")));
 assert(
-    /function _write\(level, scope, text\) \{\s*if \(!devMode \|\| !sink\)\s*return/.test(loggerSource),
+    /function _write\(level, scope, text\) \{\s*if \(!isDevMode \|\| !sink\)\s*return/.test(loggerSource),
     "the Logger writes only in dev mode"
 );
 assert(

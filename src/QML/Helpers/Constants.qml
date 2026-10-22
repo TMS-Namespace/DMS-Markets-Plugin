@@ -48,14 +48,14 @@ QtObject {
     readonly property int configRowHeight: 56
     readonly property int configTextFontSizeDelta: -1   // the one-line summary of a configured symbol, a little below "small"
     readonly property int defaultBarIconSize: 16
-    readonly property color defaultDownColor: "#F44336"
-    readonly property int defaultPopoutRows: 5
 
     // ── Default chart colors ──────────────────────────────────────────────────
+    readonly property color defaultDownColor: "#F44336"
+    readonly property int defaultPopoutRows: 5
     readonly property color defaultUpColor: "#4CAF50"
 
     // ── Developer / debug mode ────────────────────────────────────────────────
-    readonly property bool devMode: true   // enable for verbose plugin diagnostics
+    readonly property bool isDevMode: true   // enable for verbose plugin diagnostics
 
     readonly property int emptyStateIconSize: 48
     readonly property int errorTooltipMaxWidth: 360
@@ -73,15 +73,12 @@ QtObject {
     readonly property int minPopoutRows: 1
     readonly property int overlayZ: 10
     readonly property string pluginSubtitle: "Track live prices for currencies, stocks, commodities, and crypto."
-    readonly property int popoutMinHeight: 200
-    readonly property int popoutPadding: 80   // px added beyond rows × rowHeight
 
     // ── Popout / widget layout ────────────────────────────────────────────────
-    readonly property int popoutWidth: 440
+    readonly property int popoutWidth: 420
     readonly property int refreshWarningBadgeSize: 14
-    readonly property int rowHeight: 78   // px per symbol row
     readonly property int scrollAnimDurationMs: 200
-    readonly property int scrollBarRadius: 2
+    readonly property int scrollBarRadius: 4
     readonly property int scrollBarWidth: 4
     readonly property real scrollOpacityActive: 0.8
     readonly property real scrollOpacityIdle: 0.4

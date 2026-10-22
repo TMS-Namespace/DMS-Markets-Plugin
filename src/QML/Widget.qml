@@ -24,6 +24,7 @@ PluginComponent {
     property alias priceData: widgetController.priceData
     property alias providerCredentials: widgetController.providerCredentials
     property alias refreshedTimes: widgetController.refreshedTimes
+    readonly property bool showBarWidget: symbols.length === 0 || canFetchAnySymbol
     property alias showChartRange: widgetController.showChartRange
     property alias showPriceChange: widgetController.showPriceChange
     property alias showProviderName: widgetController.showProviderName
@@ -36,7 +37,7 @@ PluginComponent {
     // Connect error reporting to DMS before the controller starts reading saved data.
     function _configureErrorHandler() {
         Logger.configure({
-            devMode: constants.devMode
+            isDevMode: constants.isDevMode
         });
         ErrorHandler.configure({
             // DMS's own toast: short message as the title, technical details expandable.
@@ -48,11 +49,6 @@ PluginComponent {
     }
 
     layerNamespacePlugin: "markets"
-    popoutHeight: {
-        let visible = Math.min(popoutRows, symbols.length);
-        let totalRows = visible > 0 ? visible : popoutRows;
-        return Math.max(constants.popoutMinHeight, totalRows * constants.rowHeight + (totalRows - 1) * Theme.spacingS + constants.popoutPadding);
-    }
     popoutWidth: constants.popoutWidth
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -63,6 +59,7 @@ PluginComponent {
         HorizontalBarPill {
             displayText: root.controller.barDisplayText
             iconSize: root.iconSize
+            textSize: root.textSize
         }
     }
 
@@ -71,42 +68,58 @@ PluginComponent {
     // ═══════════════════════════════════════════════════════════════════════
 
     popoutContent: Component {
-        PopoutComponent {
-            id: popout
+        Item {
+            id: popupContent
 
-            detailsText: root.symbols.length > 0 ? root.symbols.length + " symbol" + (root.symbols.length !== 1 ? "s" : "") + " tracked" : "Add symbols in Settings"
-            headerText: constants.barDefaultLabel
-            showCloseButton: false
+            property alias closePopout: popout.closePopout
+            readonly property real paddingAdjustment: Math.max(0, PopoutMetrics.contentPadding - Theme.spacingS)
+            property alias parentPopout: popout.parentPopout
 
-            PopoutPanel {
-                downColor: root.downColor
-                graphData: root.graphData
-                headerOffset: popout.headerHeight + popout.detailsHeight
-                implicitHeight: root.popoutHeight - popout.headerHeight - popout.detailsHeight - Theme.spacingXL
-                lastFetchTimes: root.refreshedTimes
-                pendingFetches: root._pendingFetches
-                popoutRows: root.popoutRows
-                priceData: root.priceData
-                showChartRange: root.showChartRange
-                showPriceChange: root.showPriceChange
-                showProviderName: root.showProviderName
-                showRefreshedSince: root.showRefreshedSince
-                showTicker: root.showTicker
-                symbolErrors: root.symbolErrors
-                symbols: root.symbols
-                upColor: root.upColor
-                width: parent.width
+            // Dux adds its own outer padding. Expand the inner column into it on every side.
+            implicitHeight: Math.max(0, popout.implicitHeight - 2 * paddingAdjustment)
 
-                onClosePopout: root.closePopout()
-                onRefreshAll: root.controller.refreshAll()
-                onRefreshSymbol: function (uid) {
-                    root.controller.refreshSymbol(uid);
-                }
-                onRemoveSymbol: function (uid) {
-                    root.controller.removeSymbol(uid);
-                }
-                onTogglePin: function (uid) {
-                    root.controller.togglePin(uid);
+            PopoutComponent {
+                id: popout
+
+                detailsText: root.symbols.length > 0 ? root.symbols.length + " symbol" + (root.symbols.length !== 1 ? "s" : "") + " tracked" : "Add symbols in Settings"
+                headerText: constants.barDefaultLabel
+                width: popupContent.width + 2 * popupContent.paddingAdjustment
+                x: -popupContent.paddingAdjustment
+                y: -popupContent.paddingAdjustment
+
+                PopoutPanel {
+                    downColor: root.downColor
+                    graphData: root.graphData
+                    headerOffset: popout.headerHeight + popout.detailsHeight
+                    lastFetchTimes: root.refreshedTimes
+                    pendingFetches: root._pendingFetches
+                    popoutRows: root.popoutRows
+                    priceData: root.priceData
+                    showChartRange: root.showChartRange
+                    showPriceChange: root.showPriceChange
+                    showProviderName: root.showProviderName
+                    showRefreshedSince: root.showRefreshedSince
+                    showTicker: root.showTicker
+                    symbolErrors: root.symbolErrors
+                    symbols: root.symbols
+                    upColor: root.upColor
+                    width: parent.width
+
+                    onClosePopout: root.closePopout()
+                    onOpenSettings: {
+                        root.closePopout();
+                        PopoutService.openSettingsWithTab(SettingsTabs.pluginPrefix + root.pluginId);
+                    }
+                    onRefreshAll: root.controller.refreshAll()
+                    onRefreshSymbol: function (uid) {
+                        root.controller.refreshSymbol(uid);
+                    }
+                    onRemoveSymbol: function (uid) {
+                        root.controller.removeSymbol(uid);
+                    }
+                    onTogglePin: function (uid) {
+                        root.controller.togglePin(uid);
+                    }
                 }
             }
         }
@@ -115,14 +128,15 @@ PluginComponent {
         VerticalBarPill {
             iconSize: root.iconSize
             shortLabel: root.controller.pinnedSymbols.length > 0 ? root.controller.pinnedSymbols[0].name : "MKT"
+            textSize: root.textSize
         }
     }
 
     Component.onCompleted: {
         root.controller.initialize();
-        setVisibilityOverride(canFetchAnySymbol);
+        setVisibilityOverride(showBarWidget);
     }
-    onCanFetchAnySymbolChanged: setVisibilityOverride(canFetchAnySymbol)
+    onShowBarWidgetChanged: setVisibilityOverride(showBarWidget)
 
     Constants {
         id: constants

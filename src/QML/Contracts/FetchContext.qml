@@ -11,6 +11,7 @@ QtObject {
     property string chartResolution: ""
     property string fetchType: ""
     readonly property bool fetchTypeValid: FetchType.isValid(fetchType)
+    property int generation: 0     // ignore answers started before an explicit cache clear
     property string providerId: ""
     property string signature: ""     // configuration identity: rejects answers from before a symbol edit
     property string ticker: ""

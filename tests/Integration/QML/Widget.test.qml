@@ -5,6 +5,7 @@
 import QtQuick
 import "../../../src/QML/Services"
 import "../../Helpers"
+import qs.Services
 
 TestSuite {
     id: suite
@@ -79,6 +80,8 @@ TestSuite {
             property var data: ({})
             property int saves: 0
 
+            signal pluginDataChanged(string pluginId)
+
             function loadPluginData(id, key, fallback) {
                 return key in data ? data[key] : fallback;
             }
@@ -87,6 +90,7 @@ TestSuite {
                 copy[key] = value;
                 data = copy;
                 saves++;
+                pluginDataChanged(id);
             }
         }
     }
@@ -210,6 +214,17 @@ TestSuite {
             return symbol.uid && map[symbol.uid] !== undefined;
         });
     }
+    // Locate the real popup action without exposing private view IDs through the widget API.
+    function findSettingsAction(parentItem): Item {
+        if ("iconName" in parentItem && parentItem.iconName === "settings")
+            return parentItem;
+        for (let child of parentItem.children) {
+            let found = findSettingsAction(child);
+            if (found)
+                return found;
+        }
+        return null;
+    }
     function setup() {
         if (widget) {
             widget.destroy();
@@ -217,7 +232,7 @@ TestSuite {
         }
         ErrorHandler.reset();
         Logger.configure({
-            devMode: false
+            isDevMode: false
         });
         ProvidersManager.reload(ProvidersManager.sources);
     }
@@ -239,11 +254,48 @@ TestSuite {
         });
         check(widget !== null, "the widget was created");
     }
+    // Dux supplies the bar sizing and may change it while the same pill remains loaded.
+    function test_bar_pills_follow_host_text_and_icon_sizes() {
+        start([]);
+        [widget.horizontalBarPill, widget.verticalBarPill].forEach(function (pillType) {
+            let pill = pillType.createObject(widget);
+            check(pill !== null, "bar content loads with the Dux shared widgets");
+            widget.textSize = 19;
+            widget.iconSize = 27;
+            same(pill.textSize, 19);
+            same(pill.iconSize, 27);
+            let label = pill.children.filter(function (child) {
+                return "font" in child;
+            })[0];
+            same(label.font.pixelSize, 19);
+            widget.textSize = 14;
+            same(label.font.pixelSize, 14);
+            pill.destroy();
+        });
+    }
     function test_no_symbols_is_a_quiet_start() {
         start([]);
         equal(widget.symbols, []);
         equal(widget.symbolErrors, {});
+        same(widget.visibilityOverride, true, "the empty popup remains reachable from the bar");
         same(service.saves, 0);
+    }
+
+    // The settings shortcut closes the popup and navigates directly to this plugin's settings page.
+    function test_popup_settings_button_opens_markets_settings() {
+        start([]);
+        PopoutService.requestedPage = "";
+        let popup = widget.popoutContent.createObject(widget, {
+            width: 600
+        });
+        check(popup !== null, "popup content loads");
+        let settings = findSettingsAction(popup);
+        check(settings !== null, "the settings action exists");
+        let closed = widget.closedPopouts;
+        settings.clicked();
+        same(widget.closedPopouts, closed + 1, "close the popup before opening settings");
+        same(PopoutService.requestedPage, "plugin:markets", "open Markets directly rather than the general plugins page");
+        popup.destroy();
     }
     function test_the_settings_page_builds_with_saved_symbols_of_any_format() {
         let component = Qt.createComponent("file://" + repoRoot + "/src/QML/Settings.qml");

@@ -18,7 +18,7 @@ assert(
     "configured before the symbol list is read"
 );
 assert(
-    /Logger\.configure\(\{\s*devMode:\s*constants\.devMode\s*\}\)/.test(widget),
+    /Logger\.configure\(\{\s*isDevMode:\s*constants\.isDevMode\s*\}\)/.test(widget),
     "dev mode is handed to the Logger once"
 );
 assert(
@@ -70,7 +70,7 @@ assert(/symbolErrors:\s+root\.symbolErrors/.test(widget), "passed to the popup")
 
 // ── Reading the saved symbols: the storage's job (see DataStorage.test.js) ───
 assert(
-    /property var symbols: dataStorage\.readCurrentSymbols\(pluginData\.symbols\)/.test(widget),
+    /symbols = dataStorage\.readCurrentSymbols\(raw\)/.test(widget),
     "damaged data is handled by the storage, not here"
 );
 assert(

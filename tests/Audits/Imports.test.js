@@ -22,6 +22,15 @@ for (const file of jsFiles)
 // ── QML imports resolve (files or qmldir directories); aliases map to modules ─
 for (const file of qmlFiles) {
     const text = fs.readFileSync(file, "utf8");
+    assert(
+        !/\b(DankIcon|DankSlider|DankTextField|DankDropdown)\s*\{/.test(text),
+        `${relativePath(file)}: use the Dux shared widget names`
+    );
+    if (/\b(DIcon|DSlider|DTextField|DDropdown|StyledText)\s*\{/.test(text))
+        assert(
+            /^import qs\.DCommon\.Widgets\s*$/m.test(text),
+            `${relativePath(file)}: shared widgets come from qs.DCommon.Widgets`
+        );
     const aliases = {};
     for (const match of text.matchAll(/^import\s+"([^"]+)"(?:\s+as\s+(\w+))?/gm)) {
         const target = path.resolve(path.dirname(file), match[1]);

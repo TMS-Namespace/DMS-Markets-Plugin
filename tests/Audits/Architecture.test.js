@@ -190,7 +190,7 @@ for (const file of jsFiles) {
     );
     // UI is QML only: no widgets, layout, colours or fonts in JavaScript (shell script text inside a string is not code).
     assert(
-        !/\b(Theme|StyledText|DankIcon|Rectangle|MouseArea|Canvas|Column|Row)\b|\banchors\b|\bpixelSize\b|\bQt\.rgba|\bfont\.\w+/.test(
+        !/\b(Theme|StyledText|DankIcon|DIcon|Rectangle|MouseArea|Canvas|Column|Row)\b|\banchors\b|\bpixelSize\b|\bQt\.rgba|\bfont\.\w+/.test(
             code.replace(/"(?:[^"\\]|\\.)*"/g, '""')
         ),
         `${relativePath(file)}: UI belongs in QML, not JavaScript`

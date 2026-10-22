@@ -7,32 +7,32 @@
 //   • error(scope, text)   something went wrong (ErrorHandler logs every handled error here)
 // Never put URLs, keys or credentials in a message.
 //
-// Wiring (once, by the widget and the settings): Logger.configure({ devMode: constants.devMode }).
+// Wiring (once, by the widget and the settings): Logger.configure({ isDevMode: constants.isDevMode }).
 // The default sink prints "[Markets/<scope>] <text>" with console.info (debug) / console.warn (error): Quickshell
 // hides console.log, so a log line written with it would never be seen. Tests replace it with `sink`.
 pragma Singleton
 import QtQml
 
 QtObject {
-    property bool devMode: false
+    property bool isDevMode: false
     property var sink: function (level, scope, text) {
         (level === "error" ? console.warn : console.info)("[Markets/" + scope + "]", text);
     }
 
     // Write to the configured destination using this service's failure policy.
     function _write(level, scope, text) {
-        if (!devMode || !sink)
+        if (!isDevMode || !sink)
             return;
         try {
             sink(level, scope, text);
         } catch (failure) { /* logging must never break the caller */ }
     }
 
-    // Any of: devMode, sink. Unspecified fields keep their value.
+    // Any of: isDevMode, sink. Unspecified fields keep their value.
     function configure(settings) {
         let changes = settings || {};
-        if (changes.devMode !== undefined)
-            devMode = !!changes.devMode;
+        if (changes.isDevMode !== undefined)
+            isDevMode = !!changes.isDevMode;
         if (changes.sink !== undefined)
             sink = changes.sink;
     }

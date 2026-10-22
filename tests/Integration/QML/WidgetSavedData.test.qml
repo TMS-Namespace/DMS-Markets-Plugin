@@ -215,6 +215,49 @@ TestSuite {
             }, 15000, describe);
         });
     }
+
+    // Explicit clearing removes disk and displayed data, keeps symbols, and waits for manual refresh.
+    function async_clear_cache_shows_no_data_until_manual_refresh(done) {
+        start([symbol(uidA, "EURUSD=X")]);
+        waitUntil(function () {
+            return freshPrice(uidA) && widget.graphData[uidA] !== undefined && everythingOnDisk();
+        }, function (problem) {
+            if (problem) {
+                done(problem);
+                return;
+            }
+            let symbolsBefore = service.data.symbols;
+            CacheMaintenance.clearAll(function (success) {
+                try {
+                    suite.check(success, "cache cleared");
+                    suite.same(suite.service.data.symbols, symbolsBefore, "configured symbols are untouched");
+                    suite.equal(Object.keys(suite.widget.priceData), []);
+                    suite.equal(Object.keys(suite.widget.graphData), []);
+                    suite.equal(Object.keys(suite.widget.refreshedTimes), []);
+                    suite.same(suite.widget.symbolErrors[suite.uidA].price.userMessage, "No data. Click refresh.");
+                    suite.same(suite.widget._pendingFetches[suite.uidA] || 0, 0);
+                    suite.files(function (names) {
+                        if (names.length) {
+                            done("cached files remain: " + names);
+                            return;
+                        }
+                        suite.widget.controller.refreshAll();
+                        suite.waitUntil(function () {
+                            return suite.freshPrice(suite.uidA) && suite.widget.graphData[suite.uidA] !== undefined && suite.everythingOnDisk();
+                        }, function (refreshProblem) {
+                            if (refreshProblem) {
+                                done(refreshProblem);
+                                return;
+                            }
+                            done(suite.widget.symbolErrors[suite.uidA] ? "manual refresh did not clear the warning" : "");
+                        }, 15000, suite.describe);
+                    });
+                } catch (error) {
+                    done(error.message);
+                }
+            });
+        }, 15000, describe);
+    }
     function async_damaged_files_are_a_first_run_not_an_error(done) {
         let s = symbol(uidA, "EURUSD=X");
         seed(uidA, "{ this is not json", function () {
@@ -277,7 +320,7 @@ TestSuite {
             start([savedSymbol]);
             let started = [];
             Logger.configure({
-                devMode: true,
+                isDevMode: true,
                 sink: function (level, scope, text) {
                     if (scope === "providers" && text.indexOf("started ") !== -1)
                         started.push(text);
@@ -579,7 +622,7 @@ TestSuite {
         }
         ErrorHandler.reset();
         Logger.configure({
-            devMode: false
+            isDevMode: false
         });
         ProvidersManager.reload(ProvidersManager.sources);
         directory = freshDirectory("widget-cache");

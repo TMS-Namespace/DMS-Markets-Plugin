@@ -6,9 +6,9 @@ import QtQuick
 import "../../../src/QML/Services"
 import "../../../src/QML/Views"
 import "../../Helpers"
+import qs.DCommon.Widgets
 import qs.Modules.Plugins
 import qs.Services
-import qs.Widgets
 
 TestSuite {
     id: suite
@@ -99,6 +99,7 @@ TestSuite {
 
             property var availablePlugins: ({})
             property var data: ({})
+            property bool rejectSymbols: false
 
             signal pluginDataChanged(string pluginId)
 
@@ -109,6 +110,8 @@ TestSuite {
                 return key in data ? data[key] : fallback;
             }
             function savePluginData(id, key, value) {
+                if (rejectSymbols && key === "symbols")
+                    return false;
                 var copy = Object.assign({}, data);
                 copy[key] = value;
                 data = copy;
@@ -220,6 +223,172 @@ TestSuite {
         });
     }
 
+    // Collapsing cancels an armed deletion; the two actions keep readable labels when reopened.
+    function async_cleanup_group_can_collapse_without_confirming_removal(done) {
+        let page = open({
+            symbols: JSON.stringify(twoSymbols)
+        });
+        waitFor(function () {
+            return page.controller.symbolsList.length === 2;
+        }, function (problem) {
+            if (problem) {
+                done(problem);
+                return;
+            }
+            settled(page, done, function () {
+                let maintenance = findItem(page, function (item) {
+                    return item as DataMaintenance;
+                }) as DataMaintenance;
+                same(maintenance.title, "CleanUp");
+                same(maintenance.expanded, false, "cleanup starts collapsed");
+                maintenance.toggle();
+                same(maintenance.expanded, true);
+                let remove = findItem(maintenance, function (item) {
+                    return (item as DButton) && item.text === "Clear Symbols";
+                }) as DButton;
+                let clear = findItem(maintenance, function (item) {
+                    return (item as DButton) && item.text === "Clear Cache";
+                }) as DButton;
+                check(remove !== null && clear !== null, "both labels exist");
+                same(remove.textColor.toString(), clear.textColor.toString(), "both actions use the host's contrasting button text color");
+                same(remove.visible, true);
+                remove.clicked();
+                same(remove.text, "Confirm Clear Symbols");
+                maintenance.toggle();
+                same(maintenance.confirmRemoval, false, "collapsing cancels confirmation");
+                same(remove.visible, false);
+                maintenance.toggle();
+                same(remove.text, "Clear Symbols");
+                same(JSON.parse(service.data.symbols).length, 2, "no actual removal occurred");
+            });
+        });
+    }
+
+    // Clear-cache activation stays inside a disposable directory and never edits configured symbols.
+    function async_clear_cache_button_keeps_the_symbol_list(done) {
+        let page = open({
+            symbols: JSON.stringify(twoSymbols)
+        });
+        page.controller.cacheDirectory = freshDirectory("settings-cache-button");
+        waitFor(function () {
+            return page.controller.symbolsList.length === 2;
+        }, function (problem) {
+            if (problem) {
+                done(problem);
+                return;
+            }
+            let maintenance = suite.findItem(page, function (item) {
+                return item as DataMaintenance;
+            }) as DataMaintenance;
+            maintenance.toggle();
+            let clear = suite.findItem(maintenance, function (item) {
+                return (item as DButton) && item.text === "Clear Cache";
+            }) as DButton;
+            let originalSymbols = suite.service.data.symbols;
+            clear.clicked();
+            suite.same(maintenance.cacheClearing, true);
+            suite.same(clear.enabled, false, "repeated clears are blocked");
+            suite.waitFor(function () {
+                return !maintenance.cacheClearing;
+            }, function (clearProblem) {
+                try {
+                    suite.check(!clearProblem, clearProblem);
+                    suite.same(suite.service.data.symbols, originalSymbols);
+                    suite.same(page.controller.symbolsList.length, 2);
+                    suite.check(ToastService.infos.length > 0, "completion is shown");
+                    done("");
+                } catch (error) {
+                    done(error.message);
+                }
+            });
+        });
+    }
+
+    // A refused save must leave the configured symbols and active edit intact and report the failure.
+    function async_delete_all_symbols_reports_failed_storage_without_losing_the_list(done) {
+        let page = open({
+            symbols: JSON.stringify(twoSymbols)
+        });
+        waitFor(function () {
+            return page.controller.symbolsList.length === 2;
+        }, function (problem) {
+            if (problem) {
+                done(problem);
+                return;
+            }
+            settled(page, done, function () {
+                page.controller.editSymbol(0);
+                service.rejectSymbols = true;
+                Logger.configure({
+                    isDevMode: false
+                }); // this test deliberately refuses a save
+                let maintenance = findItem(page, function (item) {
+                    return item as DataMaintenance;
+                }) as DataMaintenance;
+                maintenance.toggle();
+                let remove = findItem(maintenance, function (item) {
+                    return (item as DButton) && item.text === "Clear Symbols";
+                }) as DButton;
+                remove.clicked();
+                remove.clicked();
+                same(JSON.parse(service.data.symbols).length, 2);
+                same(page.controller.symbolsList.length, 2);
+                same(page.controller.editIndex, 0);
+                check(ToastService.errors.length > 0, "save failure is visible");
+            });
+        });
+    }
+
+    // Both confirmation and cancel go through the real maintenance buttons; all data belongs to the fake service.
+    function async_delete_all_symbols_requires_confirmation_and_preserves_display_settings(done) {
+        let page = open({
+            symbols: JSON.stringify(twoSymbols),
+            upColor: "#123456"
+        });
+        waitFor(function () {
+            return page.controller.symbolsList.length === 2;
+        }, function (problem) {
+            if (problem) {
+                done(problem);
+                return;
+            }
+            settled(page, done, function () {
+                let maintenance = findItem(page, function (item) {
+                    return item as DataMaintenance;
+                }) as DataMaintenance;
+                check(maintenance !== null);
+                maintenance.toggle();
+                let remove = findItem(maintenance, function (item) {
+                    return (item as DButton) && item.text === "Clear Symbols";
+                }) as DButton;
+                let configured = findItem(page, function (item) {
+                    let candidate = item as Repeater;
+                    return candidate && candidate.count > 0 && (candidate.itemAt(0) as ConfiguredSymbol);
+                }) as Repeater;
+                check(configured !== null);
+                same(configured.count, 2, "both configured rows exist before clearing");
+                page.controller.editSymbol(0);
+                remove.clicked();
+                same(maintenance.confirmRemoval, true);
+                same(page.controller.symbolsList.length, 2, "first click does not delete");
+                let cancel = findItem(maintenance, function (item) {
+                    return (item as DButton) && item.text === "Cancel";
+                }) as DButton;
+                cancel.clicked();
+                same(maintenance.confirmRemoval, false);
+                same(JSON.parse(service.data.symbols).length, 2);
+                remove.clicked();
+                remove.clicked();
+                same(service.data.symbols, "[]");
+                same(page.controller.symbolsList.length, 0);
+                same(configured.count, 0, "the configured-symbol list is actually empty");
+                same(page.controller.editIndex, -1);
+                same(service.data.upColor, "#123456");
+                same(remove.enabled, false, "nothing left to delete");
+            });
+        });
+    }
+
     // Deleting the row currently being edited must persist the removal and leave the form in add mode.
     function async_delete_symbol_through_settings_controls(done) {
         let page = open({
@@ -238,7 +407,7 @@ TestSuite {
                 selection.clicked(null);
                 same(page.controller.editIndex, 1);
                 let icon = findItem(row, function (item) {
-                    return (item as DankIcon) && item.name === "delete";
+                    return (item as DIcon) && item.name === "delete";
                 });
                 check(icon !== null);
                 let button = icon.parent as MouseArea;
@@ -313,6 +482,48 @@ TestSuite {
                     equal(page.controller.formState, fieldsOf(twoSymbols[0]), "after changing " + key);
                     page.controller.cancelEdit();
                 });
+            });
+        });
+    }
+
+    // All controls remain instantiated for loading saved values even though their sections start collapsed.
+    function async_global_and_per_symbol_groups_start_collapsed(done) {
+        let page = open({
+            symbols: JSON.stringify(twoSymbols),
+            popoutRows: 7
+        }, true);
+        waitFor(function () {
+            return page.controller.symbolsList.length === 2 && page.popoutRowsValue === 7;
+        }, function (problem) {
+            if (problem) {
+                done(problem);
+                return;
+            }
+            settled(page, done, function () {
+                let globalGroup = findItem(page, function (item) {
+                    return (item as DCollapsibleSection) && item.title === "Global View Settings";
+                }) as DCollapsibleSection;
+                let symbolGroup = findItem(page, function (item) {
+                    return (item as DCollapsibleSection) && item.title === "Per Symbol Settings";
+                }) as DCollapsibleSection;
+                check(globalGroup !== null && symbolGroup !== null);
+                same(globalGroup.expanded, false);
+                same(symbolGroup.expanded, false);
+                let display = findItem(globalGroup, function (item) {
+                    return item as DisplaySettings;
+                }) as DisplaySettings;
+                let editor = findItem(symbolGroup, function (item) {
+                    return item as SymbolEditor;
+                }) as SymbolEditor;
+                check(display !== null && editor !== null, "controls are inside the matching sections");
+                same(display.popoutRowsValue, 7, "collapsed controls still load their saved values");
+                symbolGroup.toggle();
+                let row = findItem(symbolGroup, function (item) {
+                    return item as ConfiguredSymbol;
+                }) as ConfiguredSymbol;
+                check(row !== null && row.visible);
+                globalGroup.toggle();
+                same(display.visible, true);
             });
         });
     }
@@ -601,8 +812,8 @@ TestSuite {
     // Enter text and finish editing through the same control signals used by DMS.
     function enterText(page: Item, placeholder: string, value: string) {
         let field = findItem(page, function (item) {
-            return (item as DankTextField) && item.placeholderText === placeholder;
-        }) as DankTextField;
+            return (item as DTextField) && item.placeholderText === placeholder;
+        }) as DTextField;
         check(field !== null, "text field exists: " + placeholder);
         field.text = value;
         field.editingFinished();
@@ -645,7 +856,7 @@ TestSuite {
         check(button !== null, "button input exists: " + label);
         return button;
     }
-    function open(data) {
+    function open(data, keepCollapsed) {
         service = serviceType.createObject(null, {
             data: data
         });
@@ -654,6 +865,16 @@ TestSuite {
                 source: "file://" + repoRoot + "/src/QML/Settings.qml"
             }) as Loader);
         check(loader.status === Loader.Ready, "the page loads: " + loader.status);
+        // Form interaction tests open the sections as a user would; the startup test keeps their defaults.
+        if (!keepCollapsed) {
+            ["Global View Settings", "Per Symbol Settings"].forEach(function (title) {
+                let section = suite.findItem(suite.loader.item, function (item) {
+                    return (item as DCollapsibleSection) && item.title === title;
+                }) as DCollapsibleSection;
+                suite.check(section !== null, title + " exists");
+                section.toggle();
+            });
+        }
         return loader.item;
     }
     function settled(page, done, action) {
@@ -678,7 +899,7 @@ TestSuite {
         ToastService.infos = [];
         ErrorHandler.reset();
         Logger.configure({
-            devMode: false
+            isDevMode: false
         });
         ProvidersManager.reload(ProvidersManager.sources);
     }

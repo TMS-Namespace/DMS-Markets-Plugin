@@ -528,6 +528,11 @@ TestSuite {
     // ── A file that cannot be written ────────────────────────────────────────
     // A directory in the place of the symbol's file makes every write to that name fail.
     function blockPrimary(done) {
+        // These tests deliberately make two writes fail. Quickshell logs this despite printErrors:false.
+        console.warn("T:EXPECTED-FILE-WRITE-WARNING " + JSON.stringify({
+            path: cache.directory + "/" + uidA + ".json",
+            maxCount: 2
+        }));
         shell('mkdir -p -- "$1/$2.json"', [cache.directory, uidA], function () {
             done();
         });
@@ -615,7 +620,7 @@ TestSuite {
         ErrorHandler.reset();
         logs = [];
         Logger.configure({
-            devMode: true,
+            isDevMode: true,
             sink: function (level, scope, text) {
                 logs.push(level + " " + scope + ": " + text);
             }
@@ -633,7 +638,7 @@ TestSuite {
     }
     function teardown() {
         Logger.configure({
-            devMode: false
+            isDevMode: false
         });
     }
 

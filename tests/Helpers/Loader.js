@@ -7,7 +7,7 @@ const assert = require("assert");
 const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
-const { createRegistry, loadModule } = require("../../support/QmlJavaScript");
+const { createRegistry, loadModule } = require("../../audit/QmlJavaScript");
 
 const repoRoot = path.resolve(__dirname, "..", "..");
 const srcRoot = path.join(repoRoot, "src");
