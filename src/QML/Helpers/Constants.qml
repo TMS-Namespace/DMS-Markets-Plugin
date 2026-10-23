@@ -92,7 +92,7 @@ QtObject {
     // DMS defaults: medium 14px, small 12px. Deltas preserve compact labels.
     readonly property int symbolNameFontSizeDelta: 1
     readonly property int symbolPriceColumnShift: 5   // the price column sits this many px further right
-    readonly property int symbolPriceColumnW: 86
+    readonly property int symbolPriceColumnW: 70
 
     // ── SymbolRow UI ─────────────────────────────────────────────────────────
     readonly property int symbolRowHeight: 76
