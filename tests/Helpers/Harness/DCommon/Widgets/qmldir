@@ -1,0 +1,8 @@
+module qs.DCommon.Widgets
+DDropdown 1.0 DDropdown.qml
+DIcon 1.0 DIcon.qml
+DSlider 1.0 DSlider.qml
+DTextField 1.0 DTextField.qml
+StyledText 1.0 StyledText.qml
+DButton 1.0 DButton.qml
+DCollapsibleSection 1.0 DCollapsibleSection.qml

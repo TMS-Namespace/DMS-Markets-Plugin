@@ -1,0 +1,4 @@
+module qs.Common
+singleton Theme 1.0 Theme.qml
+singleton PopoutMetrics 1.0 PopoutMetrics.qml
+singleton SettingsTabs 1.0 SettingsTabs.qml

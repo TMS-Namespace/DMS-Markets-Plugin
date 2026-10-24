@@ -1,0 +1,15 @@
+{
+    "files.associations": {
+        "**/src/JS/**/*.js": "qml"
+    },
+    "qt-qml.qmlls.additionalImportPaths": [
+        "${workspaceFolder}/audit/lint-imports",
+        "/usr/lib64/qt6/qml",
+        "/usr/lib/qt6/qml",
+        "/usr/lib/x86_64-linux-gnu/qt6/qml"
+    ],
+    "qt-qml.qmlls.useNoCMakeCalls": true,
+    "cSpell.words": [
+        "popout"
+    ]
+}

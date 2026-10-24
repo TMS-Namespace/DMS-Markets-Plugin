@@ -1,0 +1,8 @@
+module Markets.Services
+ProviderHandler 1.0 ProviderHandler.qml
+singleton ProvidersManager 1.0 ProvidersManager.qml
+singleton ErrorHandler 1.0 ErrorHandler.qml
+singleton Logger 1.0 Logger.qml
+DataStorage 1.0 DataStorage.qml
+MarketCache 1.0 MarketCache.qml
+singleton CacheMaintenance 1.0 CacheMaintenance.qml

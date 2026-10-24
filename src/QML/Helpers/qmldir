@@ -1,0 +1,7 @@
+module Markets.Helpers
+Constants           1.0 Constants.qml
+ChartDataProcessor  1.0 ChartDataProcessor.qml
+MarketDataFetcher   1.0 MarketDataFetcher.qml
+SymbolManager       1.0 SymbolManager.qml
+SettingsController  1.0 SettingsController.qml
+WidgetController    1.0 WidgetController.qml

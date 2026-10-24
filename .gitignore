@@ -1,5 +1,6 @@
 # Build / editor artifacts
-.vscode/
+.vscode/*
+!.vscode/settings.json
 *.swp
 *~
 
@@ -10,3 +11,8 @@ Thumbs.db
 # Old root-level files (removed during refactor)
 # MarketsWidget.qml
 # MarketsSettings.qml
+.codex
+.agents
+
+# Generated editor metadata; rebuilt from the installed Quickshell module by audit/Lint.js.
+audit/lint-imports/Quickshell/
