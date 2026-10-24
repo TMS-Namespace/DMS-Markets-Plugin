@@ -64,12 +64,12 @@ Currently supported providers:
     - New: data provider `Wise`, covering exotic pairs `Yahoo Finance` does not offer. No credentials required, thx for [brunofin](https://github.com/brunofin).
     - New: per-symbol `Change Resolution` setting, to adjust the shown change is in what range.
     - New: `Chart Resolution` that can be set per symbol (before chart resolution was same as price resolution).
-    - New: `Show Provider Alias` setting (three-letter provider codes on the charts, short chart ranges like `1M`).
+    - New: `Show Provider Alias` setting in charts.
     - New: Fetched data is now cached on disk, so prices and data will stay visible even without internet connection.
     - New: Open plugin settings directly from the popup header.
     - New: Clear cached market data, and/or clear all symbols from settings.
     - Improvement: Full refactoring for first class support of self-declarative multiprovider setup. Note: the saved symbols will be migrated to new formats on first load.
-    - Improvement: Migrated widgets to the Dux 2 API; hence the new Dux versions is now required.
+    - Improvement: Migrated widgets to the `Dux 2 API`; hence the new Dux versions is now required.
     - Improvement: Various optimizations and tests added.
     - Improvement: Some cosmetic improvements to comply with `Dux` theme.
     - Fix: Symbol change is now calculated correctly against the close of the previous period.

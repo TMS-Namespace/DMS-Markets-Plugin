@@ -1,11 +1,12 @@
 // PopoutPanel.qml - Popout content area for the Markets plugin
 //
 // Contains the symbol list, header hover buttons (refresh all, settings and close),
-// custom scroll indicator, and empty-state placeholder.
+// themed scrollbar, and empty-state placeholder.
 // Moved from QML/ to QML/Views/ so all view-layer components live together.
 
 pragma ComponentBehavior: Bound
 import QtQuick
+import QtQuick.Controls as Controls
 import "../../JS/Contracts/FetchType.js" as FetchType
 import "../../JS/Helpers/SymbolErrorMap.js" as SymbolErrors
 import "../Helpers"
@@ -153,6 +154,11 @@ Item {
         model: panel.symbols
         spacing: Theme.spacingS
 
+        // Attach the bar so Qt synchronizes thumb size, scroll position, and dragging in both directions.
+        Controls.ScrollBar.vertical: DScrollbar {
+            allowed: panel.symbols.length > panel.popoutRows
+            targetFlickable: symbolList
+        }
         delegate: SymbolRow {
             required property var modelData
 
@@ -174,39 +180,6 @@ Item {
             onRefreshSymbol: panel.refreshSymbol(modelData.uid)
             onRemoveSymbol: panel.removeSymbol(modelData.uid)
             onTogglePin: panel.togglePin(modelData.uid)
-        }
-    }
-
-    // ═════════════════════════════════════════════════════════════════════════
-    //  CUSTOM SCROLL INDICATOR
-    // ═════════════════════════════════════════════════════════════════════════
-
-    Rectangle {
-        id: scrollIndicator
-
-        anchors.bottom: parent.bottom
-        anchors.top: parent.top
-        color: "transparent"
-        visible: panel.symbols.length > panel.popoutRows
-        width: constants.scrollBarWidth
-        // Use the outer gutter so scrolling never narrows only the right side of the cards.
-        x: panel.width + (Theme.spacingS - width) / 2
-
-        Rectangle {
-            property real ratio: symbolList.height / symbolList.contentHeight
-
-            color: Theme.outlineVariant
-            height: Math.max(constants.scrollThumbMin, parent.height * ratio)
-            opacity: symbolList.moving ? constants.scrollOpacityActive : constants.scrollOpacityIdle
-            radius: constants.scrollBarRadius
-            width: parent.width
-            y: symbolList.contentHeight > symbolList.height ? (symbolList.contentY / (symbolList.contentHeight - symbolList.height)) * (parent.height - height) : 0
-
-            Behavior on opacity {
-                NumberAnimation {
-                    duration: constants.scrollAnimDurationMs
-                }
-            }
         }
     }
 

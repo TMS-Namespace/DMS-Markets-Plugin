@@ -5,6 +5,7 @@ import QtQuick.Controls as Controls
 import QtQuick.Window
 import "../../../src/QML/Views"
 import "../../Helpers"
+import qs.DCommon.Widgets
 
 TestSuite {
     id: suite
@@ -87,6 +88,12 @@ TestSuite {
     // The placeholder must follow model changes, including removal of the final symbol.
     function async_empty_state_follows_the_symbol_list(done) {
         withPanel([], done, function (panel, list) {
+            let scrollbar = suite.findItem(panel, function (item) {
+                return item as DScrollbar;
+            }) as DScrollbar;
+            check(scrollbar !== null, "scrolling uses the Dux control");
+            same(scrollbar.targetFlickable, list);
+            same(scrollbar.allowed, false);
             let placeholder = findItem(panel, function (item) {
                 return "text" in item && item.text === "Add symbols to start…";
             });
@@ -95,14 +102,18 @@ TestSuite {
             list.forceLayout();
             same(list.count, 1);
             same(placeholder.visible, false);
+            panel.symbols = [suite.firstSymbol, suite.secondSymbol];
+            panel.popoutRows = 1;
+            same(scrollbar.allowed, true);
             panel.symbols = [];
             list.forceLayout();
             same(list.count, 0);
             same(placeholder.visible, true);
+            same(scrollbar.allowed, false);
         });
     }
 
-    // Use the real Qt tooltip popup, with plain multiline text rather than the host's single-line tooltip.
+    // The Dux tooltip host receives plain multiline errors and the real Qt tooltip renders all lines.
     function async_error_tooltip_renders_multiple_lines(done) {
         withPanel([firstSymbol, secondSymbol], done, function (panel, list) {
             panel.symbolErrors = ({
@@ -118,25 +129,34 @@ TestSuite {
                     }
                 });
             let refresh = suite.button(panel, "refresh");
-            let tooltip = null;
-            for (let child of refresh.data) {
+            let host = suite.findItem(refresh, function (item) {
+                return item as DTooltipHost;
+            }) as DTooltipHost;
+            check(host !== null, "use the Dux tooltip host");
+            same(host.target, refresh);
+            same(host.multiline, true);
+            same(host.text, refresh.tooltipText);
+            let popup = null;
+            for (let child of host.data) {
                 if (child as Controls.ToolTip) {
-                    tooltip = child;
+                    popup = child as Controls.ToolTip;
                     break;
                 }
             }
-            check(tooltip !== null, "the refresh button owns a tooltip");
-            let popup = tooltip as Controls.ToolTip;
-            popup.open();
+            check(popup !== null, "the tooltip host owns a Qt popup");
+            host.showNow();
             same(popup.visible, true);
             same(popup.text, refresh.tooltipText);
             let text = popup.contentItem as Text;
             check(text !== null);
             same(text.textFormat, Text.PlainText);
-            same(text.wrapMode, Text.Wrap);
+            same(text.wrapMode, Text.WrapAnywhere);
             check(text.text.split("\n").length === 3, "heading and one line per affected symbol");
             check(text.implicitHeight > text.font.pixelSize * 2, "multiple lines have room to render");
-            popup.close();
+            panel.symbolErrors = ({});
+            same(popup.text, "Refresh all symbols", "visible tooltip updates when the failures recover");
+            host.dismiss();
+            same(host.shown, false);
         });
     }
 
@@ -332,6 +352,41 @@ TestSuite {
         });
     }
 
+    // A real Qt attached scrollbar tracks scrolling, resizes with the viewport, and scrolls the list when dragged.
+    function async_scrollbar_tracks_the_list_and_drives_scrolling(done) {
+        let symbols = [];
+        for (let i = 0; i < 6; i++)
+            symbols.push(Object.assign({}, firstSymbol, {
+                uid: "scroll-" + i
+            }));
+        withPanel(symbols, done, function (panel, list) {
+            panel.popoutRows = 2;
+            let scrollbar = list.Controls.ScrollBar.vertical;
+            check(scrollbar !== null, "the themed scrollbar is attached to the list");
+            same(scrollbar.orientation, Qt.Vertical);
+            check(scrollbar.size > 0 && scrollbar.size < 1, "the thumb represents the visible fraction");
+            check(Math.abs(scrollbar.size - list.visibleArea.heightRatio) < 0.001);
+            list.positionViewAtBeginning();
+            same(scrollbar.position, 0);
+            list.positionViewAtEnd();
+            check(scrollbar.position > 0, "scrolling moves the thumb");
+            check(Math.abs(scrollbar.position - list.visibleArea.yPosition) < 0.001);
+            scrollbar.position = 0;
+            check(Math.abs(list.contentY - list.originY) < 0.001, "moving the thumb scrolls back to the top");
+            let initialSize = scrollbar.size;
+            suite.popupWindow.height += 40;
+            list.forceLayout();
+            // Window resize events reach the list on the next event-loop turn.
+            return function (complete) {
+                suite.waitUntil(function () {
+                    return scrollbar.size > initialSize && Math.abs(scrollbar.size - list.visibleArea.heightRatio) < 0.001;
+                }, complete, 2000, function () {
+                    return "a taller viewport should enlarge the thumb";
+                });
+            };
+        });
+    }
+
     // Find a real action button by the icon it presents to the user.
     function button(parentItem: Item, iconName: string): IconButton {
         let found = findItem(parentItem, function (item) {
@@ -353,7 +408,7 @@ TestSuite {
         return null;
     }
 
-    // Wait for delegates and dispose of the window; hidden windows let visibility tests avoid pointer hover.
+    // Wait for delegates and dispose of the window after an action or its returned asynchronous continuation.
     function withPanel(symbols, done, action, showWindow) {
         popupWindow = windowType.createObject(null, {
             visible: showWindow !== false
@@ -364,19 +419,25 @@ TestSuite {
             return item as ListView;
         }) as ListView;
         list.forceLayout();
+        function complete(problem) {
+            suite.popupWindow.destroy();
+            suite.popupWindow = null;
+            done(problem);
+        }
         waitUntil(function () {
             return list.count === symbols.length && (!symbols.length || list.itemAtIndex(symbols.length - 1) !== null);
         }, function (problem) {
             try {
                 if (problem)
                     throw new Error(problem);
-                action(panel, list);
-                done("");
+                let continuation = action(panel, list);
+                if (typeof continuation === "function") {
+                    continuation(complete);
+                    return;
+                }
+                complete("");
             } catch (error) {
-                done(error.message);
-            } finally {
-                suite.popupWindow.destroy();
-                suite.popupWindow = null;
+                complete(error.message);
             }
         });
     }

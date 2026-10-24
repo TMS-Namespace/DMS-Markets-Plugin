@@ -8,7 +8,6 @@
 //   pressable                                     false: shown, but not clickable
 //   hovered (read-only), clicked()
 import QtQuick
-import QtQuick.Controls as Controls
 import "../Helpers"
 import qs.Common
 import qs.DCommon.Widgets
@@ -100,28 +99,11 @@ Rectangle {
         }
     }
 
-    // DMS's current tooltip clips to one line; fetch failures need wrapping and explicit line breaks.
-    Controls.ToolTip {
-        id: buttonTooltip
-
-        padding: Theme.spacingS
-        parent: button
+    // Dux owns tooltip typography, positioning, hover delay, and multiline error rendering.
+    DTooltipHost {
+        hoverArea: mouseArea
+        multiline: true
+        target: button
         text: button.tooltipText
-        visible: button.hovered && text !== ""
-
-        background: Rectangle {
-            border.color: Theme.outlineVariant
-            border.width: 1
-            color: Theme.surfaceContainerHigh
-            radius: Theme.cornerRadius
-        }
-        contentItem: Text {
-            color: Theme.surfaceText
-            font.pixelSize: Theme.fontSizeSmall
-            text: buttonTooltip.text
-            textFormat: Text.PlainText
-            width: Math.min(implicitWidth, constants.errorTooltipMaxWidth)
-            wrapMode: Text.Wrap
-        }
     }
 }

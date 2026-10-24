@@ -6,3 +6,5 @@ DTextField 1.0 DTextField.qml
 StyledText 1.0 StyledText.qml
 DButton 1.0 DButton.qml
 DCollapsibleSection 1.0 DCollapsibleSection.qml
+DTooltipHost 1.0 DTooltipHost.qml
+DScrollbar 1.0 DScrollbar.qml

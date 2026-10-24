@@ -23,10 +23,18 @@ for (const file of jsFiles)
 for (const file of qmlFiles) {
     const text = fs.readFileSync(file, "utf8");
     assert(
+        !/\b(?:Text|(?:\w+\.)?ToolTip)\s*\{/.test(text),
+        `${relativePath(file)}: use StyledText and the Dux tooltip host for themed typography`
+    );
+    assert(
         !/\b(DankIcon|DankSlider|DankTextField|DankDropdown)\s*\{/.test(text),
         `${relativePath(file)}: use the Dux shared widget names`
     );
-    if (/\b(DIcon|DSlider|DTextField|DDropdown|StyledText)\s*\{/.test(text))
+    if (
+        /\b(DIcon|DSlider|DTextField|DDropdown|DButton|DCollapsibleSection|DTooltipHost|DScrollbar|StyledText)\s*\{/.test(
+            text
+        )
+    )
         assert(
             /^import qs\.DCommon\.Widgets\s*$/m.test(text),
             `${relativePath(file)}: shared widgets come from qs.DCommon.Widgets`

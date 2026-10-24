@@ -43,6 +43,7 @@ failed, not what any one plugin does.
   form actions and widget lifecycles. Controllers receive data and emit signals; they never reference visual controls.
 - Shared Dux widgets use `qs.DCommon.Widgets` and their current `D*` names. Keep shell-specific plugin types in
   `qs.Modules.Plugins`. Bar text and icons follow the host's `textSize` and `iconSize`.
+- Use `StyledText` for text, `DTooltipHost` with `multiline: true` for error tooltips, and `DScrollbar` for scrolling.
 - One type per file; the file name equals the type name. Every QML folder has a `qmldir` listing exactly its files.
 
 ## 3. Contracts (shared data structures)

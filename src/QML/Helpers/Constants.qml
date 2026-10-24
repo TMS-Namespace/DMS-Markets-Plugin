@@ -50,14 +50,12 @@ QtObject {
     readonly property int defaultBarIconSize: 16
 
     // ── Default chart colors ──────────────────────────────────────────────────
-    
+
     // chart colors need to be user-changeable, since they indicate symbol status, and not specific to any theme, below are there default values.
     readonly property color defaultDownColor: "#F44336"
-    readonly property color defaultUpColor: "#4CAF50"
-
     readonly property int defaultPopoutRows: 5
+    readonly property color defaultUpColor: "#4CAF50"
     readonly property int emptyStateIconSize: 48
-    readonly property int errorTooltipMaxWidth: 360
     readonly property int fullRotationDeg: 360
     readonly property int headerAnimDurationMs: 800
     readonly property int headerButtonRadius: 14
@@ -79,12 +77,6 @@ QtObject {
     readonly property string pluginSubtitle: "Track live prices for currencies, stocks, commodities, and crypto."
     readonly property int popoutWidth: 420
     readonly property int refreshWarningBadgeSize: 14
-    readonly property int scrollAnimDurationMs: 200
-    readonly property int scrollBarRadius: 4
-    readonly property int scrollBarWidth: 4
-    readonly property real scrollOpacityActive: 0.8
-    readonly property real scrollOpacityIdle: 0.4
-    readonly property int scrollThumbMin: 20
 
     // ── Shared small buttons / compact rows ───────────────────────────────────
     readonly property int smallButtonWidth: 80   // cancel buttons
