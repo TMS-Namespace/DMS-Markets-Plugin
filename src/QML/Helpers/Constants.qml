@@ -10,6 +10,7 @@ import QtQuick
 
 QtObject {
     readonly property real actionButtonBgOpacity: 0.85
+    // Intentionally theme independent: fixed button, icon, and gap sizes preserve the compact card layout.
     readonly property int actionButtonRadius: 11
     readonly property int actionButtonSize: 22
     readonly property int actionButtonSpacing: 4
@@ -23,7 +24,7 @@ QtObject {
 
     // ── Button hover / background alphas ─────────────────────────────────────
     readonly property real buttonHoverAlpha: 0.15  // hover highlight tint
-    readonly property int chartAreaMargin: 5   // around the chart on every side (one constant for all four)
+    readonly property int chartAreaMargin: 5   // intentionally theme independent: equal chart insets preserve the card design
     readonly property real chartFillOpacity: 0.25
     readonly property int chartLabelBottomMargin: 2
     readonly property int chartLabelFontSizeDelta: -3
@@ -38,6 +39,7 @@ QtObject {
     readonly property int chartStatusFontSizeDelta: -2
     readonly property int compactRowHeight: 44   // add/edit rows
 
+    // Intentionally theme independent: these control and icon sizes keep settings row actions aligned.
     readonly property int configActionSize: 24   // clickable area for move/delete
     readonly property int configArrowIconSize: 16
     readonly property int configButtonSpacing: 2
@@ -53,16 +55,18 @@ QtObject {
 
     // chart colors need to be user-changeable, since they indicate symbol status, and not specific to any theme, below are there default values.
     readonly property color defaultDownColor: "#F44336"
-    readonly property int defaultPopoutRows: 5
     readonly property color defaultUpColor: "#4CAF50"
+    
+    readonly property int defaultPopoutRows: 5
     readonly property int emptyStateIconSize: 48
     readonly property int fullRotationDeg: 360
     readonly property int headerAnimDurationMs: 800
+    // Intentionally theme independent: fixed button size and radius preserve the compact popup header design.
     readonly property int headerButtonRadius: 14
     readonly property int headerButtonSize: 28
 
     // ── PopoutPanel internal UI ───────────────────────────────────────────────
-    readonly property int headerButtonSpacing: 6
+    readonly property int headerButtonSpacing: 6   // intentionally theme independent: keeps the header actions evenly spaced
     readonly property int headerButtonZ: 101
     readonly property int headerHoverZ: 100
     readonly property int headerIconSize: 18
@@ -81,7 +85,7 @@ QtObject {
     // ── Shared small buttons / compact rows ───────────────────────────────────
     readonly property int smallButtonWidth: 80   // cancel buttons
     readonly property int smallFontSizeDelta: -2
-    readonly property int symbolColSpacing: 2
+    readonly property int symbolColSpacing: 2   // intentionally theme independent: preserves the compact text column layout
     readonly property int symbolNameColumnW: 90
     // DMS defaults: medium 14px, small 12px. Deltas preserve compact labels.
     readonly property int symbolNameFontSizeDelta: 1
