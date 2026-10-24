@@ -5,6 +5,7 @@ import QtQuick
 import "../../JS/Helpers/Constants.js" as JsConstants
 import "../../JS/Helpers/Helpers.js" as Helpers
 import "../../JS/Helpers/SymbolErrorMap.js" as SymbolErrors
+import "../../JS/Helpers/SymbolSummary.js" as SymbolSummary
 import "../Services"
 
 Item {
@@ -46,6 +47,7 @@ Item {
     property var pluginData: ({})
     property string pluginId: "markets"
     property var pluginService: null
+    readonly property string popoutDetailsText: SymbolSummary.detailsText(symbols, priceData)
     property int popoutRows: {
         let requestedRows = parseInt(pluginData.popoutRows || constants.defaultPopoutRows);
         return (isNaN(requestedRows) || requestedRows < 1) ? constants.defaultPopoutRows : requestedRows;

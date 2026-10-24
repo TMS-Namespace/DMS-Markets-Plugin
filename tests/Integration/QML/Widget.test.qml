@@ -280,6 +280,70 @@ TestSuite {
         same(widget.visibilityOverride, true, "the empty popup remains reachable from the bar");
         same(service.saves, 0);
     }
+    // The real popup header follows price updates, cached-data failures, removals, and cache clearing.
+    function test_popup_header_counts_reported_declines() {
+        start([]);
+        let popup = widget.popoutContent.createObject(widget, {
+            width: 600
+        });
+        check(popup !== null, "popup content loads");
+        let header = popup.children[0].children.filter(function (child) {
+            return child.objectName === "marketsSummary";
+        })[0];
+        same(header.text, "Add symbols in Settings");
+        let tracked = [];
+        for (let i = 0; i < 9; i++)
+            tracked.push(Object.assign({}, currentSymbols[0], {
+                uid: "summary-" + i
+            }));
+        widget.symbols = tracked;
+        same(header.text, "9 symbols tracked");
+        widget.priceData = ({
+                "summary-0": {
+                    close: 10,
+                    change: -1,
+                    changePercent: -8
+                },
+                "summary-1": {
+                    close: 10,
+                    change: -0.001,
+                    changePercent: -5
+                },
+                "summary-2": {
+                    close: 10,
+                    change: 0,
+                    changePercent: 2
+                },
+                "removed": {
+                    close: 10,
+                    change: -1
+                }
+            });
+        same(header.text, "9 symbols tracked (22% of them down, -11% in total)");
+        widget.symbolErrors = ({
+                "summary-0": {
+                    price: {
+                        userMessage: "Offline"
+                    }
+                }
+            });
+        same(header.text, "9 symbols tracked (22% of them down, -11% in total)", "cached changes still match the displayed cards");
+        widget.priceData = ({
+                "summary-0": {
+                    close: 10,
+                    change: 1,
+                    changePercent: 3.25
+                }
+            });
+        same(header.text, "9 symbols tracked (0% of them down, +3.25% in total)");
+        widget.symbols = [tracked[0]];
+        same(header.text, "1 symbol tracked (0% of them down, +3.25% in total)");
+        widget.priceData = ({});
+        same(header.text, "1 symbol tracked", "clearing cache removes the unavailable percentage");
+        widget.symbols = [];
+        same(header.text, "Add symbols in Settings");
+        popup.destroy();
+    }
 
     // The settings shortcut closes the popup and navigates directly to this plugin's settings page.
     function test_popup_settings_button_opens_markets_settings() {

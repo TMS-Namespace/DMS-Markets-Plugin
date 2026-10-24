@@ -53,10 +53,6 @@ QtObject {
     readonly property color defaultDownColor: "#F44336"
     readonly property int defaultPopoutRows: 5
     readonly property color defaultUpColor: "#4CAF50"
-
-    // ── Developer / debug mode ────────────────────────────────────────────────
-    readonly property bool isDevMode: true   // enable for verbose plugin diagnostics
-
     readonly property int emptyStateIconSize: 48
     readonly property int errorTooltipMaxWidth: 360
     readonly property int fullRotationDeg: 360
@@ -69,12 +65,15 @@ QtObject {
     readonly property int headerButtonZ: 101
     readonly property int headerHoverZ: 100
     readonly property int headerIconSize: 18
+
+    // ── Developer / debug mode ────────────────────────────────────────────────
+    readonly property bool isDevMode: true   // enable for verbose plugin diagnostics
+
+    // ── Popout / widget layout ────────────────────────────────────────────────
     readonly property int maxPopoutRows: 50
     readonly property int minPopoutRows: 1
     readonly property int overlayZ: 10
     readonly property string pluginSubtitle: "Track live prices for currencies, stocks, commodities, and crypto."
-
-    // ── Popout / widget layout ────────────────────────────────────────────────
     readonly property int popoutWidth: 420
     readonly property int refreshWarningBadgeSize: 14
     readonly property int scrollAnimDurationMs: 200

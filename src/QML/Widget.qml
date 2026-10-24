@@ -5,6 +5,7 @@ import "./Helpers"
 import "./Services"
 import "./Views"
 import qs.Common
+import qs.DCommon.Widgets
 import qs.Modules.Plugins
 import qs.Services
 
@@ -81,16 +82,28 @@ PluginComponent {
             PopoutComponent {
                 id: popout
 
-                detailsText: root.symbols.length > 0 ? root.symbols.length + " symbol" + (root.symbols.length !== 1 ? "s" : "") + " tracked" : "Add symbols in Settings"
                 headerText: constants.barDefaultLabel
                 width: popupContent.width + 2 * popupContent.paddingAdjustment
                 x: -popupContent.paddingAdjustment
                 y: -popupContent.paddingAdjustment
 
+                // Own the summary label so its theme size can be set without changing Dux's internal controls.
+                StyledText {
+                    id: popoutSummary
+
+                    bottomPadding: Theme.spacingS
+                    color: Theme.surfaceVariantText
+                    font.pixelSize: Theme.fontSizeSmall
+                    leftPadding: Theme.spacingS
+                    objectName: "marketsSummary"
+                    text: root.controller.popoutDetailsText
+                    width: parent.width
+                    wrapMode: Text.WordWrap
+                }
                 PopoutPanel {
                     downColor: root.downColor
                     graphData: root.graphData
-                    headerOffset: popout.headerHeight + popout.detailsHeight
+                    headerOffset: popout.headerHeight + popoutSummary.height
                     lastFetchTimes: root.refreshedTimes
                     pendingFetches: root._pendingFetches
                     popoutRows: root.popoutRows
